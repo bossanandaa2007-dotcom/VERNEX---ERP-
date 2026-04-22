@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "nodemon server.js",
     "start": "node server.js"
   },
   "dependencies": {
@@ -13,6 +13,9 @@
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
     "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
   },
   "description": "",
   "main": "attendanceDb.js",

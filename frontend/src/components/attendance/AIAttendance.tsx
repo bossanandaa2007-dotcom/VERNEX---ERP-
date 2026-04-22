@@ -9,7 +9,7 @@ interface AttendanceRow {
   attendance: AttendanceValue[];
 }
 
-const AI_ATTENDANCE_API_BASE = 'http://localhost:5000/api';
+const AI_ATTENDANCE_API_BASE = import.meta.env.VITE_API_BASE || '/api';
 const DEFAULT_DAY_COUNT = 5;
 
 const AIAttendance = () => {

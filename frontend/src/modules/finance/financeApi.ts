@@ -27,6 +27,8 @@ export interface FinanceSection {
 
 export interface FinanceStudent extends IStudent {
   feesPaid: boolean;
+  termFees: number;
+  amountPaid: number;
 }
 
 const levelNameMap: Record<string, string> = {
@@ -38,11 +40,24 @@ const levelNameMap: Record<string, string> = {
 
 const pendingRollNumbers = new Set(['103', '107', '112', '118']);
 
+const feePlanByCategory: Record<string, number> = {
+  kindergarten: 5000,
+  primary: 6500,
+  secondary: 8000,
+  'higher-secondary': 9500,
+};
+
 const extractClassName = (sectionName: string) => sectionName.split('-')[0];
 
 const buildClassId = (levelId: string, className: string) => `${levelId}:${className}`;
 
 const resolveFeesPaid = (student: IStudent) => !pendingRollNumbers.has(student.rollNo);
+const resolveTermFees = (student: IStudent) => feePlanByCategory[student.categoryId] ?? 6000;
+const resolveAmountPaid = (student: IStudent) => {
+  const termFees = resolveTermFees(student);
+
+  return resolveFeesPaid(student) ? termFees : Math.round(termFees * 0.55);
+};
 
 export const fetchLevels = async (): Promise<FinanceLevel[]> => {
   const { categories, sections, students } = useClassStore.getState();
@@ -102,6 +117,8 @@ export const fetchStudents = async (sectionId: string): Promise<FinanceStudent[]
     .filter((student) => student.sectionId === sectionId)
     .map((student) => ({
       ...student,
+      termFees: resolveTermFees(student),
+      amountPaid: resolveAmountPaid(student),
       feesPaid: resolveFeesPaid(student),
     }));
 };

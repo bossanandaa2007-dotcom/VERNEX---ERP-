@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   LayoutDashboard, Users, Shield, CheckCircle, Award,
-  Library, DollarSign, Calendar, FileText, Settings,
+  Library, IndianRupee, Calendar, FileText, Settings,
   BookOpen, MessageSquare, BarChart3, LogOut, ChevronLeft, ChevronRight,
   Building2
 } from 'lucide-react';
@@ -26,7 +26,7 @@ const getNavItems = (role: string) => {
       { name: 'Attendance', icon: CheckCircle, path: '/admin/attendance' },
       { name: 'Marks Hub', icon: Award, path: '/admin/marks' },
       { name: 'Library', icon: Library, path: '/admin/library' },
-      { name: 'Fees & Finance', icon: DollarSign, path: '/admin/fees' },
+      { name: 'Fees & Finance', icon: IndianRupee, path: '/admin/fees' },
       { name: 'Calendar Mgmt', icon: Calendar, path: '/admin/calendar' },
       { name: 'Reports', icon: FileText, path: '/admin/reports' },
       { name: 'Settings', icon: Settings, path: '/admin/settings' }
@@ -40,6 +40,7 @@ const getNavItems = (role: string) => {
       { name: 'AI Attendance', icon: Shield, path: '/teacher/ai-attendance' },
       { name: 'Marks Entry', icon: Award, path: '/teacher/marks-entry' },
       { name: 'Leave Requests', icon: MessageSquare, path: '/teacher/leave-requests' },
+      { name: 'Complaints', icon: FileText, path: '/teacher/complaints' },
       { name: 'Calendar', icon: Calendar, path: '/teacher/calendar' },
       { name: 'Study Materials', icon: BookOpen, path: '/teacher/materials' },
       { name: 'Assignments', icon: FileText, path: '/teacher/assignments' }
@@ -51,22 +52,24 @@ const getNavItems = (role: string) => {
       { name: 'My Attendance', icon: CheckCircle, path: '/student/attendance' },
       { name: 'My Marks', icon: Award, path: '/student/marks' },
       { name: 'Leave Request', icon: MessageSquare, path: '/student/leave' },
+      { name: 'Complaints', icon: FileText, path: '/student/complaints' },
       { name: 'Study Materials', icon: BookOpen, path: '/student/materials' },
       { name: 'Calendar', icon: Calendar, path: '/student/calendar' },
       { name: 'Assignments', icon: FileText, path: '/student/assignments' },
-      { name: 'Fees', icon: DollarSign, path: '/student/fees' }
+      { name: 'Fees', icon: IndianRupee, path: '/student/fees' }
     );
   }
 
   if (role === 'Accountant') {
     items.push(
-      { name: 'Fees & Finance', icon: DollarSign, path: '/accountant/fees' }
+      { name: 'Fees & Finance', icon: IndianRupee, path: '/accountant/fees' }
     );
   }
 
   if (role === 'Governing Body') {
     items.push(
       { name: 'Analytics', icon: BarChart3, path: '/governing/dashboard' },
+      { name: 'Complaints', icon: FileText, path: '/governing/complaints' },
       { name: 'Calendar', icon: Calendar, path: '/governing/calendar' },
       { name: 'Reports', icon: FileText, path: '/governing/reports' }
     );

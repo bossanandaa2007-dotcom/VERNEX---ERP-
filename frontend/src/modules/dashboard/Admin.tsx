@@ -1,4 +1,4 @@
-import { Users, DollarSign, TrendingUp, Bell, FileText, Building2, Shield } from 'lucide-react';
+import { Users, IndianRupee, TrendingUp, Bell, FileText, Building2, Shield } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuthStore } from '../../store/useAuthStore';
 import { mockNotifications } from '../../mock-data';
@@ -32,7 +32,7 @@ const AdminDashboard = () => {
   const quickActions = [
     { name: 'Manage Classes', icon: Building2, path: '/admin/classes' },
     { name: 'Sections Hub', icon: Users, path: '/admin/classes' },
-    { name: 'Fees & Finance', icon: DollarSign, path: '/admin/fees' },
+    { name: 'Fees & Finance', icon: IndianRupee, path: '/admin/fees' },
     { name: 'Generate Report', icon: FileText, path: '/admin/reports' },
   ];
 
@@ -49,7 +49,7 @@ const AdminDashboard = () => {
           { title: 'Academic Classes', value: '4 Levels', icon: Building2, color: 'bg-indigo-600', trend: 'Preschool to Higher Sec', path: '/admin/classes' },
           { title: 'Total Teachers', value: totalTeachers.toString(), icon: Shield, color: 'bg-emerald-600', trend: '25+ per category', path: '/admin/classes' },
           { title: 'Total Students', value: totalStudents.toString(), icon: Users, color: 'bg-blue-600', trend: '10+ per section', path: '/admin/classes' },
-          { title: 'Finance Overview', value: 'Active', icon: DollarSign, color: 'bg-rose-600', trend: 'Fees tracking enabled', path: '/admin/fees' },
+          { title: 'Finance Overview', value: 'Active', icon: IndianRupee, color: 'bg-rose-600', trend: 'Fees tracking enabled', path: '/admin/fees' },
         ].map((stat, i) => (
           <div
             key={i}

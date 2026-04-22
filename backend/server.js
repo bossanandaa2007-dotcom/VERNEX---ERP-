@@ -3,6 +3,7 @@ import express from 'express';
 import multer from 'multer';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { appendAttendanceConfirmation } from './attendanceDb.js';
+import { createComplaint, getComplaints, resolveComplaint } from './complaintDb.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -73,8 +74,96 @@ function parseGeminiJson(text) {
   return JSON.parse(cleaned);
 }
 
+function resolveComplaintTargetRole(targetId) {
+  if (!targetId) {
+    return 'Unknown';
+  }
+
+  if (targetId.toLowerCase().startsWith('t')) {
+    return 'Teacher';
+  }
+
+  if (targetId.toLowerCase() === 'u2') {
+    return 'Governing Body';
+  }
+
+  return 'Unknown';
+}
+
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok' });
+});
+
+app.post('/api/complaints', async (req, res) => {
+  try {
+    const {
+      studentId,
+      studentName,
+      class: className,
+      section,
+      division,
+      title,
+      description,
+      type,
+      targetId,
+      priority,
+    } = req.body ?? {};
+
+    if (!studentId || !studentName || !className || !section || !division || !title || !description || !type || !targetId || !priority) {
+      return res.status(400).json({ error: 'Missing required complaint fields.' });
+    }
+
+    const complaint = await createComplaint({
+      studentId,
+      studentName,
+      class: className,
+      section,
+      division,
+      title,
+      description,
+      type,
+      targetId,
+      targetRole: resolveComplaintTargetRole(targetId),
+      priority,
+    });
+
+    return res.status(201).json({ complaint });
+  } catch (error) {
+    console.error('POST /api/complaints failed:', error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to create complaint.',
+    });
+  }
+});
+
+app.get('/api/complaints', async (req, res) => {
+  try {
+    const { targetId, studentId, targetRole } = req.query;
+    const complaints = await getComplaints({
+      targetId: typeof targetId === 'string' ? targetId : undefined,
+      studentId: typeof studentId === 'string' ? studentId : undefined,
+      targetRole: typeof targetRole === 'string' ? targetRole : undefined,
+    });
+
+    return res.json({ complaints });
+  } catch (error) {
+    console.error('GET /api/complaints failed:', error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to fetch complaints.',
+    });
+  }
+});
+
+app.post('/api/complaints/:id/resolve', async (req, res) => {
+  try {
+    const complaint = await resolveComplaint(req.params.id, req.body?.response);
+    return res.json({ complaint });
+  } catch (error) {
+    console.error('POST /api/complaints/:id/resolve failed:', error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to resolve complaint.',
+    });
+  }
 });
 
 app.post('/api/ai-attendance', upload.single('image'), async (req, res) => {

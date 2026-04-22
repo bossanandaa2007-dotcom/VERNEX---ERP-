@@ -1,73 +1,59 @@
-# React + TypeScript + Vite
+# School ERP Monorepo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project is now structured as a simple monorepo with separate frontend and backend applications.
 
-Currently, two official plugins are available:
+## Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+/
+├── frontend
+│   ├── src
+│   ├── public
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── other Vite/TypeScript frontend files
+├── backend
+│   ├── server.js
+│   ├── attendanceDb.js
+│   ├── complaintDb.js
+│   ├── package.json
+│   ├── requirements.txt
+│   └── Python AI/ML files
+├── .env
+└── README.md
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Shared environment config lives in the root `.env` file.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Example:
+
+```env
+GEMINI_API_KEY=your_api_key_here
+VITE_API_BASE=/api
 ```
+
+## Run Frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+Frontend runs on `http://localhost:5173`.
+
+## Run Backend
+
+```bash
+cd backend
+npm run start
+```
+
+Backend runs on `http://localhost:5000`.
+
+## Notes
+
+- Frontend Vite dev server proxies `/api` requests to `http://localhost:5000`
+- Backend reads the shared root `.env` using `../.env`
+- Frontend reads Vite variables from the shared root `.env` using `envDir: '..'`

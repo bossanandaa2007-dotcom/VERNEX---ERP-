@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Building2, DollarSign, Activity, Plus, CheckCircle, Download, CreditCard, Clock, Baby, BookOpen, GraduationCap, ChevronRight, MapPin, Shield, User } from 'lucide-react';
+import { ArrowLeft, Building2, IndianRupee, Activity, Plus, CheckCircle, Download, CreditCard, Clock, Baby, BookOpen, GraduationCap, ChevronRight, MapPin, Shield } from 'lucide-react';
 import { mockFees } from '../../mock-data';
 import { useAuthStore } from '../../store/useAuthStore';
 import jsPDF from 'jspdf';
@@ -16,6 +16,9 @@ const levelIconMap = {
   Secondary: GraduationCap,
   'Higher Secondary': Building2,
 } as const;
+
+const getStudentFeeStatus = (student: FinanceStudent) =>
+  student.amountPaid >= student.termFees ? 'PAID' : 'PENDING';
 
 const FinanceDashboard = () => {
   const { user } = useAuthStore();
@@ -155,8 +158,8 @@ const FinanceDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             { title: 'Academic Levels', value: levels.length || 4, icon: Building2, color: 'bg-indigo-500' },
-            { title: 'Pending Accounts', value: students.filter((student) => !student.feesPaid).length || 'Live', icon: Clock, color: 'bg-rose-500' },
-            { title: 'Fee Status', value: accountantView === 'students' ? `${students.length} Students` : 'Directory', icon: DollarSign, color: 'bg-emerald-500' },
+            { title: 'Pending Accounts', value: students.filter((student) => getStudentFeeStatus(student) === 'PENDING').length || 'Live', icon: Clock, color: 'bg-rose-500' },
+            { title: 'Fee Status', value: accountantView === 'students' ? `${students.length} Students` : 'Directory', icon: IndianRupee, color: 'bg-emerald-500' },
           ].map((stat, index) => (
             <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center gap-4">
               <div className={`p-4 rounded-xl ${stat.color} text-white shadow-md shrink-0`}>
@@ -266,23 +269,41 @@ const FinanceDashboard = () => {
               <p className="text-slate-500 text-sm mt-1">Student fee status overview for this section.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {students.map((student) => (
-                <div key={student.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center font-black text-3xl text-slate-300">
-                      {student.rollNo}
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${student.feesPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                      {student.feesPaid ? 'Paid' : 'Pending'}
-                    </span>
-                  </div>
-                  <h4 className="text-xl font-bold text-slate-800 mb-3">{student.name}</h4>
-                  <p className="text-sm text-slate-600 flex items-center gap-2">
-                    <User size={14} className="text-indigo-500" /> Roll No: {student.rollNo}
-                  </p>
-                </div>
-              ))}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-[760px] w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-slate-50 sticky top-0 z-10 uppercase text-slate-500 text-[10px] font-bold tracking-widest">
+                    <tr>
+                      <th className="px-5 py-4 border-b border-slate-100">Student Name</th>
+                      <th className="px-5 py-4 border-b border-slate-100">Roll No</th>
+                      <th className="px-5 py-4 border-b border-slate-100">Term Fees</th>
+                      <th className="px-5 py-4 border-b border-slate-100">Amount Paid</th>
+                      <th className="px-5 py-4 border-b border-slate-100">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.map((student) => {
+                      const status = getStudentFeeStatus(student);
+
+                      return (
+                        <tr key={student.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors">
+                          <td className="px-5 py-4 font-semibold text-slate-900">{student.name}</td>
+                          <td className="px-5 py-4 text-slate-600 font-medium">{student.rollNo}</td>
+                          <td className="px-5 py-4 font-semibold text-slate-900">{formatCurrency(student.termFees.toLocaleString('en-IN'))}</td>
+                          <td className="px-5 py-4 font-semibold text-slate-900">{formatCurrency(student.amountPaid.toLocaleString('en-IN'))}</td>
+                          <td className="px-5 py-4">
+                            <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${
+                              status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                            }`}>
+                              {status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -323,7 +344,7 @@ const FinanceDashboard = () => {
       {user?.role !== 'Student' ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[ 
-            { title: 'Total Revenue YTD', value: formatCurrency('124,500'), icon: DollarSign, color: 'bg-emerald-500' },
+            { title: 'Total Revenue YTD', value: formatCurrency('124,500'), icon: IndianRupee, color: 'bg-emerald-500' },
             { title: 'Pending Receivables', value: formatCurrency('12,800'), icon: Clock, color: 'bg-amber-500' },
             { title: 'Success Rate', value: '94%', icon: Activity, color: 'bg-blue-500' },
           ].map((stat, i) => (
