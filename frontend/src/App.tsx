@@ -30,6 +30,7 @@ import AdminMarksDashboard from './components/marks/AdminMarksDashboard';
 import AIAttendance from './components/attendance/AIAttendance';
 import ComplaintForm from './components/complaints/ComplaintForm';
 import ComplaintInbox from './components/complaints/ComplaintInbox';
+import TimetablePage from './modules/timetable/TimetablePage';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { isAuthenticated, isLoading, user } = useAuthStore();
@@ -110,6 +111,7 @@ function App() {
           <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['Admin']}><SettingsPage /></ProtectedRoute>} />
           <Route path="/admin/calendar" element={<ProtectedRoute allowedRoles={['Admin']}><div className="p-8"><Calendar isAdmin={true} /></div></ProtectedRoute>} />
           <Route path="/admin/marks" element={<ProtectedRoute allowedRoles={['Admin']}><div className="p-8"><AdminMarksDashboard /></div></ProtectedRoute>} />
+          <Route path="/admin/timetable" element={<ProtectedRoute allowedRoles={['Admin']}><div className="p-8"><TimetablePage /></div></ProtectedRoute>} />
 
           {/* --- Teacher Routes --- */}
           <Route path="/teacher/classes" element={<ProtectedRoute allowedRoles={['Teacher']}><TeacherClasses /></ProtectedRoute>} />
@@ -122,6 +124,7 @@ function App() {
           <Route path="/teacher/materials" element={<ProtectedRoute allowedRoles={['Teacher']}><StudyMaterials /></ProtectedRoute>} />
           <Route path="/teacher/events" element={<ProtectedRoute allowedRoles={['Teacher']}><EventDashboard /></ProtectedRoute>} />
           <Route path="/teacher/calendar" element={<ProtectedRoute allowedRoles={['Teacher']}><div className="p-8"><Calendar /></div></ProtectedRoute>} />
+          <Route path="/teacher/timetable" element={<ProtectedRoute allowedRoles={['Teacher']}><div className="p-8"><TimetablePage /></div></ProtectedRoute>} />
 
           {/* --- Student Routes --- */}
           <Route path="/student/attendance" element={<ProtectedRoute allowedRoles={['Student']}><AttendanceDashboard /></ProtectedRoute>} />
@@ -131,6 +134,7 @@ function App() {
           <Route path="/student/fees" element={<ProtectedRoute allowedRoles={['Student']}><FinanceDashboard /></ProtectedRoute>} />
           <Route path="/student/events" element={<ProtectedRoute allowedRoles={['Student']}><EventDashboard /></ProtectedRoute>} />
           <Route path="/student/calendar" element={<ProtectedRoute allowedRoles={['Student']}><div className="p-8"><Calendar /></div></ProtectedRoute>} />
+          <Route path="/student/timetable" element={<ProtectedRoute allowedRoles={['Student']}><div className="p-8"><TimetablePage /></div></ProtectedRoute>} />
           <Route path="/student/leave" element={<ProtectedRoute allowedRoles={['Student']}><div className="p-8"><LeaveRequestForm /></div></ProtectedRoute>} />
           <Route path="/student/complaints" element={<ProtectedRoute allowedRoles={['Student']}><div className="p-8"><ComplaintForm /></div></ProtectedRoute>} />
 

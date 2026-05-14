@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Shield, CheckCircle, Award,
   Library, IndianRupee, Calendar, FileText, Settings,
   BookOpen, MessageSquare, BarChart3, LogOut, ChevronLeft, ChevronRight,
-  Building2
+  Building2, CalendarDays
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -24,6 +24,7 @@ const getNavItems = (role: string) => {
     items.push(
       { name: 'Classes Mgmt', icon: Building2, path: '/admin/classes' },
       { name: 'Faculty', icon: Shield, path: '/admin/teachers' },
+      { name: 'Timetable', icon: CalendarDays, path: '/admin/timetable' },
       { name: 'Marks Hub', icon: Award, path: '/admin/marks' },
       { name: 'Library', icon: Library, path: '/admin/library' },
       { name: 'Fees & Finance', icon: IndianRupee, path: '/admin/fees' },
@@ -36,6 +37,7 @@ const getNavItems = (role: string) => {
   if (role === 'Teacher') {
     items.push(
       { name: 'My Classes', icon: Users, path: '/teacher/classes' },
+      { name: 'Timetable', icon: CalendarDays, path: '/teacher/timetable' },
       { name: 'Manual Attendance', icon: CheckCircle, path: '/teacher/attendance' },
       { name: 'AI Attendance', icon: Shield, path: '/teacher/ai-attendance' },
       { name: 'Marks Hub', icon: Award, path: '/teacher/marks-entry' },
@@ -50,6 +52,7 @@ const getNavItems = (role: string) => {
   if (role === 'Student') {
     items.push(
       { name: 'My Attendance', icon: CheckCircle, path: '/student/attendance' },
+      { name: 'Timetable', icon: CalendarDays, path: '/student/timetable' },
       { name: 'My Marks', icon: Award, path: '/student/marks' },
       { name: 'Leave Request', icon: MessageSquare, path: '/student/leave' },
       { name: 'Complaints', icon: FileText, path: '/student/complaints' },
