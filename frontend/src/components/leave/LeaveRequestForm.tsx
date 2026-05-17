@@ -201,15 +201,15 @@ const LeaveRequestForm = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="mx-auto w-full max-w-[calc(100vw-1.5rem)] space-y-5 px-0.5 lg:max-w-4xl lg:space-y-8 lg:px-0">
       {error && (
         <div className="rounded-2xl border border-rose-100 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
           {error}
         </div>
       )}
 
-      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-        <div className="bg-indigo-600 p-6 text-white">
+      <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-xl shadow-slate-200/50 lg:rounded-3xl">
+        <div className="bg-indigo-600 p-5 text-white lg:p-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <FileText size={24} />
             Submit Leave Request
@@ -217,7 +217,7 @@ const LeaveRequestForm = () => {
           <p className="text-indigo-100 text-sm mt-1">Leave requests can only be sent to your class teacher or the governing body.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5 p-4 lg:space-y-6 lg:p-8">
           {submitted && (
             <div className="p-4 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center gap-3 border border-emerald-100 animate-in fade-in slide-in-from-top-2">
               <CheckCircle2 size={20} />
@@ -225,7 +225,7 @@ const LeaveRequestForm = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <User size={14} /> Student Name
@@ -289,7 +289,7 @@ const LeaveRequestForm = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Calendar size={14} /> Start Date
@@ -345,9 +345,9 @@ const LeaveRequestForm = () => {
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="text-xl font-bold text-slate-900">Leave History</h2>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-5 lg:flex">
             <button
               onClick={() => void handleRefresh()}
               disabled={isRefreshing}
@@ -360,7 +360,7 @@ const LeaveRequestForm = () => {
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`rounded-xl px-3 py-2 text-xs font-bold transition-all lg:px-4 lg:py-1.5 ${
                   filterStatus === status
                     ? 'bg-slate-900 text-white shadow-md'
                     : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100'
@@ -380,11 +380,11 @@ const LeaveRequestForm = () => {
           )}
 
           {!isLoading && filteredRequests.map((request) => (
-            <div key={request.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all space-y-4">
-              <div className="flex items-center justify-between">
+            <div key={request.id} className="space-y-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm transition-all hover:shadow-md lg:rounded-3xl lg:p-6">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2 text-indigo-600">
                   <Calendar size={18} />
-                  <span className="font-bold text-sm">{request.startDate} - {request.endDate}</span>
+                  <span className="text-sm font-bold">{request.startDate} - {request.endDate}</span>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                   request.status === 'Pending' ? 'bg-amber-50 text-amber-600' :
@@ -407,8 +407,8 @@ const LeaveRequestForm = () => {
                 </div>
               )}
 
-              <div className="pt-2 border-t border-slate-50 flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                <span>To: {request.teacherName}</span>
+              <div className="flex items-center justify-between gap-3 border-t border-slate-50 pt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <span className="min-w-0 break-words">To: {request.teacherName}</span>
                 <span>{new Date(request.updatedAt).toLocaleDateString()}</span>
               </div>
             </div>

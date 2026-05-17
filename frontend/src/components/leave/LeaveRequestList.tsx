@@ -139,13 +139,13 @@ const LeaveRequestList = () => {
     <div
       key={request.id}
       className={cn(
-        'bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group',
+        'bg-white p-4 lg:p-6 rounded-[1.5rem] lg:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group',
         highlighted && 'border-amber-200 bg-amber-50/40'
       )}
     >
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
         <div className="flex-1 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <div
                 className={cn(
@@ -155,10 +155,10 @@ const LeaveRequestList = () => {
               >
                 {request.studentName.charAt(0)}
               </div>
-              <div>
-                <h3 className="font-bold text-slate-900">{request.studentName}</h3>
-                <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
-                  Class {request.class} • Roll No: {request.rollNumber}
+              <div className="min-w-0">
+                <h3 className="break-words font-bold text-slate-900">{request.studentName}</h3>
+                <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  Class {request.class} - Roll No: {request.rollNumber}
                 </p>
               </div>
             </div>
@@ -176,7 +176,7 @@ const LeaveRequestList = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4 lg:gap-4">
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
               <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Duration</p>
               <div className="flex items-center gap-2 text-slate-700 font-semibold text-xs">
@@ -204,14 +204,14 @@ const LeaveRequestList = () => {
         </div>
 
         {request.status === 'Pending' && (
-          <div className="lg:w-64 flex flex-col gap-3 justify-center">
+          <div className="flex flex-col justify-center gap-3 lg:w-64">
             <textarea
               id={`remarks-${request.id}`}
               placeholder="Add remarks (optional)..."
               className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none"
               rows={2}
             />
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => void handleDecision(request.id, 'Approved')}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all text-xs"
@@ -247,7 +247,7 @@ const LeaveRequestList = () => {
           <p className="text-slate-500 text-sm">Only leave requests assigned to you are visible here.</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 md:flex md:flex-wrap md:items-center md:gap-3">
           <button
             onClick={() => void handleRefresh()}
             disabled={isRefreshing}
@@ -267,13 +267,13 @@ const LeaveRequestList = () => {
             />
           </div>
 
-          <div className="flex bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+          <div className="col-span-full grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1 shadow-sm min-[380px]:grid-cols-4 md:flex">
             {(['All', 'Pending', 'Approved', 'Rejected'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
                 className={cn(
-                  'px-4 py-1.5 rounded-lg text-xs font-bold transition-all',
+                  'px-3 py-2 rounded-lg text-xs font-bold transition-all md:px-4 md:py-1.5',
                   filterStatus === status
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                     : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
@@ -289,7 +289,7 @@ const LeaveRequestList = () => {
       {pendingRequests.length > 0 && (
         <button
           onClick={scrollToPending}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-3 rounded-2xl bg-slate-900 px-5 py-3 text-white shadow-2xl shadow-slate-900/20 hover:bg-slate-800 transition-colors"
+          className="fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-3 rounded-2xl bg-slate-900 px-4 py-3 text-white shadow-2xl shadow-slate-900/20 transition-colors hover:bg-slate-800 lg:bottom-6 lg:right-6 lg:px-5"
         >
           <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-amber-400 px-2 text-xs font-black text-slate-900">
             {pendingRequests.length}
@@ -307,7 +307,7 @@ const LeaveRequestList = () => {
           <>
             {pendingRequests.length > 0 && (
               <section ref={pendingSectionRef} className="space-y-4">
-                <div className="flex items-center justify-between rounded-3xl border border-amber-200 bg-amber-50 px-6 py-4">
+                <div className="flex items-start justify-between gap-3 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-4 lg:rounded-3xl lg:px-6">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">Pending Requests</h3>
                     <p className="text-sm text-slate-600">Review these requests before archived decisions.</p>
@@ -325,7 +325,7 @@ const LeaveRequestList = () => {
               <section key={monthKey} className="space-y-4">
                 <button
                   onClick={() => toggleMonth(monthKey)}
-                  className="flex w-full items-center justify-between rounded-3xl bg-white px-6 py-4 border border-slate-100 shadow-sm hover:bg-slate-50 transition-colors"
+                  className="flex w-full items-center justify-between rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4 shadow-sm transition-colors hover:bg-slate-50 lg:rounded-3xl lg:px-6"
                 >
                   <div className="text-left">
                     <h3 className="text-lg font-bold text-slate-900">{monthKey}</h3>

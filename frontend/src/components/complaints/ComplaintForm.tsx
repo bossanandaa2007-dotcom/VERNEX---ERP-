@@ -224,10 +224,10 @@ const ComplaintForm = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="mx-auto w-full max-w-[calc(100vw-1.5rem)] space-y-5 px-0.5 lg:max-w-6xl lg:space-y-8 lg:px-0">
       {successTrackingId && (
-        <div className="fixed top-20 right-6 z-50 animate-in slide-in-from-right fade-in duration-300">
-          <div className="bg-white border border-emerald-100 shadow-2xl rounded-3xl p-5 min-w-[290px]">
+        <div className="fixed inset-x-3 top-20 z-50 animate-in fade-in slide-in-from-top-2 duration-300 lg:inset-x-auto lg:right-6 lg:slide-in-from-right">
+          <div className="rounded-3xl border border-emerald-100 bg-white p-4 shadow-2xl lg:min-w-[290px] lg:p-5">
             <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <CheckCircle2 size={22} />
@@ -248,7 +248,7 @@ const ComplaintForm = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
         {divisionCards.map((card) => {
           const isActive = formData.division === card.title;
 
@@ -258,19 +258,19 @@ const ComplaintForm = () => {
               type="button"
               onClick={() => handleDivisionSelect(card.title)}
               disabled={!!allowedDivision && allowedDivision !== card.title}
-              className={`text-left bg-white rounded-3xl border shadow-xl shadow-slate-200/40 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${
+              className={`overflow-hidden rounded-[1.5rem] border bg-white text-left shadow-xl shadow-slate-200/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl lg:rounded-3xl ${
                 isActive ? 'border-indigo-300 ring-2 ring-indigo-100' : 'border-slate-100'
               } ${allowedDivision && allowedDivision !== card.title ? 'cursor-not-allowed opacity-50 hover:translate-y-0 hover:shadow-xl' : ''}`}
             >
-              <div className="bg-indigo-600 px-6 py-5 text-white">
+              <div className="bg-indigo-600 px-5 py-4 text-white lg:px-6 lg:py-5">
                 <h2 className="text-xl font-bold">{card.title} Division</h2>
                 <p className="text-indigo-100 text-sm mt-1">{card.description}</p>
               </div>
-              <div className="p-6 flex items-center justify-between gap-4">
-                <p className="text-sm text-slate-500 leading-relaxed">
+              <div className="flex flex-col gap-4 p-4 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between lg:p-6">
+                <p className="text-sm leading-relaxed text-slate-500">
                   Tap once to auto-fill the division and jump to the complaint form.
                 </p>
-                <span className="shrink-0 px-5 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-600/20">
+                <span className="shrink-0 rounded-2xl bg-indigo-600 px-4 py-3 text-center font-bold text-white shadow-lg shadow-indigo-600/20 lg:px-5">
                   Lodge Complaint
                 </span>
               </div>
@@ -281,11 +281,11 @@ const ComplaintForm = () => {
 
       <div
         ref={formRef}
-        className={`bg-white rounded-3xl shadow-xl shadow-slate-200/50 border overflow-hidden transition-all duration-500 ${
+        className={`overflow-hidden rounded-[1.5rem] border bg-white shadow-xl shadow-slate-200/50 transition-all duration-500 lg:rounded-3xl ${
           isFormHighlighted ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-100'
         }`}
       >
-        <div className="bg-indigo-600 p-6 text-white">
+        <div className="bg-indigo-600 p-5 text-white lg:p-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <FileText size={24} />
             Submit Complaint
@@ -293,7 +293,7 @@ const ComplaintForm = () => {
           <p className="text-indigo-100 text-sm mt-1">Simple, guided complaint flow for quick student reporting.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6 p-4 lg:space-y-8 lg:p-8">
           {errorMessage && (
             <div className="p-4 bg-rose-50 text-rose-700 rounded-2xl flex items-center gap-3 border border-rose-100">
               <AlertCircle size={20} />
@@ -312,7 +312,7 @@ const ComplaintForm = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <User size={14} /> Student Name
@@ -370,7 +370,7 @@ const ComplaintForm = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <FileText size={14} /> Complaint Title
@@ -428,13 +428,13 @@ const ComplaintForm = () => {
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <BookOpen size={14} /> Complaint Type
               </label>
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-2 gap-2 min-[390px]:grid-cols-3 lg:flex lg:flex-wrap lg:gap-3">
                 {complaintTypes.map((type) => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => setFormData((current) => ({ ...current, type }))}
-                    className={`px-4 py-2.5 rounded-full text-sm font-bold border transition-all ${
+                    className={`rounded-2xl border px-3 py-2.5 text-sm font-bold transition-all lg:rounded-full lg:px-4 ${
                       formData.type === type
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20'
                         : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
@@ -446,7 +446,7 @@ const ComplaintForm = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
               <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center justify-between gap-4">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -513,8 +513,26 @@ const ComplaintForm = () => {
           <h2 className="text-xl font-bold text-slate-900">My Complaints</h2>
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm lg:rounded-3xl">
+          <div className="space-y-3 bg-slate-50 p-3 md:hidden">
+            {studentComplaints.map((complaint) => (
+              <div key={complaint.id} className="rounded-[1.35rem] border border-slate-100 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-black text-slate-900">{complaint.title}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-400">{complaint.type} - {new Date(complaint.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                    complaint.status === 'OPEN' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+                  }`}>
+                    {complaint.status === 'OPEN' ? 'Pending' : 'Resolved'}
+                  </span>
+                </div>
+                {complaint.response && <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">{complaint.response}</p>}
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[680px] text-left text-sm">
               <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold tracking-widest">
                 <tr>

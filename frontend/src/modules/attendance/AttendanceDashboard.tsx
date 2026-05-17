@@ -168,29 +168,29 @@ const AttendanceDashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5 lg:space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between lg:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Attendance Management</h1>
-          <p className="text-slate-500 mt-1">Mark and monitor daily attendance patterns from the live school database.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 lg:font-bold">Attendance</h1>
+          <p className="mt-1 text-sm text-slate-500">Fast daily marking for your owned class.</p>
         </div>
       </div>
 
       {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{notice}</div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-2 md:gap-6">
         <StatCard title="Overall Present Today" value={`${presentRate}%`} icon={Users} color="bg-emerald-500" />
         <StatCard title="Absent Alert" value={`${absentCount} Students`} icon={AlertTriangle} color="bg-amber-500" />
         <StatCard title="Working Days Logged" value={attendanceRows.length.toString()} icon={CalendarDays} color="bg-blue-500" />
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-12">
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-4 w-full sm:w-auto">
+      <div className="mb-12 overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm lg:rounded-2xl">
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between lg:gap-4">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center lg:gap-4">
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-200 outline-none"
+              className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-200 lg:rounded-xl lg:px-4 lg:py-2 lg:font-medium"
             >
               {selectableClasses.map((className) => (
                 <option key={className} value={className}>Class {className}</option>
@@ -200,10 +200,10 @@ const AttendanceDashboard = () => {
               type="date"
               value={attendanceDate}
               onChange={(e) => setAttendanceDate(e.target.value)}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-200 outline-none"
+              className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-200 lg:rounded-xl lg:px-4 lg:py-2 lg:font-medium"
             />
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
             <button onClick={() => handleBulk('Present')} disabled={user?.role === 'Teacher' && selectedClass !== teacherOwnedClass} className="flex-1 sm:flex-none px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-sm font-medium hover:bg-emerald-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50">
               Mark All Present
             </button>
@@ -213,7 +213,51 @@ const AttendanceDashboard = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+        <div className="max-h-[58dvh] space-y-2 overflow-y-auto p-3 md:hidden">
+          {attendanceRows.map((student) => (
+            <div key={student.id} className="rounded-3xl border border-slate-100 bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-sm font-black text-indigo-700">
+                  {student.rollNo}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-black text-slate-900">{student.name}</p>
+                  <p className="truncate text-xs font-medium text-slate-500">{student.gender} - {student.contact}</p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleMark(student.id, 'Present')}
+                  className={`inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-black transition-all active:scale-95 ${
+                    student.attendanceStatus === 'Present'
+                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
+                      : 'bg-emerald-50 text-emerald-700'
+                  }`}
+                >
+                  <CheckCircle2 size={17} /> Present
+                </button>
+                <button
+                  onClick={() => handleMark(student.id, 'Absent')}
+                  className={`inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-black transition-all active:scale-95 ${
+                    student.attendanceStatus === 'Absent'
+                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-100'
+                      : 'bg-rose-50 text-rose-700'
+                  }`}
+                >
+                  <XCircle size={17} /> Absent
+                </button>
+              </div>
+            </div>
+          ))}
+          {!isLoading && attendanceRows.length === 0 && (
+            <div className="rounded-3xl bg-slate-50 px-6 py-12 text-center text-sm font-bold text-slate-500">
+              No students found for the selected class.
+            </div>
+          )}
+          {isLoading && <div className="px-4 py-6 text-sm font-medium text-slate-500">Loading attendance sheet...</div>}
+        </div>
+
+        <div className="hidden max-h-[420px] overflow-x-auto overflow-y-auto md:block">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 uppercase text-slate-500 text-xs font-semibold sticky top-0 z-10">
               <tr>
@@ -279,8 +323,8 @@ const AttendanceDashboard = () => {
           {isLoading && <div className="px-6 py-4 text-sm font-medium text-slate-500">Loading attendance sheet...</div>}
         </div>
 
-        <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
-          <button onClick={() => void submitAttendance()} disabled={isSaving || isLoading || attendanceRows.length === 0 || (user?.role === 'Teacher' && selectedClass !== teacherOwnedClass)} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-600/20 disabled:opacity-60">
+        <div className="border-t border-slate-100 bg-slate-50/50 p-4 flex justify-end">
+          <button onClick={() => void submitAttendance()} disabled={isSaving || isLoading || attendanceRows.length === 0 || (user?.role === 'Teacher' && selectedClass !== teacherOwnedClass)} className="w-full rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-60 sm:w-auto lg:rounded-xl lg:py-2.5">
             {isSaving ? 'Saving...' : 'Submit Attendance Log'}
           </button>
         </div>
@@ -290,13 +334,14 @@ const AttendanceDashboard = () => {
 };
 
 const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: string; icon: typeof Users; color: string }) => (
-  <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-    <div className={`p-4 rounded-xl ${color} text-white shadow-md shrink-0`}>
-      <Icon size={24} />
+  <div className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-shadow hover:shadow-md md:flex-row md:items-center md:gap-4 md:p-6">
+    <div className={`w-fit rounded-xl p-2.5 md:p-4 ${color} text-white shadow-md shrink-0`}>
+      <Icon size={18} className="md:hidden" />
+      <Icon size={24} className="hidden md:block" />
     </div>
     <div>
-      <h3 className="text-slate-500 text-sm font-medium">{title}</h3>
-      <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+      <h3 className="text-[10px] font-black uppercase leading-tight tracking-wider text-slate-400 md:text-sm md:font-medium md:normal-case md:tracking-normal">{title}</h3>
+      <p className="mt-1 text-base font-black text-slate-900 md:text-2xl md:font-bold">{value}</p>
     </div>
   </div>
 );

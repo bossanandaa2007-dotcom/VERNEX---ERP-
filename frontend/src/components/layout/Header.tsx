@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Bell, Search, Menu, User, Mail, Shield, LogOut, CheckCircle, KeyRound, Eye, EyeOff } from 'lucide-react';
 import Modal from '../common/Modal';
@@ -12,7 +13,9 @@ export const Header = ({
   setCollapsed: (v: boolean) => void 
 }) => {
   const { user, logout } = useAuthStore();
+  const location = useLocation();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -23,6 +26,15 @@ export const Header = ({
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showPasswordText, setShowPasswordText] = useState(false);
   const teacherSubjects = user?.subjects?.length ? user.subjects.join(', ') : user?.subject;
+  const mobileTitle = (() => {
+    if (location.pathname.includes('/classes')) return 'Classes';
+    if (location.pathname.includes('/attendance')) return 'Attendance';
+    if (location.pathname.includes('/academics')) return 'Academics';
+    if (location.pathname.includes('/timetable')) return 'Timetable';
+    if (location.pathname.includes('/performance') || location.pathname.includes('/marks')) return 'Performance';
+    if (location.pathname.includes('/profile')) return 'Profile';
+    return user?.role === 'Teacher' || user?.role === 'Student' ? 'Home' : 'Dashboard';
+  })();
 
   const resetPasswordForm = () => {
     setShowPasswordForm(false);
@@ -73,14 +85,19 @@ export const Header = ({
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm sm:px-6 transition-all duration-300">
-        <div className="flex items-center gap-4">
+      <header className="sticky top-0 z-30 flex h-16 w-full min-w-0 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm transition-all duration-300 max-lg:h-14 max-lg:border-transparent max-lg:bg-[#f7f8fb]/92 max-lg:px-3 max-lg:shadow-none max-lg:backdrop-blur-xl sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
           <button 
             onClick={() => setCollapsed(!collapsed)}
-            className="lg:hidden p-2 -ml-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+            className="lg:hidden -ml-1 shrink-0 rounded-2xl p-2 text-slate-600 transition-colors hover:bg-slate-100 active:bg-slate-200"
+            aria-label="Open menu"
           >
             <Menu size={20} />
           </button>
+          <div className="min-w-0 lg:hidden">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{user?.role || 'ERP'}</p>
+            <h1 className="truncate text-lg font-black leading-none text-slate-950">{mobileTitle}</h1>
+          </div>
           
           <div className="hidden sm:flex items-center w-80 relative">
             <Search size={18} className="absolute left-3 text-slate-400" />
@@ -92,26 +109,67 @@ export const Header = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-4 sm:gap-6">
-          <button className="relative p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-6">
+          <button
+            onClick={() => setIsNotificationsOpen(true)}
+            className="relative shrink-0 rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 active:scale-95 active:bg-slate-200"
+            aria-label="Open notifications"
+          >
             <Bell size={20} />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
           </button>
           
           <div 
             onClick={() => setIsProfileOpen(true)}
-            className="flex items-center gap-3 border-l border-slate-200 pl-4 sm:pl-6 cursor-pointer group hover:bg-slate-50 py-1 transition-colors rounded-lg"
+            className="flex shrink-0 items-center gap-3 border-l border-slate-200 py-1 pl-4 transition-colors cursor-pointer group hover:bg-slate-50 rounded-lg max-lg:border-l-0 max-lg:pl-0 sm:pl-6"
           >
             <div className="hidden md:flex flex-col items-end">
               <span className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">{user?.name}</span>
               <span className="text-xs font-medium text-slate-500">{user?.role}</span>
             </div>
-            <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold border-2 border-white shadow-md group-hover:scale-105 transition-transform">
+            <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold border-2 border-white shadow-md transition-transform group-hover:scale-105 max-lg:h-9 max-lg:w-9">
               {user?.name?.charAt(0) || 'U'}
             </div>
           </div>
         </div>
       </header>
+
+      {isNotificationsOpen && (
+        <div className="fixed inset-0 z-[90] lg:hidden">
+          <button
+            type="button"
+            aria-label="Close notifications"
+            onClick={() => setIsNotificationsOpen(false)}
+            className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
+          />
+          <section className="absolute inset-x-3 top-16 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-2xl shadow-slate-900/20 animate-in fade-in slide-in-from-top-3 duration-200">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">Notifications</p>
+              <h2 className="mt-1 text-lg font-black text-slate-950">Today</h2>
+            </div>
+            <div className="space-y-2 p-3">
+              {[
+                'Attendance reminders are ready for your owned class.',
+                'Check new academic updates from your workspace.',
+                'Review pending requests from the mobile drawer.',
+              ].map((message) => (
+                <div key={message} className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-bold leading-5 text-slate-800">{message}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-400">Just now</p>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-slate-100 p-3">
+              <button
+                onClick={() => setIsNotificationsOpen(false)}
+                className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white active:scale-[0.98]"
+              >
+                Done
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <Modal isOpen={isProfileOpen} onClose={closeProfile} title="My Profile">
         <div className="space-y-6">
