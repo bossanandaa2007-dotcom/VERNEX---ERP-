@@ -46,8 +46,24 @@ const StudentDashboard = () => {
   const activeSubjects = activeSection?.subjectTeachers || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+    <div className="space-y-5 lg:space-y-6">
+      <div className="rounded-[2rem] bg-slate-950 px-5 py-6 text-white shadow-xl shadow-slate-200 lg:hidden">
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-200">Student Home</p>
+        <h1 className="mt-2 text-2xl font-black tracking-tight">Hi, {user?.name?.split(' ')[0] || 'Student'}</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-300">Class {studentData?.class || user?.class} - Section {studentData?.section || user?.section}</p>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button onClick={() => navigate('/student/performance')} className="rounded-2xl bg-white px-4 py-3 text-left text-slate-950 active:scale-[0.98]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Attendance</p>
+            <p className="mt-1 text-lg font-black">{attendance}%</p>
+          </button>
+          <button onClick={() => navigate('/student/academics')} className="rounded-2xl bg-indigo-500 px-4 py-3 text-left text-white active:scale-[0.98]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-100">Open</p>
+            <p className="mt-1 text-sm font-black">Academics</p>
+          </button>
+        </div>
+      </div>
+
+      <div className="hidden flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:flex">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome, {user?.name}</h1>
           <p className="text-slate-500 mt-1">Class {studentData?.class || user?.class} | Section {studentData?.section || user?.section}</p>
@@ -67,7 +83,7 @@ const StudentDashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         {[
           { title: 'Attendance Rate', value: `${attendance}%`, icon: Calendar, color: 'bg-orange-500', path: '/student/attendance' },
           { title: 'Pending Fees', value: formatCurrency(0), icon: CreditCard, color: 'bg-rose-500', path: '/student/fees' },
@@ -77,21 +93,21 @@ const StudentDashboard = () => {
           <div 
             key={i} 
             onClick={() => navigate(stat.path)}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow group flex items-center gap-4 cursor-pointer"
+            className="flex cursor-pointer flex-col gap-3 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm transition-all active:scale-[0.98] lg:flex-row lg:items-center lg:gap-4 lg:rounded-2xl lg:p-6 lg:hover:shadow-md"
           >
-             <div className={`p-4 rounded-xl ${stat.color} text-white shadow-md group-hover:scale-110 transition-transform shrink-0`}>
-                <stat.icon size={24} />
+             <div className={`w-fit p-3 lg:p-4 rounded-xl ${stat.color} text-white shadow-md group-hover:scale-110 transition-transform shrink-0`}>
+                <stat.icon size={20} />
               </div>
-            <div>
-              <h3 className="text-slate-500 text-sm font-medium">{stat.title}</h3>
-              <p className="text-xl font-bold text-slate-900 mt-1">{stat.value}</p>
+            <div className="min-w-0">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 lg:text-sm lg:font-medium lg:normal-case lg:tracking-normal">{stat.title}</h3>
+              <p className="mt-1 text-lg font-black text-slate-900 lg:text-xl lg:font-bold">{stat.value}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+        <div className="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-sm lg:rounded-2xl lg:p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">My Class Teachers</h2>
@@ -108,12 +124,12 @@ const StudentDashboard = () => {
               </div>
               <div className="space-y-3">
                 {activeSubjects.length ? activeSubjects.map((teacher) => (
-                  <div key={`${teacher.subject}:${teacher.id}`} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
-                    <div>
+                  <div key={`${teacher.subject}:${teacher.id}`} className="flex items-start justify-between gap-3 rounded-2xl border border-slate-100 px-4 py-3 lg:rounded-xl">
+                    <div className="min-w-0">
                       <p className="text-sm font-bold text-slate-900">{teacher.subject}</p>
-                      <p className="text-xs text-slate-500">Handled by {teacher.name}</p>
+                      <p className="break-words text-xs text-slate-500">Handled by {teacher.name}</p>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <span className="hidden shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 min-[380px]:inline-flex">
                       {teacher.name === activeSection.classTeacher ? 'Class Teacher' : 'Subject Teacher'}
                     </span>
                   </div>
@@ -132,7 +148,7 @@ const StudentDashboard = () => {
         </div>
 
         {/* Performance Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-sm lg:rounded-2xl lg:p-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-6">My Performance Over Time</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -154,7 +170,7 @@ const StudentDashboard = () => {
         </div>
 
         {/* Study Materials */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-sm lg:rounded-2xl lg:p-6">
            <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-slate-900">Recent Study Materials</h2>
             <button 
@@ -173,13 +189,13 @@ const StudentDashboard = () => {
                <div 
                  key={i} 
                  onClick={() => navigate('/student/materials')}
-                 className="flex gap-4 items-center p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group"
+                 className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-100 p-3 transition-colors hover:bg-slate-50 lg:gap-4 lg:rounded-xl lg:p-4"
                >
                  <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-100 transition-colors">
                    <FileText size={20} />
                  </div>
-                 <div className="flex-1">
-                   <h4 className="font-medium text-slate-900 group-hover:text-indigo-700 transition-colors">{doc.title}</h4>
+                 <div className="min-w-0 flex-1">
+                   <h4 className="break-words text-sm font-bold text-slate-900 transition-colors group-hover:text-indigo-700 lg:text-base lg:font-medium">{doc.title}</h4>
                    <div className="flex items-center gap-2 mt-1">
                      <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">{doc.subject}</span>
                      <span className="text-xs text-slate-400">{doc.date}</span>

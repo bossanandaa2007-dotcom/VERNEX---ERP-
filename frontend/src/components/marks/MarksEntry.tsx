@@ -187,34 +187,35 @@ const MarksEntry = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 lg:space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Marks Hub</h2>
-          <p className="text-sm text-slate-500">Review your students across every subject. Only your assigned subject cells are editable.</p>
+          <h2 className="text-2xl font-black text-slate-900 md:font-bold">Marks Hub</h2>
+          <p className="mt-1 text-sm leading-5 text-slate-500">Review your students across every subject. Only your assigned subject cells are editable.</p>
         </div>
 
         {notification && (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
+          <div className="flex items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 md:rounded-xl md:py-2">
             <CheckCircle size={16} />
             {notification}
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         {[
           { label: 'Students', value: filteredRows.length, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Marks Saved', value: `${completedMarks.length}/${visibleSubjectMarks.length || 0}`, icon: CheckCircle, color: 'text-indigo-600', bg: 'bg-indigo-50' },
           { label: 'Editable Cells', value: editableSubjects, icon: BookOpen, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((stat) => (
-          <div key={stat.label} className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-            <div className={`rounded-xl p-3 ${stat.bg} ${stat.color}`}>
-              <stat.icon size={22} />
+          <div key={stat.label} className="flex min-w-0 flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm md:flex-row md:items-center md:gap-4 md:p-5">
+            <div className={`w-fit rounded-xl p-2.5 md:p-3 ${stat.bg} ${stat.color}`}>
+              <stat.icon size={18} className="md:hidden" />
+              <stat.icon size={22} className="hidden md:block" />
             </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.label}</p>
-              <p className="text-2xl font-black text-slate-900">{stat.value}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase leading-tight tracking-wider text-slate-400 md:text-xs md:font-bold">{stat.label}</p>
+              <p className="mt-1 break-words text-base font-black text-slate-900 md:text-2xl">{stat.value}</p>
             </div>
           </div>
         ))}
@@ -227,7 +228,7 @@ const MarksEntry = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm md:gap-4 md:rounded-2xl md:p-5 lg:grid-cols-4">
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
             <Award size={14} /> Exam
@@ -285,7 +286,7 @@ const MarksEntry = () => {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm md:rounded-2xl md:p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Highest Marks</p>
@@ -293,7 +294,7 @@ const MarksEntry = () => {
           </div>
           <Award className="text-emerald-600" size={22} />
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2 xl:grid-cols-4">
           {subjectHighestCards.map((card) => (
             <div key={card.subject} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
               <p className="text-sm font-black text-slate-900">{card.subject}</p>
@@ -311,8 +312,66 @@ const MarksEntry = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
-        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+      <div className="grid grid-cols-1 gap-4 lg:gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+        <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm md:rounded-2xl">
+          <div className="space-y-2 bg-slate-50 p-2.5 md:hidden">
+            {filteredRows.map((student) => (
+              <button
+                key={student.studentId}
+                onClick={() => setSelectedStudentId(student.studentId)}
+                className={`w-full rounded-[1.35rem] border p-3.5 text-left shadow-sm transition-all active:scale-[0.99] ${
+                  selectedStudent?.studentId === student.studentId
+                    ? 'border-indigo-200 bg-indigo-50'
+                    : 'border-slate-100 bg-white'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-xs font-black uppercase text-white">
+                    {student.studentName.charAt(0)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-black leading-5 text-slate-900">{student.studentName}</p>
+                        <p className="mt-1 text-xs font-bold text-slate-400">Class {student.className} - Roll {student.rollNo || '-'}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-indigo-600">
+                        {student.completedSubjects}/{student.subjects.length}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {student.subjects.slice(0, 4).map((subject) => (
+                        <span
+                          key={subject.subject}
+                          className={`rounded-lg px-2 py-1 text-[10px] font-black ${
+                            subject.isLocked ? 'bg-rose-50 text-rose-700' : subject.canEdit ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {subject.subject}: {typeof subject.marks === 'number' ? subject.marks : '-'}
+                        </span>
+                      ))}
+                      {student.subjects.length > 4 && (
+                        <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">
+                          +{student.subjects.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+            {!loading && filteredRows.length === 0 && (
+              <div className="rounded-[1.35rem] bg-white px-5 py-10 text-center text-sm font-bold text-slate-400">
+                No students found for the selected filters.
+              </div>
+            )}
+            {loading && (
+              <div className="rounded-[1.35rem] bg-white px-5 py-10 text-center text-sm font-bold text-slate-500">
+                Loading marks from Supabase...
+              </div>
+            )}
+          </div>
+          <div className="hidden md:block">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
               <tr>
@@ -363,20 +422,21 @@ const MarksEntry = () => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm md:rounded-2xl md:p-6">
           {selectedStudent ? (
             <div className="space-y-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Selected Student</p>
-                <h3 className="mt-1 text-xl font-black text-slate-900">{selectedStudent.studentName}</h3>
-                <p className="text-sm font-semibold text-slate-500">Class {selectedStudent.className} | Roll {selectedStudent.rollNo || '-'}</p>
+                <h3 className="mt-1 break-words text-xl font-black text-slate-900">{selectedStudent.studentName}</h3>
+                <p className="text-sm font-semibold text-slate-500">Class {selectedStudent.className} - Roll {selectedStudent.rollNo || '-'}</p>
               </div>
 
               <div className="space-y-3">
                 {selectedStudent.subjects.map((subject) => (
-                  <div key={subject.subject} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                  <div key={subject.subject} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 md:p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
                         <p className="font-bold text-slate-900">{subject.subject}</p>
@@ -390,7 +450,7 @@ const MarksEntry = () => {
                         <span className="rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">Pending</span>
                       )}
                     </div>
-                    <div className="relative max-w-[150px]">
+                    <div className="relative w-full min-[380px]:max-w-[180px] md:max-w-[150px]">
                       <input
                         key={`${selectedStudent.studentId}-${subject.subject}-${examType}-${subject.marks ?? 'blank'}`}
                         type="number"

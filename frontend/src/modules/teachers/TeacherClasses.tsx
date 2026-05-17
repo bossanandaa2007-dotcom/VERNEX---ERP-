@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BookOpen, Plus, Trash2, Upload, Users } from 'lucide-react';
+import { ArrowLeft, Award, BookOpen, CalendarCheck, Mail, Phone, Plus, Trash2, Upload, UserRound, Users, X } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useClassStore } from '../../store/useClassStore';
-import { fetchTeacherMarkScopes, type TeacherMarkScope } from '../../services/marks';
+import { fetchStudentMarksByProfile, fetchTeacherMarkScopes, type StudentMarkRecord, type TeacherMarkScope } from '../../services/marks';
+import { fetchStudentAttendanceSummary } from '../../services/attendance';
 import type { IStudent } from '../../types/school';
 import { getTodayInputDate } from '../../utils/dateLimits';
 
@@ -94,6 +95,13 @@ const TeacherClasses = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [markScopes, setMarkScopes] = useState<TeacherMarkScope[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<IStudent | null>(null);
+  const [studentDetail, setStudentDetail] = useState<{
+    attendanceRate: number | null;
+    attendanceTotal: number;
+    marks: StudentMarkRecord[];
+  }>({ attendanceRate: null, attendanceTotal: 0, marks: [] });
+  const [isStudentDetailLoading, setIsStudentDetailLoading] = useState(false);
   const maxDob = getTodayInputDate();
 
   useEffect(() => {
@@ -169,6 +177,50 @@ const TeacherClasses = () => {
     }
   }, [canEditActiveSection]);
 
+  useEffect(() => {
+    if (!selectedStudent || visibleStudents.some((student) => student.id === selectedStudent.id)) {
+      return;
+    }
+
+    setSelectedStudent(null);
+  }, [selectedStudent, visibleStudents]);
+
+  useEffect(() => {
+    if (!selectedStudent) {
+      setStudentDetail({ attendanceRate: null, attendanceTotal: 0, marks: [] });
+      return;
+    }
+
+    let active = true;
+    setIsStudentDetailLoading(true);
+    Promise.all([
+      fetchStudentAttendanceSummary(selectedStudent.id).catch(() => null),
+      selectedStudent.profileId
+        ? fetchStudentMarksByProfile(selectedStudent.profileId).catch(() => [])
+        : Promise.resolve([]),
+    ])
+      .then(([attendanceSummary, markRows]) => {
+        if (!active) {
+          return;
+        }
+
+        setStudentDetail({
+          attendanceRate: attendanceSummary?.attendanceRate ?? null,
+          attendanceTotal: attendanceSummary?.totalCount ?? 0,
+          marks: markRows,
+        });
+      })
+      .finally(() => {
+        if (active) {
+          setIsStudentDetailLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedStudent]);
+
   const handleAddStudent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -242,17 +294,28 @@ const TeacherClasses = () => {
     }
   };
 
+  const latestMarks = useMemo(() => {
+    const bySubject = new Map<string, StudentMarkRecord>();
+    studentDetail.marks.forEach((mark) => {
+      bySubject.set(mark.subject, mark);
+    });
+    return Array.from(bySubject.values()).slice(0, 4);
+  }, [studentDetail.marks]);
+
+  const subjectSummary = activeSection?.subjectTeachers?.map((teacher) => teacher.subject) || [];
+
   return (
-    <div className="space-y-8">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden max-lg:px-0 max-lg:pb-1 lg:space-y-8">
+      <div className="space-y-5 lg:space-y-8">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">Teacher Access</p>
-          <h1 className="mt-2 text-3xl font-black text-slate-900">My Class Roster</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-500">
+          <h1 className="mt-2 text-2xl font-black text-slate-900 lg:text-3xl">My Class Roster</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
             You can view assigned subject sections, but student edits are limited to your own class.
           </p>
         </div>
-        <div className="rounded-3xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
+        <div className="w-full rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4 shadow-sm lg:w-auto lg:rounded-3xl lg:px-5">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Owned Class</p>
           <p className="mt-2 text-sm font-bold text-emerald-700">
             {ownedClass || 'No owned class assigned yet'}
@@ -273,7 +336,7 @@ const TeacherClasses = () => {
       )}
 
       {!isLoading && !visibleSections.length && (
-        <div className="rounded-[2rem] border border-slate-100 bg-white px-8 py-10 text-center shadow-sm">
+        <div className="rounded-[1.5rem] border border-slate-100 bg-white px-5 py-10 text-center shadow-sm lg:rounded-[2rem] lg:px-8">
           <BookOpen size={36} className="mx-auto text-slate-200" />
           <h2 className="mt-4 text-xl font-black text-slate-900">No classes assigned</h2>
           <p className="mt-2 text-sm text-slate-500">
@@ -284,7 +347,7 @@ const TeacherClasses = () => {
 
       {!!visibleSections.length && (
         <>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 xl:grid-cols-3">
             {visibleSections.map((section) => {
               const sectionStudents = students.filter((student) => student.sectionId === section.id);
               const isActive = section.id === activeSectionId;
@@ -295,7 +358,7 @@ const TeacherClasses = () => {
                 <button
                   key={section.id}
                   onClick={() => setActiveSectionId(section.id)}
-                  className={`rounded-[2rem] border p-6 text-left shadow-sm transition-all ${
+                  className={`w-full min-w-0 overflow-hidden rounded-[1.4rem] border p-3.5 text-left shadow-sm transition-all lg:rounded-[2rem] lg:p-6 ${
                     isOwned
                       ? 'border-emerald-300 bg-emerald-50/80 shadow-emerald-100'
                       : isActive
@@ -303,23 +366,27 @@ const TeacherClasses = () => {
                       : 'border-slate-100 bg-white hover:-translate-y-1 hover:shadow-lg'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Section</p>
-                      <h2 className="mt-2 text-2xl font-black text-slate-900">{section.name}</h2>
+                      <h2 className="mt-2 break-words text-2xl font-black text-slate-900">{section.name}</h2>
                       <p className={`mt-2 w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${isOwned ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
                         {isOwned ? 'Own Class' : 'Subject Class'}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
+                    <div className="shrink-0 rounded-2xl bg-white px-3 py-3 text-center shadow-sm lg:px-4">
                       <p className="text-lg font-black text-slate-900">{sectionStudents.length}</p>
                       <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Students</p>
                     </div>
                   </div>
-                  <div className="mt-6 space-y-2 text-sm text-slate-600">
-                    <p>Class Teacher: <span className="font-semibold text-slate-900">{section.classTeacher}</span></p>
-                    <p>My Subject: <span className="font-semibold text-slate-900">{handledSubjects.length ? handledSubjects.join(', ') : 'Class oversight'}</span></p>
-                    <p>Room: <span className="font-semibold text-slate-900">{section.roomNumber || 'TBD'}</span></p>
+                  <div className="mt-5 hidden space-y-2 text-sm leading-6 text-slate-600 lg:mt-6 lg:block">
+                    <p className="break-words">Class Teacher: <span className="font-semibold text-slate-900">{section.classTeacher}</span></p>
+                    <p className="break-words">My Subject: <span className="font-semibold text-slate-900">{handledSubjects.length ? handledSubjects.join(', ') : 'Class oversight'}</span></p>
+                    <p className="break-words">Room: <span className="font-semibold text-slate-900">{section.roomNumber || 'TBD'}</span></p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2 text-xs font-black text-slate-500 lg:hidden">
+                    <span>Open roster</span>
+                    <span>{isActive ? 'Selected' : 'Tap'}</span>
                   </div>
                 </button>
               );
@@ -327,25 +394,25 @@ const TeacherClasses = () => {
           </div>
 
           {activeSection && (
-            <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+            <div className="w-full min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-3.5 shadow-sm lg:rounded-[2rem] lg:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">Roster</p>
-                  <h2 className="mt-2 text-3xl font-black text-slate-900">{activeSection.name}</h2>
+                  <h2 className="mt-2 break-words text-2xl font-black text-slate-900 lg:text-3xl">{activeSection.name}</h2>
                   <p className="mt-2 text-sm text-slate-500">
                     {canEditActiveSection
                       ? 'You own this class, so roster edits are enabled.'
                       : 'This is a subject-teacher section, so roster edits are locked.'}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="grid w-full grid-cols-1 gap-2 min-[380px]:grid-cols-2 sm:flex sm:flex-wrap sm:gap-3 lg:w-auto">
                   <button
                     onClick={() => {
                       setShowBulkForm((current) => !current);
                       setShowForm(false);
                     }}
                     disabled={!canEditActiveSection}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-emerald-100 bg-white px-5 py-3 text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-100 bg-white px-4 py-3 text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 lg:px-5"
                   >
                     {showBulkForm ? <ArrowLeft size={16} /> : <Upload size={16} />}
                     {showBulkForm ? 'Close Bulk' : 'Bulk Add'}
@@ -356,7 +423,7 @@ const TeacherClasses = () => {
                       setShowBulkForm(false);
                     }}
                     disabled={!canEditActiveSection}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 lg:px-5"
                   >
                     {showForm ? <ArrowLeft size={16} /> : <Plus size={16} />}
                     {showForm ? 'Close Form' : 'Add Student'}
@@ -365,7 +432,7 @@ const TeacherClasses = () => {
               </div>
 
               {showBulkForm && (
-                <form onSubmit={handleBulkAddStudents} className="mt-6 rounded-[2rem] border border-emerald-100 bg-emerald-50/70 p-5">
+                <form onSubmit={handleBulkAddStudents} className="mt-5 w-full min-w-0 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-3.5 lg:mt-6 lg:rounded-[2rem] lg:p-5">
                   <div className="rounded-2xl border border-white/70 bg-white px-4 py-3">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Bulk Student Rows</p>
                     <p className="mt-1 text-xs font-bold text-emerald-950">
@@ -391,7 +458,7 @@ const TeacherClasses = () => {
               )}
 
               {showForm && (
-                <form onSubmit={handleAddStudent} className="mt-6 grid grid-cols-1 gap-4 rounded-[2rem] border border-slate-100 bg-slate-50 p-5 md:grid-cols-2 xl:grid-cols-3">
+                <form onSubmit={handleAddStudent} className="mt-5 grid w-full min-w-0 grid-cols-1 gap-3 rounded-[1.5rem] border border-slate-100 bg-slate-50 p-3.5 md:grid-cols-2 lg:mt-6 lg:rounded-[2rem] lg:p-5 xl:grid-cols-3">
                   <input name="name" required placeholder="Student name" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none focus:border-emerald-300" />
                   <input name="rollNo" required placeholder="Roll number" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none focus:border-emerald-300" />
                   <input name="email" type="email" required placeholder="Student login email" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none focus:border-emerald-300" />
@@ -419,7 +486,7 @@ const TeacherClasses = () => {
               )}
 
               {canEditActiveSection && (
-                <div className="mt-6 rounded-[2rem] border border-emerald-100 bg-emerald-50/70 p-5">
+                <div className="mt-5 w-full min-w-0 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-3.5 lg:mt-6 lg:rounded-[2rem] lg:p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-600">Owned Class Subject Map</p>
@@ -447,9 +514,65 @@ const TeacherClasses = () => {
                 </div>
               )}
 
-              <div className="mt-6 overflow-hidden rounded-[2rem] border border-slate-100">
+              <div className="mt-5 w-full min-w-0 rounded-[1.35rem] border border-slate-100 bg-slate-50 p-2 shadow-inner shadow-slate-100/60 md:mt-6 md:overflow-hidden md:rounded-[1.75rem] md:bg-white md:p-0 md:shadow-none lg:rounded-[2rem]">
                 {visibleStudents.length ? (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-2 md:hidden">
+                    {visibleStudents.map((student) => (
+                      <div
+                        key={student.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedStudent(student)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setSelectedStudent(student);
+                          }
+                        }}
+                        className="w-full min-w-0 rounded-[1.15rem] border border-slate-100 bg-white p-2.5 text-left shadow-sm transition-all active:scale-[0.99] active:bg-slate-50"
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-emerald-50 text-sm font-black text-emerald-700">
+                            {student.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="min-w-0 flex-1 truncate text-base font-black leading-5 text-slate-900">{student.name}</p>
+                              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">
+                                #{student.rollNo}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{student.email || 'No email'}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleDeleteStudent(student.id);
+                            }}
+                            disabled={!canEditActiveSection}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.95rem] bg-rose-50 text-rose-500 transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                            title={canEditActiveSection ? 'Remove student' : 'Only the class teacher can edit this class'}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+
+                        <div className="mt-2.5 grid grid-cols-2 gap-2 rounded-[1rem] bg-slate-50 px-2.5 py-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Parent</p>
+                            <p className="mt-0.5 truncate text-xs font-bold text-slate-800">{student.parentName}</p>
+                          </div>
+                          <div className="min-w-0 border-l border-slate-200 pl-2 text-right">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Contact</p>
+                            <p className="mt-0.5 truncate text-xs font-bold text-slate-800">{student.contact}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[860px] text-left text-sm">
                       <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                         <tr>
@@ -500,6 +623,7 @@ const TeacherClasses = () => {
                       </tbody>
                     </table>
                   </div>
+                  </>
                 ) : (
                   <div className="bg-slate-50 px-6 py-10 text-center">
                     <Users size={32} className="mx-auto text-slate-200" />
@@ -511,6 +635,125 @@ const TeacherClasses = () => {
           )}
         </>
       )}
+
+      {selectedStudent && (
+        <div className="fixed inset-0 z-[80] md:hidden">
+          <button
+            type="button"
+            aria-label="Close student profile"
+            onClick={() => setSelectedStudent(null)}
+            className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
+          />
+          <section className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-[2rem] bg-[#f7f8fb] p-3 shadow-2xl">
+            <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-300" />
+            <div className="rounded-[1.5rem] bg-slate-950 p-4 text-white shadow-xl">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-xl font-black text-slate-950">
+                    {selectedStudent.name.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-200">Student Profile</p>
+                    <h3 className="mt-1 truncate text-xl font-black">{selectedStudent.name}</h3>
+                    <p className="mt-1 text-xs font-bold text-slate-300">
+                      Roll {selectedStudent.rollNo} - {activeSection?.name || 'Class'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudent(null)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-[1.25rem] bg-white p-3 shadow-sm ring-1 ring-slate-100">
+                <CalendarCheck size={18} className="text-emerald-600" />
+                <p className="mt-2 text-[10px] font-black uppercase tracking-wider text-slate-400">Attendance</p>
+                <p className="mt-0.5 text-xl font-black text-slate-900">
+                  {isStudentDetailLoading ? '...' : studentDetail.attendanceRate === null ? 'N/A' : `${studentDetail.attendanceRate}%`}
+                </p>
+                <p className="text-[11px] font-semibold text-slate-400">{studentDetail.attendanceTotal} records</p>
+              </div>
+              <div className="rounded-[1.25rem] bg-white p-3 shadow-sm ring-1 ring-slate-100">
+                <Award size={18} className="text-indigo-600" />
+                <p className="mt-2 text-[10px] font-black uppercase tracking-wider text-slate-400">Marks</p>
+                <p className="mt-0.5 text-xl font-black text-slate-900">
+                  {isStudentDetailLoading ? '...' : studentDetail.marks.length}
+                </p>
+                <p className="text-[11px] font-semibold text-slate-400">entries</p>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              <section className="rounded-[1.25rem] bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                <h4 className="text-sm font-black text-slate-900">Contact</h4>
+                <div className="mt-3 space-y-2">
+                  {[
+                    { icon: Phone, label: 'Student', value: selectedStudent.contact },
+                    { icon: UserRound, label: 'Parent', value: selectedStudent.parentName },
+                    { icon: Phone, label: 'Parent Contact', value: selectedStudent.parentContact },
+                    { icon: Mail, label: 'Email', value: selectedStudent.email || 'No email' },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-2.5">
+                      <item.icon size={16} className="shrink-0 text-slate-400" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{item.label}</p>
+                        <p className="truncate text-xs font-bold text-slate-800">{item.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-[1.25rem] bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                <h4 className="text-sm font-black text-slate-900">Academic Overview</h4>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(subjectSummary.length ? subjectSummary : ['No subjects mapped']).map((subject) => (
+                    <span key={subject} className="rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-700">
+                      {subject}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-2xl bg-slate-50 px-3 py-2">
+                    <p className="font-black uppercase tracking-wider text-slate-400">Gender</p>
+                    <p className="mt-1 font-bold text-slate-800">{selectedStudent.gender}</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 px-3 py-2">
+                    <p className="font-black uppercase tracking-wider text-slate-400">DOB</p>
+                    <p className="mt-1 font-bold text-slate-800">{selectedStudent.dob}</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-[1.25rem] bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                <h4 className="text-sm font-black text-slate-900">Recent Marks</h4>
+                <div className="mt-3 space-y-2">
+                  {latestMarks.length ? latestMarks.map((mark) => (
+                    <div key={mark.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-black text-slate-900">{mark.subject}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{mark.examType}</p>
+                      </div>
+                      <p className="shrink-0 text-sm font-black text-indigo-600">{mark.marks}/{mark.maxMarks}</p>
+                    </div>
+                  )) : (
+                    <p className="rounded-2xl bg-slate-50 px-3 py-4 text-center text-xs font-bold text-slate-400">
+                      {selectedStudent.profileId ? 'No marks recorded yet.' : 'Marks require a linked student profile.'}
+                    </p>
+                  )}
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+      )}
+      </div>
     </div>
   );
 };

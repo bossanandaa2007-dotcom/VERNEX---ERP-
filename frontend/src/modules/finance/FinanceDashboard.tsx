@@ -144,7 +144,7 @@ const FinanceDashboard = () => {
   const studentPendingTotal = feeRecords.reduce((sum, fee) => sum + Number(fee.pendingAmount), 0);
 
   return (
-    <div className="space-y-6 lg:pb-12 h-full">
+    <div className="h-full space-y-5 lg:space-y-6 lg:pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Financial Records</h1>
@@ -192,26 +192,26 @@ const FinanceDashboard = () => {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-            <div className="p-4 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100"><CreditCard size={24} /></div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+          <div className="flex items-center gap-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm lg:rounded-2xl lg:p-6">
+            <div className="rounded-xl bg-indigo-600 p-3 text-white shadow-lg shadow-indigo-100 lg:p-4"><CreditCard size={24} /></div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Total Fee Paid</p>
-              <p className="text-2xl font-bold text-slate-900">{formatCurrency(studentPaidTotal.toFixed(2))}</p>
+              <p className="break-words text-xl font-black text-slate-900 lg:text-2xl lg:font-bold">{formatCurrency(studentPaidTotal.toFixed(2))}</p>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-            <div className="p-4 bg-amber-500 text-white rounded-xl shadow-lg shadow-amber-100"><Clock size={24} /></div>
+          <div className="flex items-center gap-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm lg:rounded-2xl lg:p-6">
+            <div className="rounded-xl bg-amber-500 p-3 text-white shadow-lg shadow-amber-100 lg:p-4"><Clock size={24} /></div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Pending Dues</p>
-              <p className="text-2xl font-bold text-slate-900">{formatCurrency(studentPendingTotal.toFixed(2))}</p>
+              <p className="break-words text-xl font-black text-slate-900 lg:text-2xl lg:font-bold">{formatCurrency(studentPendingTotal.toFixed(2))}</p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm lg:rounded-2xl">
+        <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/50 p-4 sm:flex-row sm:items-center lg:p-5">
           <h2 className="text-lg font-bold text-slate-900">
             {staffView ? 'Student Fee Registry' : 'My Academic Fee Statement'}
           </h2>
@@ -246,7 +246,63 @@ const FinanceDashboard = () => {
           )}
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="space-y-3 bg-slate-50 p-3 md:hidden">
+          {visibleRecords.map((fee) => (
+            <article key={fee.id} className="rounded-[1.35rem] border border-slate-100 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${fee.status === 'Paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                    {fee.type.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="break-words text-sm font-black text-slate-900">{fee.type}</h3>
+                    <p className="mt-1 text-xs font-bold text-slate-400">Due: {fee.dueDate}</p>
+                    {staffView && <p className="mt-1 break-words text-xs font-semibold text-slate-500">{fee.studentName || fee.studentEmail}</p>}
+                  </div>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                  fee.status === 'Pending' ? 'border-amber-200 bg-amber-50 text-amber-600' :
+                  fee.status === 'Paid' ? 'border-emerald-200 bg-emerald-50 text-emerald-600' :
+                  'border-rose-200 bg-rose-50 text-rose-600'
+                }`}>
+                  {fee.status}
+                </span>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-slate-50 px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Paid</p>
+                  <p className="mt-1 break-words text-xs font-black text-emerald-700">{formatCurrency(Number(fee.paidAmount).toFixed(2))}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Pending</p>
+                  <p className="mt-1 break-words text-xs font-black text-amber-700">{formatCurrency(Number(fee.pendingAmount).toFixed(2))}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total</p>
+                  <p className="mt-1 break-words text-xs font-black text-slate-900">{formatCurrency(Number(fee.totalAmount).toFixed(2))}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => fee.status === 'Paid' && handleDownloadBill(fee)}
+                className={`mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[11px] font-black uppercase tracking-wider active:scale-[0.98] ${
+                  fee.status === 'Paid'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                    : 'border border-slate-200 bg-white text-slate-500'
+                }`}
+              >
+                {fee.status === 'Paid' ? <Download size={15} /> : <CreditCard size={15} />}
+                {fee.status === 'Paid' ? 'Download Bill' : 'Pending'}
+              </button>
+            </article>
+          ))}
+          {visibleRecords.length === 0 && (
+            <div className="rounded-[1.35rem] bg-white px-5 py-10 text-center text-sm font-bold text-slate-400">
+              No fee records are available in Supabase for the selected filter.
+            </div>
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-white uppercase text-slate-500 text-[10px] font-bold tracking-widest">
               <tr>

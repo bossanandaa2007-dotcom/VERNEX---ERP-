@@ -82,6 +82,27 @@ const getNavItems = (role: string) => {
   return items;
 };
 
+const teacherMobilePrimaryPaths = new Set([
+  '/teacher/dashboard',
+  '/teacher/classes',
+  '/teacher/attendance',
+  '/teacher/marks-entry',
+  '/teacher/materials',
+  '/teacher/assignments',
+]);
+
+const studentMobilePrimaryPaths = new Set([
+  '/student/dashboard',
+  '/student/attendance',
+  '/student/marks',
+  '/student/performance',
+  '/student/materials',
+  '/student/assignments',
+  '/student/timetable',
+  '/student/academics',
+  '/student/profile',
+]);
+
 export const Sidebar = ({
   collapsed,
   setCollapsed
@@ -103,7 +124,7 @@ export const Sidebar = ({
 
   return (
     <aside className={cn(
-      "fixed left-0 top-0 z-50 h-screen transition-all duration-300 ease-in-out bg-indigo-950 text-slate-300 flex flex-col shadow-2xl lg:shadow-none",
+      "fixed left-0 top-0 z-50 h-screen transition-all duration-300 ease-in-out bg-indigo-950 text-slate-300 flex flex-col shadow-2xl lg:shadow-none max-lg:w-[84vw] max-lg:max-w-[330px] max-lg:rounded-r-[2rem] max-lg:border-r max-lg:border-white/10",
       collapsed
         ? "-translate-x-full lg:translate-x-0 lg:w-20"
         : "translate-x-0 w-64 shadow-indigo-900/40"
@@ -134,8 +155,15 @@ export const Sidebar = ({
           <NavLink
             key={item.name}
             to={item.path}
+            onClick={() => {
+              if (window.innerWidth < 1024) {
+                setCollapsed(true);
+              }
+            }}
             className={({ isActive }) => cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 group",
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 group max-lg:rounded-2xl max-lg:py-3.5",
+              role === 'Teacher' && teacherMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
+              role === 'Student' && studentMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
               isActive
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                 : "hover:bg-indigo-900 hover:text-white"

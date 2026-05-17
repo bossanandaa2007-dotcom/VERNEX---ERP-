@@ -29,6 +29,7 @@ const TimetablePage = () => {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
 
   const isAdmin = user?.role === 'Admin';
   const isTeacher = user?.role === 'Teacher';
@@ -164,7 +165,7 @@ const TimetablePage = () => {
   };
 
   const renderReadOnlyGrid = () => (
-    <div className="overflow-x-auto rounded-[2rem] border border-slate-100 bg-white shadow-sm">
+    <div className="hidden overflow-x-auto rounded-[2rem] border border-slate-100 bg-white shadow-sm md:block">
       <table className="w-full min-w-[920px] text-left text-sm">
         <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
           <tr>
@@ -201,12 +202,64 @@ const TimetablePage = () => {
     </div>
   );
 
+  const renderReadOnlyCards = () => (
+    <div className="space-y-3 pb-2 md:hidden">
+      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+        <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Choose Day</label>
+        <select
+          value={selectedDay}
+          onChange={(event) => setSelectedDay(Number(event.target.value))}
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-900 outline-none transition-colors focus:border-indigo-400"
+        >
+          {TIMETABLE_DAYS.map((day) => (
+            <option key={day.value} value={day.value}>{day.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {TIMETABLE_DAYS.filter((day) => day.value === selectedDay).map((day) => {
+        const dayEntries = entries
+          .filter((entry) => entry.dayOfWeek === day.value)
+          .sort((left, right) => left.periodNumber - right.periodNumber);
+
+        return (
+          <section key={day.value} className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-slate-900">{day.label}</h2>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                {dayEntries.length} periods
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {dayEntries.length ? dayEntries.map((entry) => (
+                <div key={entry.id} className="rounded-2xl bg-indigo-50 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-black text-slate-900">{entry.subject}</p>
+                      <p className="mt-1 text-xs font-bold text-indigo-700">{entry.sectionName}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-indigo-600">
+                      P{entry.periodNumber}
+                    </span>
+                  </div>
+                  <p className="mt-2 break-words text-xs font-medium text-slate-500">{entry.teacherName}</p>
+                </div>
+              )) : (
+                <p className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-bold text-slate-400">No scheduled periods.</p>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-5 lg:space-y-6">
+      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm lg:flex-row lg:items-end lg:justify-between lg:rounded-3xl lg:p-6">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-indigo-500">Academic Timetable</p>
-          <h1 className="mt-2 text-3xl font-black text-slate-900">
+          <h1 className="mt-2 text-2xl font-black text-slate-900 lg:text-3xl">
             {isAdmin ? 'Class Timetable Builder' : isTeacher ? 'My Teaching Timetable' : 'My Class Timetable'}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-500">
@@ -318,12 +371,12 @@ const TimetablePage = () => {
       {!isAdmin && (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm lg:rounded-2xl lg:p-5">
               <CalendarDays className="text-indigo-500" size={24} />
               <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Scheduled Periods</p>
               <p className="mt-1 text-3xl font-black text-slate-900">{entries.length}</p>
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:col-span-2">
+            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm md:col-span-2 lg:rounded-2xl lg:p-5">
               <Clock className="text-emerald-500" size={24} />
               <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Scope</p>
               <p className="mt-1 text-lg font-black text-slate-900">
@@ -331,6 +384,7 @@ const TimetablePage = () => {
               </p>
             </div>
           </div>
+          {renderReadOnlyCards()}
           {renderReadOnlyGrid()}
         </>
       )}

@@ -1,4 +1,4 @@
-import { Users, BookOpen, UserCheck, Calendar, FileText } from 'lucide-react';
+import { Users, BookOpen, UserCheck, Calendar, FileText, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { useClassStore } from '../../store/useClassStore';
@@ -28,21 +28,36 @@ const TeacherDashboard = () => {
   }, [assignedClasses, sections, students]);
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-5 lg:space-y-6">
+      <div className="rounded-[2rem] bg-slate-950 px-5 py-6 text-white shadow-xl shadow-slate-200 lg:hidden">
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-200">Today</p>
+        <h1 className="mt-2 text-2xl font-black tracking-tight">Welcome back, {user?.name?.split(' ')[0] || 'Teacher'}</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-300">Manage your classroom, attendance, and academic resources.</p>
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:hidden">
+          <button onClick={() => navigate('/teacher/attendance')} className="rounded-2xl bg-white px-4 py-3 text-left text-slate-950 active:scale-[0.98]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick</p>
+            <p className="mt-1 text-sm font-black">Attendance</p>
+          </button>
+          <button onClick={() => navigate('/teacher/academics')} className="rounded-2xl bg-indigo-500 px-4 py-3 text-left text-white active:scale-[0.98]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-100">Open</p>
+            <p className="mt-1 text-sm font-black">Academics</p>
+          </button>
+        </div>
+      </div>
+      <div className="hidden lg:block">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Teacher Dashboard</h1>
         <p className="text-slate-500 mt-1">Welcome back, {user?.name}. Manage your classroom and digital resources.</p>
       </div>
 
-      <div className="rounded-3xl border border-emerald-100 bg-emerald-50/80 px-6 py-5 shadow-sm">
+      <div className="rounded-[1.75rem] border border-emerald-100 bg-emerald-50/80 px-5 py-5 shadow-sm lg:rounded-3xl lg:px-6">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Class Teacher Ownership</p>
         <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <h2 className="text-2xl font-black text-slate-900">{ownedClass || 'No owned class assigned'}</h2>
           <button
             onClick={() => navigate('/teacher/classes')}
-            className="w-fit rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition-colors hover:bg-emerald-700"
+            className="inline-flex w-fit items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition-colors active:scale-95 hover:bg-emerald-700"
           >
-            Open Roster
+            Open Roster <ChevronRight size={16} />
           </button>
         </div>
         <p className="mt-2 text-sm font-medium text-emerald-800">
@@ -50,7 +65,7 @@ const TeacherDashboard = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-5 lg:gap-6">
         {[
           { title: 'Owned Class', value: ownedClass || 'None', icon: UserCheck, color: 'bg-emerald-500', path: '/teacher/classes' },
           { title: 'Assigned Classes', value: assignedClasses.length.toString(), icon: BookOpen, color: 'bg-indigo-500', path: '/teacher/classes' },
@@ -61,21 +76,21 @@ const TeacherDashboard = () => {
           <div 
             key={i} 
             onClick={() => navigate(stat.path)}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow group flex items-center gap-4 cursor-pointer"
+            className="flex cursor-pointer flex-col gap-3 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm transition-all active:scale-[0.98] lg:flex-row lg:items-center lg:gap-4 lg:rounded-2xl lg:p-6 lg:hover:shadow-md"
           >
-             <div className={`p-4 rounded-xl ${stat.color} text-white shadow-md group-hover:scale-110 transition-transform shrink-0`}>
-                <stat.icon size={22} />
+             <div className={`w-fit p-3 lg:p-4 rounded-xl ${stat.color} text-white shadow-md group-hover:scale-110 transition-transform shrink-0`}>
+                <stat.icon size={20} />
               </div>
             <div>
               <h3 className="text-slate-500 text-[10px] uppercase font-bold tracking-widest">{stat.title}</h3>
-              <p className="text-xl font-extrabold text-slate-900 mt-0.5">{stat.value}</p>
+              <p className="text-lg font-extrabold text-slate-900 mt-0.5 lg:text-xl">{stat.value}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+        <div className="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-sm lg:rounded-2xl lg:p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Owned Class Subject Map</h2>
@@ -116,7 +131,7 @@ const TeacherDashboard = () => {
         </div>
 
         {/* Today's Schedule */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-sm lg:rounded-2xl lg:p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-slate-900">Today's Schedule</h2>
             <span className="text-sm font-medium text-slate-500">April 2, 2026</span>
@@ -124,17 +139,17 @@ const TeacherDashboard = () => {
           <div className="space-y-4">
              {assignedClasses.length > 0 ? (
                assignedClasses.map((cls, i) => (
-                 <div key={i} className="flex gap-4 items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                 <div key={i} className="flex gap-3 items-center rounded-2xl border border-slate-100 p-3 transition-colors hover:bg-slate-50 lg:gap-4 lg:rounded-xl">
                    <div className="w-20 shrink-0 text-center">
                      <span className="text-sm font-bold text-indigo-600 block">{i === 0 ? '09:00 AM' : i === 1 ? '11:30 AM' : '02:00 PM'}</span>
                    </div>
                    <div className="w-1 h-12 bg-indigo-100 rounded-full"></div>
-                   <div className="flex-1 flex justify-between items-center pr-2">
+                   <div className="flex-1 flex min-w-0 items-center justify-between gap-3 pr-1 lg:pr-2">
                      <div>
                        <h4 className="text-base font-semibold text-slate-900">{cls}</h4>
                        <p className="text-sm text-slate-500">{teacherSubjectLabel}</p>
                      </div>
-                     <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                     <span className="hidden px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 sm:inline-flex">
                        Lecture
                      </span>
                    </div>
@@ -147,7 +162,7 @@ const TeacherDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-sm lg:rounded-2xl lg:p-6">
            <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-slate-900">Pending Actions</h2>
           </div>

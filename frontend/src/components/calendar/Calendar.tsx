@@ -112,20 +112,20 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
         : 'bg-blue-500 text-white hover:bg-blue-600';
 
   const renderHeader = () => (
-    <div className="flex items-center justify-between mb-8">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">{format(currentMonth, 'MMMM yyyy')}</h2>
-        <p className="text-slate-500 text-sm">Calendar events are loaded from Supabase.</p>
+    <div className="mb-5 flex flex-col gap-4 lg:mb-8 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0">
+        <h2 className="text-2xl font-black text-slate-900 lg:font-bold">{format(currentMonth, 'MMMM yyyy')}</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-500">Calendar events are loaded from Supabase.</p>
       </div>
-      <div className="flex items-center gap-4">
-        <div className="flex items-center bg-white rounded-xl shadow-sm border border-slate-100 p-1">
-          <button onClick={prevMonth} className="p-2 hover:bg-slate-50 rounded-lg transition-colors">
+      <div className="flex items-center justify-between gap-3 lg:justify-end lg:gap-4">
+        <div className="grid flex-1 grid-cols-[44px_1fr_44px] items-center rounded-2xl border border-slate-100 bg-white p-1 shadow-sm lg:flex-none lg:flex lg:rounded-xl">
+          <button onClick={prevMonth} className="flex h-10 items-center justify-center rounded-xl transition-colors hover:bg-slate-50">
             <ChevronLeft size={20} className="text-slate-600" />
           </button>
-          <button onClick={() => setCurrentMonth(new Date())} className="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors">
+          <button onClick={() => setCurrentMonth(new Date())} className="h-10 rounded-xl px-4 text-sm font-black text-slate-700 transition-colors hover:bg-slate-50 lg:font-semibold">
             Today
           </button>
-          <button onClick={nextMonth} className="p-2 hover:bg-slate-50 rounded-lg transition-colors">
+          <button onClick={nextMonth} className="flex h-10 items-center justify-center rounded-xl transition-colors hover:bg-slate-50">
             <ChevronRight size={20} className="text-slate-600" />
           </button>
         </div>
@@ -136,7 +136,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
               setFormData({ title: '', date: format(new Date(), 'yyyy-MM-dd'), time: '', type: 'Event', scope: 'All', description: '' });
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 font-semibold"
+            className="flex h-12 items-center gap-2 rounded-2xl bg-indigo-600 px-4 text-white shadow-md shadow-indigo-600/20 transition-all active:scale-95 hover:bg-indigo-700 lg:h-auto lg:rounded-xl lg:py-2.5"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">Add Event</span>
@@ -149,9 +149,9 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
   const renderDays = () => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return (
-      <div className="grid grid-cols-7 mb-2">
+      <div className="mb-2 grid grid-cols-7">
         {days.map((day) => (
-          <div key={day} className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider py-2">
+          <div key={day} className="py-2 text-center text-[10px] font-black uppercase tracking-wider text-slate-400 lg:text-xs lg:font-bold">
             {day}
           </div>
         ))}
@@ -167,7 +167,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
     const daysInterval = eachDayOfInterval({ start: startDate, end: endDate });
 
     return (
-      <div className="grid grid-cols-7 gap-px bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 shadow-sm">
         {daysInterval.map((day, index) => {
           const isSelected = isSameDay(day, new Date());
           const isCurrentMonth = isSameMonth(day, monthStart);
@@ -177,31 +177,40 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
             <div
               key={index}
               className={cn(
-                'min-h-[120px] bg-white p-2 transition-colors',
+                'min-h-[58px] bg-white p-1.5 transition-colors lg:min-h-[120px] lg:p-2',
                 !isCurrentMonth && 'bg-slate-50/50 text-slate-300'
               )}
             >
               <div className="flex justify-between items-start mb-1">
                 <span className={cn(
-                  'text-sm font-semibold h-7 w-7 flex items-center justify-center rounded-full transition-all',
+                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-all lg:text-sm lg:font-semibold',
                   isSelected ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700'
                 )}>
                   {format(day, 'd')}
                 </span>
               </div>
-              <div className="space-y-1.5">
-                {dayEvents.map((event) => (
+              <div className="space-y-1 lg:space-y-1.5">
+                {dayEvents.slice(0, 1).map((event) => (
                   <div
                     key={event.id}
                     onClick={() => setSelectedEvent(event)}
                     className={cn(
-                      'w-full rounded-xl px-3 py-2.5 text-left transition-all shadow-sm overflow-hidden cursor-pointer',
+                      'w-full cursor-pointer overflow-hidden rounded-lg px-1.5 py-1 text-left shadow-sm transition-all lg:rounded-xl lg:px-3 lg:py-2.5',
                       getEventBlockStyles(event.type)
                     )}
                   >
-                    <div className="truncate text-[11px] font-bold leading-tight text-white">{event.title}</div>
+                    <div className="truncate text-[9px] font-bold leading-tight text-white lg:text-[11px]">{event.title}</div>
                   </div>
                 ))}
+                {dayEvents.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvent(dayEvents[1])}
+                    className="w-full rounded-lg bg-slate-100 px-1 py-0.5 text-[9px] font-black text-slate-500 lg:hidden"
+                  >
+                    +{dayEvents.length - 1}
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -243,21 +252,21 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="mx-auto w-full max-w-[calc(100vw-1.5rem)] lg:max-w-6xl">
       {renderHeader()}
 
-      <div className="mb-6 flex flex-wrap items-center gap-4">
+      <div className="mb-4 flex flex-col gap-3 lg:mb-6 lg:flex-row lg:flex-wrap lg:items-center lg:gap-4">
         <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
           <Filter size={16} />
           <span>Filter:</span>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-4 gap-2 lg:flex">
           {(['All', 'Holiday', 'Festival', 'Event'] as const).map((type) => (
             <button
               key={type}
               onClick={() => setFilterType(type)}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all border',
+                'rounded-xl border px-2 py-2 text-xs font-bold transition-all lg:rounded-lg lg:px-3 lg:py-1.5',
                 filterType === type
                   ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
@@ -284,7 +293,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+      <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white p-2.5 shadow-xl shadow-slate-200/50 lg:rounded-3xl lg:p-4">
         {renderDays()}
         {renderCells()}
       </div>
@@ -312,7 +321,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 min-[380px]:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">Date</label>
                   <input
@@ -422,7 +431,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 gap-3 text-sm min-[380px]:grid-cols-2 lg:gap-4">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Date</p>
                 <p className="mt-1 font-semibold text-slate-900">{format(parseISO(selectedEvent.date), 'dd MMM yyyy')}</p>
