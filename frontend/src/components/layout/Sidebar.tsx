@@ -3,7 +3,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import {
   LayoutDashboard, Users, Shield, CheckCircle, Award,
   Library, IndianRupee, Calendar, FileText, Settings,
-  BookOpen, MessageSquare, BarChart3, LogOut, ChevronLeft, ChevronRight,
+  BookOpen, BarChart3, LogOut, ChevronLeft, ChevronRight,
   Building2, CalendarDays
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -41,7 +41,6 @@ const getNavItems = (role: string) => {
       { name: 'Manual Attendance', icon: CheckCircle, path: '/teacher/attendance' },
       { name: 'AI Attendance', icon: Shield, path: '/teacher/ai-attendance' },
       { name: 'Marks Hub', icon: Award, path: '/teacher/marks-entry' },
-      { name: 'Leave Requests', icon: MessageSquare, path: '/teacher/leave-requests' },
       { name: 'Complaints', icon: FileText, path: '/teacher/complaints' },
       { name: 'Calendar', icon: Calendar, path: '/teacher/calendar' },
       { name: 'Study Materials', icon: BookOpen, path: '/teacher/materials' },
@@ -54,7 +53,6 @@ const getNavItems = (role: string) => {
       { name: 'My Attendance', icon: CheckCircle, path: '/student/attendance' },
       { name: 'Timetable', icon: CalendarDays, path: '/student/timetable' },
       { name: 'My Marks', icon: Award, path: '/student/marks' },
-      { name: 'Leave Request', icon: MessageSquare, path: '/student/leave' },
       { name: 'Complaints', icon: FileText, path: '/student/complaints' },
       { name: 'Study Materials', icon: BookOpen, path: '/student/materials' },
       { name: 'Calendar', icon: Calendar, path: '/student/calendar' },
@@ -71,8 +69,8 @@ const getNavItems = (role: string) => {
 
   if (role === 'Governing Body') {
     items.push(
-      { name: 'Analytics', icon: BarChart3, path: '/governing/dashboard' },
-      { name: 'Leave Requests', icon: MessageSquare, path: '/governing/leave-requests' },
+      { name: 'Analytics', icon: BarChart3, path: '/governing/dashboard?view=analytics' },
+      { name: 'Students', icon: Users, path: '/governing/dashboard?view=students' },
       { name: 'Complaints', icon: FileText, path: '/governing/complaints' },
       { name: 'Calendar', icon: Calendar, path: '/governing/calendar' },
       { name: 'Reports', icon: FileText, path: '/governing/reports' }
@@ -101,6 +99,14 @@ const studentMobilePrimaryPaths = new Set([
   '/student/timetable',
   '/student/academics',
   '/student/profile',
+]);
+
+const governingMobilePrimaryPaths = new Set([
+  '/governing/dashboard',
+  '/governing/dashboard?view=analytics',
+  '/governing/dashboard?view=students',
+  '/governing/calendar',
+  '/governing/reports',
 ]);
 
 export const Sidebar = ({
@@ -164,6 +170,7 @@ export const Sidebar = ({
               "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 group max-lg:rounded-2xl max-lg:py-3.5",
               role === 'Teacher' && teacherMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
               role === 'Student' && studentMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
+              role === 'Governing Body' && governingMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
               isActive
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                 : "hover:bg-indigo-900 hover:text-white"

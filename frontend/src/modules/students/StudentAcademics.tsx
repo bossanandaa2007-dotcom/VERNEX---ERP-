@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardList, FileText, MessageSquare } from 'lucide-react';
+import { BookOpen, ClipboardList, IndianRupee, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -18,18 +18,18 @@ const actions = [
     accent: 'bg-emerald-600',
   },
   {
-    title: 'Leave Request',
-    description: 'Send leave applications to your class teacher.',
-    icon: FileText,
-    path: '/student/leave',
-    accent: 'bg-amber-500',
-  },
-  {
     title: 'Complaints',
     description: 'Raise concerns and track responses.',
     icon: MessageSquare,
     path: '/student/complaints',
     accent: 'bg-slate-900',
+  },
+  {
+    title: 'Fees',
+    description: 'Review fee status and payment updates.',
+    icon: IndianRupee,
+    path: '/student/fees',
+    accent: 'bg-amber-500',
   },
 ];
 
@@ -43,13 +43,13 @@ const StudentAcademics = () => {
         <p className="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-200">Academic Hub</p>
         <h1 className="mt-3 text-2xl font-black tracking-tight">Everything for class {user?.class || '-'}</h1>
         <p className="mt-2 text-sm font-medium leading-6 text-slate-300">
-          Assignments, notes, leave, and support in one mobile workspace.
+          Assignments, notes, fees, and support in one mobile workspace.
         </p>
       </section>
 
       <div className="hidden lg:block">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Academic Hub</h1>
-        <p className="text-slate-500 mt-1">Assignments, study materials, leave requests, and complaints.</p>
+        <p className="text-slate-500 mt-1">Assignments, study materials, fees, and complaints.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
