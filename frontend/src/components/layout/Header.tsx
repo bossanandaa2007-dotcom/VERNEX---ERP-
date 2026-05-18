@@ -27,6 +27,16 @@ export const Header = ({
   const [showPasswordText, setShowPasswordText] = useState(false);
   const teacherSubjects = user?.subjects?.length ? user.subjects.join(', ') : user?.subject;
   const mobileTitle = (() => {
+    if (user?.role === 'Governing Body') {
+      const params = new URLSearchParams(location.search);
+      const view = params.get('view');
+      if (location.pathname.includes('/calendar')) return 'Calendar';
+      if (location.pathname.includes('/reports')) return 'Reports';
+      if (location.pathname.includes('/complaints')) return 'Complaints';
+      if (view === 'analytics') return 'Analytics';
+      if (view === 'students') return 'Students';
+      return 'Dashboard';
+    }
     if (location.pathname.includes('/classes')) return 'Classes';
     if (location.pathname.includes('/attendance')) return 'Attendance';
     if (location.pathname.includes('/academics')) return 'Academics';
