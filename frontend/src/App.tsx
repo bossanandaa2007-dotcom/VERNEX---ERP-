@@ -11,6 +11,11 @@ import StudentDashboard from './modules/dashboard/Student';
 import GoverningDashboard from './modules/dashboard/Governing';
 import AttendanceDashboard from './modules/attendance/AttendanceDashboard';
 import LibraryDashboard from './modules/library/LibraryDashboard';
+import LibrarianDashboard from './modules/library/librarian/LibrarianDashboard';
+import LibrarianBooks from './modules/library/librarian/BooksPage';
+import LibrarianStudents from './modules/library/librarian/StudentsPage';
+import LibrarianIssued from './modules/library/librarian/IssuedBooksPage';
+import LibrarianReminders from './modules/library/librarian/RemindersPage';
 import FinanceDashboard from './modules/finance/FinanceDashboard';
 import EventDashboard from './modules/events/EventDashboard';
 import StudentList from './modules/students/StudentList';
@@ -107,6 +112,12 @@ function App() {
           <Route path="/admin/teachers" element={<ProtectedRoute allowedRoles={['Admin']}><TeacherList /></ProtectedRoute>} />
           <Route path="/admin/attendance" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/library" element={<ProtectedRoute allowedRoles={['Admin']}><LibraryDashboard /></ProtectedRoute>} />
+          {/* Librarian Role Pages */}
+          <Route path="/librarian/dashboard" element={<ProtectedRoute allowedRoles={['Librarian']}><LibrarianDashboard /></ProtectedRoute>} />
+          <Route path="/librarian/books" element={<ProtectedRoute allowedRoles={['Librarian']}><LibrarianBooks /></ProtectedRoute>} />
+          <Route path="/librarian/students" element={<ProtectedRoute allowedRoles={['Librarian']}><LibrarianStudents /></ProtectedRoute>} />
+          <Route path="/librarian/issued" element={<ProtectedRoute allowedRoles={['Librarian']}><LibrarianIssued /></ProtectedRoute>} />
+          <Route path="/librarian/reminders" element={<ProtectedRoute allowedRoles={['Librarian']}><LibrarianReminders /></ProtectedRoute>} />
           <Route path="/admin/fees" element={<ProtectedRoute allowedRoles={['Admin']}><FinanceDashboard /></ProtectedRoute>} />
           <Route path="/admin/events" element={<ProtectedRoute allowedRoles={['Admin']}><EventDashboard /></ProtectedRoute>} />
           <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['Admin']}><ReportsPage /></ProtectedRoute>} />

@@ -79,6 +79,66 @@ const assertSupabase = () => {
   return supabase;
 };
 
+const mockAuthStorageKey = 'vernex-mock-auth-user';
+
+const mockUsers: Record<string, AuthenticatedUser & { password: string }> = {
+  'librarian@school.edu': {
+    id: 'mock-librarian-user',
+    name: 'Mock Librarian',
+    email: 'librarian@school.edu',
+    role: 'Librarian',
+    password: 'password',
+  },
+  'librarian.test@school.test': {
+    id: 'mock-librarian-test-user',
+    name: 'Test Librarian',
+    email: 'librarian.test@school.test',
+    role: 'Librarian',
+    password: 'TestPass123!',
+  },
+};
+
+const readMockUser = (): AuthenticatedUser | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const rawUser = window.sessionStorage.getItem(mockAuthStorageKey);
+    return rawUser ? JSON.parse(rawUser) as AuthenticatedUser : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveMockUser = (user: AuthenticatedUser) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.sessionStorage.setItem(mockAuthStorageKey, JSON.stringify(user));
+};
+
+const clearMockUser = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.sessionStorage.removeItem(mockAuthStorageKey);
+};
+
+const loginWithMockUser = (email: string, password: string): AuthenticatedUser | null => {
+  const mockUser = mockUsers[email.trim().toLowerCase()];
+
+  if (!mockUser || mockUser.password !== password) {
+    return null;
+  }
+
+  const { password: _password, ...user } = mockUser;
+  saveMockUser(user);
+  return user;
+};
+
 const singleRelation = <T>(value: T | T[] | null | undefined): T | null => {
   if (Array.isArray(value)) {
     return value[0] || null;
@@ -213,6 +273,11 @@ const getSessionProfile = async (session: Session): Promise<AuthenticatedUser> =
 };
 
 export const initializeSupabaseAuth = async (): Promise<AuthenticatedUser | null> => {
+  const mockUser = readMockUser();
+  if (mockUser) {
+    return mockUser;
+  }
+
   if (!supabase) {
     return null;
   }
@@ -234,6 +299,11 @@ export const initializeSupabaseAuth = async (): Promise<AuthenticatedUser | null
 };
 
 export const loginWithSupabase = async (email: string, password: string): Promise<AuthenticatedUser> => {
+  const mockUser = loginWithMockUser(email, password);
+  if (mockUser) {
+    return mockUser;
+  }
+
   const client = assertSupabase();
   const { data, error } = await client.auth.signInWithPassword({ email, password });
 
@@ -281,6 +351,8 @@ export const changeCurrentUserPassword = async (email: string, currentPassword: 
 };
 
 export const logoutFromSupabase = async () => {
+  clearMockUser();
+
   if (!supabase) {
     return;
   }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, BookCheck, AlertCircle, Search, Plus, Filter, CheckCircle } from 'lucide-react';
 import Modal from '../../components/common/Modal';
-import { createBook, fetchBooks, issueBook, type LibraryBook } from '../../services/erpContent';
+import { createBook, createIssueRecord, fetchBooks, fetchStudents, type LibraryBook } from '../../services/erpContent';
 
 const LibraryDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,6 +9,10 @@ const LibraryDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [students, setStudents] = useState<any[]>([]);
+  const [issueBookTarget, setIssueBookTarget] = useState<LibraryBook | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState('');
+  const [dueDate, setDueDate] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -16,9 +20,10 @@ const LibraryDashboard = () => {
     const loadBooks = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchBooks();
+        const [data, studentData] = await Promise.all([fetchBooks(), fetchStudents()]);
         if (isMounted) {
           setBooks(data);
+          setStudents(studentData);
         }
       } catch (error) {
         console.error('Failed to load library books:', error);
@@ -49,19 +54,32 @@ const LibraryDashboard = () => {
     book.author.toLowerCase().includes(searchTerm.toLowerCase())
   ), [books, searchTerm]);
 
-  const handleIssueBook = async (id: string) => {
-    const book = books.find((entry) => entry.id === id);
-    if (!book || book.availableCopies <= 0) {
+  const openIssueModal = (book: LibraryBook) => {
+    if (book.availableCopies <= 0) {
+      return;
+    }
+
+    const defaultDueDate = new Date();
+    defaultDueDate.setDate(defaultDueDate.getDate() + 14);
+    setIssueBookTarget(book);
+    setSelectedStudent('');
+    setDueDate(defaultDueDate.toISOString().slice(0, 10));
+  };
+
+  const handleIssueBook = async () => {
+    if (!issueBookTarget || !selectedStudent || !dueDate) {
+      showToast('Select a student and due date before issuing.');
       return;
     }
 
     try {
-      await issueBook(id);
-      setBooks((prev) => prev.map((entry) => entry.id === id ? {
+      await createIssueRecord(selectedStudent, issueBookTarget.id, dueDate);
+      setBooks((prev) => prev.map((entry) => entry.id === issueBookTarget.id ? {
         ...entry,
-        availableCopies: entry.availableCopies - 1,
+        availableCopies: Math.max(entry.availableCopies - 1, 0),
       } : entry));
-      showToast(`Successfully issued "${book.title}"!`);
+      setIssueBookTarget(null);
+      showToast(`Successfully issued "${issueBookTarget.title}"!`);
     } catch (error) {
       console.error('Failed to issue book:', error);
       showToast('Could not issue the selected book.');
@@ -194,7 +212,7 @@ const LibraryDashboard = () => {
                     <td className="px-6 py-4 text-right">
                       <button
                         disabled={book.availableCopies === 0}
-                        onClick={() => void handleIssueBook(book.id)}
+                        onClick={() => openIssueModal(book)}
                         className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:hover:text-slate-700 rounded-xl font-medium transition-colors shadow-sm text-sm active:scale-95"
                       >
                         Issue Book
@@ -242,6 +260,39 @@ const LibraryDashboard = () => {
             <button type="submit" className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors">Add to Catalog</button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={!!issueBookTarget} onClose={() => setIssueBookTarget(null)} title={issueBookTarget ? `Issue: ${issueBookTarget.title}` : 'Issue Book'}>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">Student</label>
+            <select
+              value={selectedStudent}
+              onChange={(event) => setSelectedStudent(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            >
+              <option value="">Select student</option>
+              {students.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.name} {student.rollNo ? `(Roll ${student.rollNo})` : ''} {student.sectionName ? `- ${student.sectionName}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">Due Date</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setIssueBookTarget(null)} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button type="button" onClick={() => void handleIssueBook()} className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 font-bold text-white hover:bg-indigo-700">Issue Book</button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

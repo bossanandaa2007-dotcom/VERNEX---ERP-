@@ -1,9 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Bell, Search, Menu, User, Mail, Shield, LogOut, CheckCircle, KeyRound, Eye, EyeOff } from 'lucide-react';
 import Modal from '../common/Modal';
 import { changeCurrentUserPassword } from '../../services/auth';
+import { supabase } from '../../lib/supabase';
+
+interface HeaderNotification {
+  id: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
 
 export const Header = ({ 
   collapsed, 
@@ -25,7 +34,9 @@ export const Header = ({
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showPasswordText, setShowPasswordText] = useState(false);
+  const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const teacherSubjects = user?.subjects?.length ? user.subjects.join(', ') : user?.subject;
+  const unreadCount = notifications.filter((notification) => !notification.is_read).length;
   const mobileTitle = (() => {
     if (user?.role === 'Governing Body') {
       const params = new URLSearchParams(location.search);
@@ -62,6 +73,54 @@ export const Header = ({
     setIsProfileOpen(false);
     resetPasswordForm();
   };
+
+  useEffect(() => {
+    if (!supabase || !user?.id) {
+      setNotifications([]);
+      return undefined;
+    }
+
+    const client = supabase;
+    const loadNotifications = async () => {
+      const { data, error } = await client
+        .from('notifications')
+        .select('id, title, message, is_read, created_at')
+        .eq('recipient_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (!error) {
+        setNotifications((data || []) as HeaderNotification[]);
+      }
+    };
+
+    void loadNotifications();
+
+    const channel = client
+      .channel(`header-notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}` },
+        () => void loadNotifications()
+      )
+      .subscribe();
+
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !user?.id || !isNotificationsOpen || unreadCount === 0) {
+      return;
+    }
+
+    void supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('recipient_id', user.id)
+      .eq('is_read', false);
+  }, [isNotificationsOpen, unreadCount, user?.id]);
 
   const handlePasswordChange = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -126,7 +185,9 @@ export const Header = ({
             aria-label="Open notifications"
           >
             <Bell size={20} />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
+            )}
           </button>
           
           <div 
@@ -155,19 +216,23 @@ export const Header = ({
           <section className="absolute inset-x-3 top-16 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-2xl shadow-slate-900/20 animate-in fade-in slide-in-from-top-3 duration-200">
             <div className="border-b border-slate-100 px-5 py-4">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">Notifications</p>
-              <h2 className="mt-1 text-lg font-black text-slate-950">Today</h2>
+              <h2 className="mt-1 text-lg font-black text-slate-950">{unreadCount ? `${unreadCount} unread` : 'Latest updates'}</h2>
             </div>
             <div className="space-y-2 p-3">
-              {[
-                'Attendance reminders are ready for your owned class.',
-                'Check new academic updates from your workspace.',
-                'Review pending requests from the mobile drawer.',
-              ].map((message) => (
-                <div key={message} className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-sm font-bold leading-5 text-slate-800">{message}</p>
-                  <p className="mt-1 text-xs font-medium text-slate-400">Just now</p>
+              {notifications.map((notification) => (
+                <div key={notification.id} className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-bold leading-5 text-slate-800">{notification.title}</p>
+                  <p className="mt-1 text-sm font-semibold leading-5 text-slate-600">{notification.message}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-400">
+                    {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(notification.created_at))}
+                  </p>
                 </div>
               ))}
+              {notifications.length === 0 && (
+                <div className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-400">
+                  No notifications yet.
+                </div>
+              )}
             </div>
             <div className="border-t border-slate-100 p-3">
               <button

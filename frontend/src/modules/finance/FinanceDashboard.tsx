@@ -26,6 +26,7 @@ import {
   fetchFeeRecords,
   saveAccountantNote,
   sendFeeReminders,
+  updateFeeCategoryDueDate,
   updateFeeStatuses,
   type FeeRecord,
 } from '../../services/erpContent';
@@ -533,6 +534,26 @@ const FinanceDashboard = () => {
     }
   };
 
+  const handlePersistDueDate = async (category: string, dueDate: string) => {
+    if (!dueDate || category === 'All Categories') {
+      return;
+    }
+
+    try {
+      const scopedRecordIds = classScopedRecords
+        .filter((fee) => fee.type === category)
+        .map((fee) => fee.id);
+
+      await updateFeeCategoryDueDate(category, dueDate, scopedRecordIds);
+      await loadFees();
+      pushRecentAction(`${category} due date saved.`);
+      showToast('Due date saved in Supabase.');
+    } catch (error) {
+      console.error('Failed to update due date:', error);
+      showToast('Could not save due date in Supabase.');
+    }
+  };
+
   const toggleRecord = (recordId: string) => {
     setSelectedRecords((current) =>
       current.includes(recordId) ? current.filter((id) => id !== recordId) : [...current, recordId]
@@ -845,6 +866,7 @@ const FinanceDashboard = () => {
                         setCategoryDueDates((current) => ({ ...current, [selectedCategory]: event.target.value }));
                         pushRecentAction(`${selectedCategory} due date updated.`);
                       }}
+                      onBlur={() => void handlePersistDueDate(selectedCategory, categoryDueDates[selectedCategory] || '')}
                       className="w-full rounded-xl border border-white/80 bg-white px-3 py-2 text-sm font-black text-slate-800 outline-none transition-all focus:ring-2 focus:ring-white"
                     />
                   </label>
