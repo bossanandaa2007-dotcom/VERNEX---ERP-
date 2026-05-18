@@ -143,7 +143,7 @@ const LoginModule = () => {
       </form>
       
       <div className="mt-6 border-t border-slate-100 pt-6">
-        <p className="text-xs text-slate-500 text-center uppercase tracking-wider font-semibold mb-3">Test Accounts</p>
+        <p className="text-xs text-slate-500 text-center uppercase tracking-wider font-semibold mb-3">Supabase Accounts</p>
         <div className="flex flex-wrap justify-center gap-2">
             {['admin', 'teacher', 'student', 'accountant', 'governing', 'librarian'].map(role => (
               <span key={role} className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-xs font-mono">
@@ -151,9 +151,6 @@ const LoginModule = () => {
               </span>
             ))}
         </div>
-        <p className="mt-3 text-center text-xs font-medium text-slate-400">
-          Mock librarian password: <span className="font-mono text-slate-600">password</span>
-        </p>
       </div>
     </div>
   );
