@@ -14,11 +14,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const getNavItems = (role: string) => {
-  const items = role === 'Accountant'
-    ? []
-    : [
-        { name: 'Dashboard', icon: LayoutDashboard, path: `/${role === 'Governing Body' ? 'governing' : role.toLowerCase()}/dashboard` },
-      ];
+  const items: { name: string; icon: any; path: string }[] = [];
+
+  // always add a single dashboard entry for allowed roles
+  if (role !== 'Accountant') {
+    items.push({ name: 'Dashboard', icon: LayoutDashboard, path: `/${role === 'Governing Body' ? 'governing' : role.toLowerCase()}/dashboard` });
+  }
 
   if (role === 'Admin') {
     items.push(
@@ -64,6 +65,14 @@ const getNavItems = (role: string) => {
   if (role === 'Accountant') {
     items.push(
       { name: 'Fees & Finance', icon: IndianRupee, path: '/accountant/fees' }
+    );
+  }
+
+  if (role === 'Librarian') {
+    items.push(
+      { name: 'Books', icon: BookOpen, path: '/librarian/books' },
+      { name: 'Issued', icon: BookOpen, path: '/librarian/issued' },
+      { name: 'Reminders', icon: FileText, path: '/librarian/reminders' }
     );
   }
 

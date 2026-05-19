@@ -348,13 +348,14 @@ export const fetchBooks = async () => {
 
 export const createBook = async (book: Omit<LibraryBook, 'id' | 'status'>) => {
   const client = assertSupabase();
+  const isbn = book.isbn?.trim() || `LOCAL-${crypto.randomUUID()}`;
   const { data, error } = await client
     .from('library_books')
     .insert({
       title: book.title,
       author: book.author,
       category: book.category,
-      isbn: book.isbn,
+      isbn,
       total_copies: book.totalCopies,
       available_copies: book.availableCopies,
       status: 'Available',
@@ -395,6 +396,99 @@ export const issueBook = async (id: string) => {
   if (error) throw error;
 };
 
+export const fetchStudents = async () => {
+  const client = assertSupabase();
+  const { data, error } = await client
+    .from('students')
+    .select('id, name, email, roll_no, category_id, section_id, grade_id, class_id, sections(name), grades(name, grade_number)')
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    rollNo: row.roll_no,
+    categoryId: row.category_id,
+    sectionId: row.section_id,
+    sectionName: row.sections?.name,
+    grade: row.grades?.name || (row.grades?.grade_number ? `Grade ${row.grades.grade_number}` : undefined),
+  }));
+};
+
+export interface LibraryIssue {
+  id: string;
+  student_id: string;
+  book_id: string;
+  issue_date: string;
+  due_date: string;
+  returned_at?: string | null;
+  status: string;
+  book?: LibraryBook;
+  student?: { id: string; name: string; sectionName?: string };
+}
+
+export const fetchLibraryIssues = async () => {
+  const client = assertSupabase();
+  const { data, error } = await client
+    .from('library_issues')
+    .select('id, student_id, book_id, issue_date, due_date, returned_at, status, book:library_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, section_id, sections(name))')
+    .order('due_date', { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    student_id: row.student_id,
+    book_id: row.book_id,
+    issue_date: row.issue_date,
+    due_date: row.due_date,
+    returned_at: row.returned_at,
+    status: row.status,
+    book: row.book ? {
+      id: row.book.id,
+      title: row.book.title,
+      author: row.book.author,
+      category: row.book.category,
+      isbn: row.book.isbn,
+      totalCopies: row.book.total_copies,
+      availableCopies: row.book.available_copies,
+      status: row.book.status,
+    } : undefined,
+    student: row.student ? { id: row.student.id, name: row.student.name, sectionName: row.student.sections?.name } : undefined,
+  })) as LibraryIssue[];
+};
+
+export const createIssueRecord = async (studentId: string, bookId: string, dueDate: string) => {
+  const client = assertSupabase();
+  const { data, error } = await client.rpc('issue_library_book', {
+    target_student_id: studentId,
+    target_book_id: bookId,
+    target_due_date: dueDate,
+  });
+
+  if (error) throw error;
+  return data as any;
+};
+
+export const markIssueReturned = async (issueId: string) => {
+  const client = assertSupabase();
+  const { data, error } = await client.rpc('return_library_issue', {
+    target_issue_id: issueId,
+  });
+
+  if (error) throw error;
+  return data as any;
+};
+
+export const sendReturnReminders = async (issueIds: string[], message?: string) => {
+  const client = assertSupabase();
+  // simple RPC or insert to notifications table if available
+  const { error } = await client.rpc('send_library_reminders', { issue_ids: issueIds, reminder_message: message || 'Please return the issued library book.' });
+  if (error) throw error;
+};
+
 export const fetchFeeRecords = async (studentEmail?: string) => {
   const client = assertSupabase();
   let query = client
@@ -402,7 +496,7 @@ export const fetchFeeRecords = async (studentEmail?: string) => {
     .select(`
       id,
       student_id,
-      amount,
+      total_amount,
       paid_amount,
       remaining_amount,
       due_date,
@@ -449,7 +543,7 @@ export const fetchFeeRecords = async (studentEmail?: string) => {
         categoryId: row.students?.category_id,
         sectionId: row.students?.section_id,
         sectionName: row.students?.sections?.name,
-        totalAmount: row.amount,
+        totalAmount: row.total_amount ?? row.amount,
         paidAmount: row.paid_amount,
         pendingAmount: row.remaining_amount,
         dueDate: row.due_date,
@@ -539,6 +633,17 @@ export const sendFeeReminders = async (recordIds: string[], message?: string) =>
     record_ids: recordIds,
     reminder_message: message || 'Please clear the pending fee at the earliest.',
     reminder_type: 'Fee Reminder',
+  });
+
+  if (error) throw error;
+};
+
+export const updateFeeCategoryDueDate = async (categoryName: string, dueDate: string, recordIds?: string[]) => {
+  const client = assertSupabase();
+  const { error } = await client.rpc('set_fee_category_due_date', {
+    category_name: categoryName,
+    target_due_date: dueDate,
+    record_ids: recordIds?.length ? recordIds : null,
   });
 
   if (error) throw error;

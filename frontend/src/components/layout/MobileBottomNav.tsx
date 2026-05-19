@@ -26,9 +26,16 @@ const governingTabs = [
   { name: 'Reports', icon: FileText, path: '/governing/reports' },
 ];
 
+const librarianTabs = [
+  { name: 'Dashboard', icon: Home, path: '/librarian/dashboard' },
+  { name: 'Books', icon: BookOpen, path: '/librarian/books' },
+  { name: 'Issued', icon: BarChart3, path: '/librarian/issued' },
+  { name: 'Reminders', icon: FileText, path: '/librarian/reminders' },
+];
+
 export const MobileBottomNav = ({ role }: { role?: string }) => {
   const location = useLocation();
-  const tabs = role === 'Teacher' ? teacherTabs : role === 'Student' ? studentTabs : role === 'Governing Body' ? governingTabs : [];
+  const tabs = role === 'Teacher' ? teacherTabs : role === 'Student' ? studentTabs : role === 'Governing Body' ? governingTabs : role === 'Librarian' ? librarianTabs : [];
 
   if (!tabs.length) {
     return null;
