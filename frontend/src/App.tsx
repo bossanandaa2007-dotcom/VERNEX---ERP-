@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from './store/useAuthStore';
 import { useClassStore } from './store/useClassStore';
@@ -37,17 +37,23 @@ import AdminMarksDashboard from './components/marks/AdminMarksDashboard';
 import AIAttendance from './components/attendance/AIAttendance';
 import ComplaintForm from './components/complaints/ComplaintForm';
 import ComplaintInbox from './components/complaints/ComplaintInbox';
+import LeaveRequestForm from './components/leave/LeaveRequestForm';
+import LeaveRequestInbox from './components/leave/LeaveRequestInbox';
 import TimetablePage from './modules/timetable/TimetablePage';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { isAuthenticated, isLoading, user } = useAuthStore();
+  const location = useLocation();
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen text-slate-500">Loading...</div>;
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    const loginPath = allowedRoles?.includes('Student') || location.pathname.startsWith('/student')
+      ? '/student-login'
+      : '/login';
+    return <Navigate to={loginPath} replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
@@ -98,6 +104,7 @@ function App() {
 
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginModule />} />
+          <Route path="/student-login" element={<LoginModule mode="student" />} />
         </Route>
 
         <Route element={<DashboardLayout />}>
@@ -133,6 +140,7 @@ function App() {
           <Route path="/teacher/profile" element={<ProtectedRoute allowedRoles={['Teacher']}><TeacherProfile /></ProtectedRoute>} />
           <Route path="/teacher/ai-attendance" element={<ProtectedRoute allowedRoles={['Teacher']}><div className="p-3 lg:p-8"><AIAttendance /></div></ProtectedRoute>} />
           <Route path="/teacher/marks-entry" element={<ProtectedRoute allowedRoles={['Teacher']}><div className="p-3 lg:p-8"><MarksEntry /></div></ProtectedRoute>} />
+          <Route path="/teacher/leave-requests" element={<ProtectedRoute allowedRoles={['Teacher']}><div className="p-3 lg:p-8"><LeaveRequestInbox /></div></ProtectedRoute>} />
           <Route path="/teacher/complaints" element={<ProtectedRoute allowedRoles={['Teacher']}><div className="p-3 lg:p-8"><ComplaintInbox /></div></ProtectedRoute>} />
           <Route path="/teacher/assignments" element={<ProtectedRoute allowedRoles={['Teacher']}><Assignments /></ProtectedRoute>} />
           <Route path="/teacher/materials" element={<ProtectedRoute allowedRoles={['Teacher']}><StudyMaterials /></ProtectedRoute>} />
@@ -152,6 +160,7 @@ function App() {
           <Route path="/student/events" element={<ProtectedRoute allowedRoles={['Student']}><EventDashboard /></ProtectedRoute>} />
           <Route path="/student/calendar" element={<ProtectedRoute allowedRoles={['Student']}><div className="p-3 lg:p-8"><Calendar /></div></ProtectedRoute>} />
           <Route path="/student/timetable" element={<ProtectedRoute allowedRoles={['Student']}><div className="p-3 lg:p-8"><TimetablePage /></div></ProtectedRoute>} />
+          <Route path="/student/leave-requests" element={<ProtectedRoute allowedRoles={['Student']}><div className="p-3 lg:p-8"><LeaveRequestForm /></div></ProtectedRoute>} />
           <Route path="/student/complaints" element={<ProtectedRoute allowedRoles={['Student']}><div className="p-3 lg:p-8"><ComplaintForm /></div></ProtectedRoute>} />
 
           {/* --- Accountant Routes --- */}

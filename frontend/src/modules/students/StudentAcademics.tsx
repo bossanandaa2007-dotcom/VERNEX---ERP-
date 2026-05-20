@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardList, IndianRupee, MessageSquare } from 'lucide-react';
+import { BookOpen, CalendarCheck, ClipboardList, IndianRupee, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -16,6 +16,13 @@ const actions = [
     icon: BookOpen,
     path: '/student/materials',
     accent: 'bg-emerald-600',
+  },
+  {
+    title: 'Leave Request',
+    description: 'Ask your assigned class teacher for leave.',
+    icon: CalendarCheck,
+    path: '/student/leave-requests',
+    accent: 'bg-sky-600',
   },
   {
     title: 'Complaints',
@@ -49,7 +56,7 @@ const StudentAcademics = () => {
 
       <div className="hidden lg:block">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Academic Hub</h1>
-        <p className="text-slate-500 mt-1">Assignments, study materials, fees, and complaints.</p>
+        <p className="text-slate-500 mt-1">Assignments, study materials, leave requests, fees, and complaints.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

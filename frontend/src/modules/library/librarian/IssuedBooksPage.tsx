@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchLibraryIssues, markIssueReturned, sendReturnReminders } from '../../../services/erpContent';
+import { fetchLibraryIssues, markIssueReturned } from '../../../services/erpContent';
 
 const statusColor = (issue: any) => {
   if (issue.returned_at) return 'bg-emerald-100 text-emerald-700';
@@ -29,14 +29,6 @@ const IssuedBooksPage = () => {
   const markReturned = async (id: string) => {
     await markIssueReturned(id);
     setIssues(prev => prev.map(i => i.id === id ? { ...i, returned_at: new Date().toISOString().split('T')[0], status: 'Returned' } : i));
-  };
-
-  const sendReminders = async () => {
-    const ids = Object.keys(selected).filter(k => selected[k]);
-    if (!ids.length) return;
-    await sendReturnReminders(ids);
-    // simple feedback
-    alert('Reminders queued');
   };
 
   return (

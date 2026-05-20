@@ -33,6 +33,10 @@ import {
 
 type FeeStatus = 'Paid' | 'Pending' | 'Partial';
 type CategoryDueState = 'active' | 'upcoming' | 'overdue' | 'completed' | 'unscheduled';
+type PartialPaymentDialog = {
+  recordIds: string[];
+  amount: string;
+} | null;
 
 interface ClassSummary {
   key: string;
@@ -47,7 +51,7 @@ interface ClassSummary {
 }
 
 const feeCategories = ['All Categories', 'Tuition Fee', 'Term Fee', 'Book Fee', 'Note Fee', 'Exam Fee'];
-const statusFilters = ['All Status', 'Paid', 'Pending', 'Partial'];
+const statusFilters = ['All Status', 'Paid', 'Pending'];
 const dueDateStorageKey = 'vernex-accountant-category-due-dates';
 
 const splitSectionName = (sectionName?: string) => {
@@ -82,8 +86,8 @@ const getClassLabel = (sectionName?: string) => {
 };
 
 const normalizeStatus = (status?: string): FeeStatus => {
-  if (status === 'Paid' || status === 'Partial') {
-    return status;
+  if (status === 'Paid') {
+    return 'Paid';
   }
   return 'Pending';
 };
@@ -192,6 +196,7 @@ const FinanceDashboard = () => {
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [partialPaymentDialog, setPartialPaymentDialog] = useState<PartialPaymentDialog>(null);
   const [categoryDueDates, setCategoryDueDates] = useState<Record<string, string>>(() => {
     if (typeof window === 'undefined') {
       return {};
@@ -486,22 +491,57 @@ const FinanceDashboard = () => {
     setSelectedRecords([]);
   };
 
-  const handleMarkRecords = async (recordIds: string[], status: FeeStatus) => {
+  const handleMarkRecords = async (recordIds: string[], status: FeeStatus, partialPaidAmount?: number) => {
+    if (!recordIds.length) {
+      showToast('Select at least one student fee record first.');
+      return false;
+    }
+
+    try {
+      await updateFeeStatuses(recordIds, status, partialPaidAmount);
+      await loadFees();
+      setSelectedRecords([]);
+      const message = status === 'Partial'
+        ? `${recordIds.length} partial payment${recordIds.length > 1 ? 's' : ''} saved as pending.`
+        : `${recordIds.length} fee record${recordIds.length > 1 ? 's' : ''} marked ${status}.`;
+      pushRecentAction(message);
+      showToast(message);
+      return true;
+    } catch (error) {
+      console.error('Failed to update fee status:', error);
+      showToast('Could not update fee status in Supabase.');
+      return false;
+    }
+  };
+
+  const openPartialPaymentDialog = (recordIds: string[]) => {
     if (!recordIds.length) {
       showToast('Select at least one student fee record first.');
       return;
     }
 
-    try {
-      await updateFeeStatuses(recordIds, status);
-      await loadFees();
-      setSelectedRecords([]);
-      const message = `${recordIds.length} fee record${recordIds.length > 1 ? 's' : ''} marked ${status}.`;
-      pushRecentAction(message);
-      showToast(message);
-    } catch (error) {
-      console.error('Failed to update fee status:', error);
-      showToast('Could not update fee status in Supabase.');
+    const firstRecord = recordsWithLocalStatus.find((fee) => fee.id === recordIds[0]);
+    const suggestedAmount = firstRecord?.paidAmount && Number(firstRecord.paidAmount) > 0
+      ? String(firstRecord.paidAmount)
+      : '';
+
+    setPartialPaymentDialog({ recordIds, amount: suggestedAmount });
+  };
+
+  const handleConfirmPartialPayment = async () => {
+    if (!partialPaymentDialog) {
+      return;
+    }
+
+    const paidAmount = Number(partialPaymentDialog.amount);
+    if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
+      showToast('Enter a valid paid amount.');
+      return;
+    }
+
+    const saved = await handleMarkRecords(partialPaymentDialog.recordIds, 'Partial', paidAmount);
+    if (saved) {
+      setPartialPaymentDialog(null);
     }
   };
 
@@ -680,7 +720,9 @@ const FinanceDashboard = () => {
         </div>
       )}
 
-      <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm lg:p-5">
+      <section className={`rounded-2xl border border-slate-100 bg-white p-4 shadow-sm lg:p-5 ${
+        selectedGrade ? 'hidden md:block' : ''
+      }`}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-black text-slate-900">Select Grade</h2>
@@ -711,7 +753,9 @@ const FinanceDashboard = () => {
       </section>
 
       {selectedGrade && (
-        <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm lg:p-5">
+        <section className={`rounded-2xl border border-slate-100 bg-white p-4 shadow-sm lg:p-5 ${
+          selectedClassKey ? 'hidden md:block' : ''
+        }`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-black text-slate-900">Select Class</h2>
@@ -774,6 +818,16 @@ const FinanceDashboard = () => {
       {selectedClassKey && (
         <section className={`overflow-hidden rounded-2xl border shadow-sm transition-colors duration-300 ${selectedDueStyles.panel}`}>
           <div className="border-b border-white/70 p-4 lg:p-5">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedClassKey(null);
+                setSelectedRecords([]);
+              }}
+              className="mb-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 md:hidden"
+            >
+              <ArrowLeft size={14} /> Classes
+            </button>
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h2 className="text-lg font-black text-slate-900">{selectedClass?.label || 'Class'} Fee Workspace</h2>
@@ -878,8 +932,7 @@ const FinanceDashboard = () => {
               <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-100 bg-white p-3">
                 <span className="text-xs font-black uppercase tracking-widest text-indigo-700">{selectedRecords.length} selected</span>
                 <button onClick={() => handleMarkRecords(selectedRecords, 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Mark Paid</button>
-                <button onClick={() => handleMarkRecords(selectedRecords, 'Pending')} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white">Mark Pending</button>
-                <button onClick={() => handleMarkRecords(selectedRecords, 'Partial')} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-black text-white">Mark Partial</button>
+                <button onClick={() => openPartialPaymentDialog(selectedRecords)} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-black text-white">Mark Partial</button>
                 <button onClick={() => setSelectedRecords([])} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">Reject Selection</button>
               </div>
             )}
@@ -971,8 +1024,7 @@ const FinanceDashboard = () => {
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <button onClick={() => handleMarkRecords([fee.id], 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Paid</button>
-                    <button onClick={() => handleMarkRecords([fee.id], 'Pending')} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white">Pending</button>
-                    <button onClick={() => handleMarkRecords([fee.id], 'Partial')} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-black text-white">Partial</button>
+                    <button onClick={() => openPartialPaymentDialog([fee.id])} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-black text-white">Partial</button>
                     <button onClick={() => handleReminder([fee.id])} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
                       <MessageSquare size={14} /> Reminder
                     </button>
@@ -1003,6 +1055,59 @@ const FinanceDashboard = () => {
             ))}
           </div>
         </section>
+      )}
+
+      {partialPaymentDialog && (
+        <div className="fixed inset-0 z-50 flex items-end bg-slate-900/40 px-4 py-5 backdrop-blur-sm sm:items-center sm:justify-center">
+          <div className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black text-slate-900">Partial Payment</h2>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  Enter the paid amount. The remaining balance will stay pending.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPartialPaymentDialog(null)}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600"
+              >
+                Close
+              </button>
+            </div>
+            <label className="mt-5 block">
+              <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Paid Amount</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={partialPaymentDialog.amount}
+                onChange={(event) => setPartialPaymentDialog((current) =>
+                  current ? { ...current, amount: event.target.value } : current
+                )}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-black text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                placeholder="Enter amount paid"
+                autoFocus
+              />
+            </label>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPartialPaymentDialog(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-600"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmPartialPayment()}
+                className="rounded-xl bg-sky-600 px-4 py-3 text-xs font-black text-white shadow-sm"
+              >
+                Save Partial
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

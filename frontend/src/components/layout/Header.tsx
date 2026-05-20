@@ -50,6 +50,7 @@ export const Header = ({
     }
     if (location.pathname.includes('/classes')) return 'Classes';
     if (location.pathname.includes('/attendance')) return 'Attendance';
+    if (location.pathname.includes('/leave-requests')) return 'Leave Request';
     if (location.pathname.includes('/academics')) return 'Academics';
     if (location.pathname.includes('/timetable')) return 'Timetable';
     if (location.pathname.includes('/performance') || location.pathname.includes('/marks')) return 'Performance';

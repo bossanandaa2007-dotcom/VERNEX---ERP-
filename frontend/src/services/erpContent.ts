@@ -678,12 +678,24 @@ export const fetchFeeRecords = async (studentEmail?: string) => {
   })) as FeeRecord[];
 };
 
-export const updateFeeStatuses = async (recordIds: string[], status: 'Paid' | 'Pending' | 'Partial') => {
+export const updateFeeStatuses = async (
+  recordIds: string[],
+  status: 'Paid' | 'Pending' | 'Partial',
+  partialPaidAmount?: number
+) => {
   const client = assertSupabase();
-  const { error } = await client.rpc('bulk_update_fee_status', {
-    record_ids: recordIds,
-    new_status: status,
-  });
+  const payload = partialPaidAmount === undefined
+    ? {
+        record_ids: recordIds,
+        new_status: status,
+      }
+    : {
+        record_ids: recordIds,
+        new_status: status,
+        partial_paid_amount: partialPaidAmount,
+      };
+
+  const { error } = await client.rpc('bulk_update_fee_status', payload);
 
   if (error) throw error;
 };
