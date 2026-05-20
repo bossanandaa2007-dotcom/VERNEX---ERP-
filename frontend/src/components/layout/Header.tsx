@@ -246,6 +246,39 @@ export const Header = ({
         </div>
       )}
 
+      {isNotificationsOpen && (
+        <div className="fixed inset-0 z-[90] hidden lg:block">
+          <button
+            type="button"
+            aria-label="Close notifications"
+            onClick={() => setIsNotificationsOpen(false)}
+            className="absolute inset-0 cursor-default bg-transparent"
+          />
+          <section className="absolute right-6 top-20 w-96 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl shadow-slate-900/15 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">Notifications</p>
+              <h2 className="mt-1 text-lg font-black text-slate-950">{unreadCount ? `${unreadCount} unread` : 'Latest updates'}</h2>
+            </div>
+            <div className="max-h-96 space-y-2 overflow-y-auto p-3">
+              {notifications.map((notification) => (
+                <div key={notification.id} className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-bold leading-5 text-slate-800">{notification.title}</p>
+                  <p className="mt-1 text-sm font-semibold leading-5 text-slate-600">{notification.message}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-400">
+                    {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(notification.created_at))}
+                  </p>
+                </div>
+              ))}
+              {notifications.length === 0 && (
+                <div className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-400">
+                  No notifications yet.
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
       <Modal isOpen={isProfileOpen} onClose={closeProfile} title="My Profile">
         <div className="space-y-6">
           <div className="flex flex-col items-center gap-3 py-4">

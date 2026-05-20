@@ -53,6 +53,17 @@ export interface LibraryBook {
   status: string;
 }
 
+export interface LibraryStudent {
+  id: string;
+  name: string;
+  email: string;
+  rollNo: string;
+  categoryId?: string | null;
+  sectionId?: string | null;
+  sectionName?: string;
+  grade?: string;
+}
+
 export interface FeeRecord {
   id: string;
   studentId: string;
@@ -78,6 +89,8 @@ const assertSupabase = () => {
 
   return supabase;
 };
+
+const LIBRARIAN_BOOKS_TABLE = 'librarian_books';
 
 export const fetchAssignments = async (classNames?: string[]) => {
   const client = assertSupabase();
@@ -328,7 +341,7 @@ export const deleteEvent = async (id: string) => {
 export const fetchBooks = async () => {
   const client = assertSupabase();
   const { data, error } = await client
-    .from('library_books')
+    .from(LIBRARIAN_BOOKS_TABLE)
     .select('id, title, author, category, isbn, total_copies, available_copies, status')
     .order('title', { ascending: true });
 
@@ -350,7 +363,7 @@ export const createBook = async (book: Omit<LibraryBook, 'id' | 'status'>) => {
   const client = assertSupabase();
   const isbn = book.isbn?.trim() || `LOCAL-${crypto.randomUUID()}`;
   const { data, error } = await client
-    .from('library_books')
+    .from(LIBRARIAN_BOOKS_TABLE)
     .insert({
       title: book.title,
       author: book.author,
@@ -377,10 +390,51 @@ export const createBook = async (book: Omit<LibraryBook, 'id' | 'status'>) => {
   } as LibraryBook;
 };
 
+export const updateBook = async (id: string, book: Omit<LibraryBook, 'id' | 'status'>) => {
+  const client = assertSupabase();
+  const isbn = book.isbn?.trim() || `LOCAL-${id}`;
+  const { data, error } = await client
+    .from(LIBRARIAN_BOOKS_TABLE)
+    .update({
+      title: book.title,
+      author: book.author,
+      category: book.category,
+      isbn,
+      total_copies: book.totalCopies,
+      available_copies: book.availableCopies,
+    })
+    .eq('id', id)
+    .select('id, title, author, category, isbn, total_copies, available_copies, status')
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    title: data.title,
+    author: data.author,
+    category: data.category,
+    isbn: data.isbn,
+    totalCopies: data.total_copies,
+    availableCopies: data.available_copies,
+    status: data.status,
+  } as LibraryBook;
+};
+
+export const deleteBook = async (id: string) => {
+  const client = assertSupabase();
+  const { error } = await client
+    .from(LIBRARIAN_BOOKS_TABLE)
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
 export const issueBook = async (id: string) => {
   const client = assertSupabase();
   const { data: current, error: currentError } = await client
-    .from('library_books')
+    .from(LIBRARIAN_BOOKS_TABLE)
     .select('available_copies')
     .eq('id', id)
     .single();
@@ -389,32 +443,49 @@ export const issueBook = async (id: string) => {
   if ((current.available_copies || 0) <= 0) throw new Error('No copies available.');
 
   const { error } = await client
-    .from('library_books')
+    .from(LIBRARIAN_BOOKS_TABLE)
     .update({ available_copies: current.available_copies - 1 })
     .eq('id', id);
 
   if (error) throw error;
 };
 
+const mapLibraryStudent = (row: any): LibraryStudent => ({
+  id: row.id,
+  name: row.name,
+  email: row.email,
+  rollNo: row.roll_no,
+  categoryId: row.category_id,
+  sectionId: row.section_id,
+  sectionName: row.sections?.name,
+});
+
 export const fetchStudents = async () => {
   const client = assertSupabase();
   const { data, error } = await client
     .from('students')
-    .select('id, name, email, roll_no, category_id, section_id, grade_id, class_id, sections(name), grades(name, grade_number)')
+    .select('id, name, email, roll_no, category_id, section_id, sections(name)')
     .order('name', { ascending: true });
 
   if (error) throw error;
 
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    rollNo: row.roll_no,
-    categoryId: row.category_id,
-    sectionId: row.section_id,
-    sectionName: row.sections?.name,
-    grade: row.grades?.name || (row.grades?.grade_number ? `Grade ${row.grades.grade_number}` : undefined),
-  }));
+  return (data || []).map(mapLibraryStudent);
+};
+
+export const fetchStudentByRollNo = async (rollNo: string) => {
+  const client = assertSupabase();
+  const normalizedRollNo = rollNo.trim();
+
+  if (!normalizedRollNo) return null;
+
+  const { data, error } = await client
+    .from('students')
+    .select('id, name, email, roll_no, category_id, section_id, sections(name)')
+    .ilike('roll_no', normalizedRollNo)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? mapLibraryStudent(data) : null;
 };
 
 export interface LibraryIssue {
@@ -426,14 +497,14 @@ export interface LibraryIssue {
   returned_at?: string | null;
   status: string;
   book?: LibraryBook;
-  student?: { id: string; name: string; sectionName?: string };
+  student?: { id: string; name: string; rollNo?: string; sectionName?: string };
 }
 
 export const fetchLibraryIssues = async () => {
   const client = assertSupabase();
   const { data, error } = await client
     .from('library_issues')
-    .select('id, student_id, book_id, issue_date, due_date, returned_at, status, book:library_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, section_id, sections(name))')
+    .select('id, student_id, book_id, issue_date, due_date, returned_at, status, book:librarian_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, roll_no, section_id, sections(name))')
     .order('due_date', { ascending: false });
 
   if (error) throw error;
@@ -456,7 +527,7 @@ export const fetchLibraryIssues = async () => {
       availableCopies: row.book.available_copies,
       status: row.book.status,
     } : undefined,
-    student: row.student ? { id: row.student.id, name: row.student.name, sectionName: row.student.sections?.name } : undefined,
+    student: row.student ? { id: row.student.id, name: row.student.name, rollNo: row.student.roll_no, sectionName: row.student.sections?.name } : undefined,
   })) as LibraryIssue[];
 };
 
