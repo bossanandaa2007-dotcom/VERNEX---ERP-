@@ -46,9 +46,6 @@ const IssuedBooksPage = () => {
           <h1 className="text-2xl font-bold">Issued Books</h1>
           <p className="text-slate-500">Track active issues, mark returns and send reminders.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={sendReminders} className="px-3 py-2 bg-indigo-600 text-white rounded-xl">Send Reminder</button>
-        </div>
       </div>
 
       <div className="space-y-3">
