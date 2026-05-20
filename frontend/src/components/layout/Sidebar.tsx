@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Shield, CheckCircle, Award,
   Library, IndianRupee, Calendar, FileText, Settings,
   BookOpen, BarChart3, LogOut, ChevronLeft, ChevronRight,
-  Building2, CalendarDays
+  Building2, CalendarDays, ClipboardList
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -42,6 +42,7 @@ const getNavItems = (role: string) => {
       { name: 'Manual Attendance', icon: CheckCircle, path: '/teacher/attendance' },
       { name: 'AI Attendance', icon: Shield, path: '/teacher/ai-attendance' },
       { name: 'Marks Hub', icon: Award, path: '/teacher/marks-entry' },
+      { name: 'Leave Requests', icon: ClipboardList, path: '/teacher/leave-requests' },
       { name: 'Complaints', icon: FileText, path: '/teacher/complaints' },
       { name: 'Calendar', icon: Calendar, path: '/teacher/calendar' },
       { name: 'Study Materials', icon: BookOpen, path: '/teacher/materials' },
@@ -54,6 +55,7 @@ const getNavItems = (role: string) => {
       { name: 'My Attendance', icon: CheckCircle, path: '/student/attendance' },
       { name: 'Timetable', icon: CalendarDays, path: '/student/timetable' },
       { name: 'My Marks', icon: Award, path: '/student/marks' },
+      { name: 'Leave Request', icon: ClipboardList, path: '/student/leave-requests' },
       { name: 'Complaints', icon: FileText, path: '/student/complaints' },
       { name: 'Study Materials', icon: BookOpen, path: '/student/materials' },
       { name: 'Calendar', icon: Calendar, path: '/student/calendar' },
@@ -133,7 +135,7 @@ export const Sidebar = ({
 
   const handleLogout = () => {
     void logout().finally(() => {
-      navigate('/login');
+      navigate(role === 'Student' ? '/student-login' : '/login');
     });
   };
 

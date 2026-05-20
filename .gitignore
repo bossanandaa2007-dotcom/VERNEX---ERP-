@@ -24,6 +24,8 @@ dist-ssr
 *.sw?
 
 .vercel
+.codex/
+backend/supabase/.temp/
 .env
 frontend/.env
 backend/.env

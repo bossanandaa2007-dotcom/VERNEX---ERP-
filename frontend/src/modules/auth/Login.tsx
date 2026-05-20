@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,11 +13,36 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-const LoginModule = () => {
-  const { login } = useAuthStore();
+type LoginMode = 'staff' | 'student';
+
+const STAFF_ROLES = ['Admin', 'Principal', 'Teacher', 'Accountant', 'Governing Body', 'Librarian'];
+
+const getDashboardPath = (role?: string) => {
+  switch (role) {
+    case 'Admin':
+      return '/admin/dashboard';
+    case 'Principal':
+    case 'Teacher':
+      return '/teacher/dashboard';
+    case 'Student':
+      return '/student/dashboard';
+    case 'Accountant':
+      return '/accountant/fees';
+    case 'Governing Body':
+      return '/governing/dashboard';
+    case 'Librarian':
+      return '/librarian/dashboard';
+    default:
+      return '/';
+  }
+};
+
+const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
+  const { login, logout } = useAuthStore();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const isStudentLogin = mode === 'student';
 
   const {
     register,
@@ -35,23 +60,20 @@ const LoginModule = () => {
 
       if (success) {
         const userRole = useAuthStore.getState().user?.role;
-        switch (userRole) {
-          case 'Admin':
-            navigate('/admin/dashboard'); break;
-          case 'Principal':
-          case 'Teacher':
-            navigate('/teacher/dashboard'); break;
-          case 'Student':
-            navigate('/student/dashboard'); break;
-          case 'Accountant':
-            navigate('/accountant/fees'); break;
-          case 'Governing Body':
-            navigate('/governing/dashboard'); break;
-          case 'Librarian':
-            navigate('/librarian/dashboard'); break;
-          default:
-            navigate('/');
+
+        if (isStudentLogin && userRole !== 'Student') {
+          await logout();
+          setError('This login is only for students. Please use the staff login.');
+          return;
         }
+
+        if (!isStudentLogin && (!userRole || !STAFF_ROLES.includes(userRole))) {
+          await logout();
+          setError('Students must use the student login page.');
+          return;
+        }
+
+        navigate(getDashboardPath(userRole));
       } else {
         setError('Invalid credentials. Please try again.');
       }
@@ -64,6 +86,13 @@ const LoginModule = () => {
 
   return (
     <div className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-slate-900">{isStudentLogin ? 'Student Login' : 'Staff Login'}</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {isStudentLogin ? 'Students can access their dashboard here.' : 'Admin, teachers, finance, governing body, and library staff can sign in here.'}
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         
         {error && (
@@ -141,11 +170,29 @@ const LoginModule = () => {
           )}
         </button>
       </form>
+
+      <div className="mt-5 text-center text-sm text-slate-600">
+        {isStudentLogin ? (
+          <>
+            Staff member?{' '}
+            <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">
+              Use staff login
+            </Link>
+          </>
+        ) : (
+          <>
+            Student?{' '}
+            <Link to="/student-login" className="font-semibold text-indigo-600 hover:text-indigo-500">
+              Use student login
+            </Link>
+          </>
+        )}
+      </div>
       
       <div className="mt-6 border-t border-slate-100 pt-6">
         <p className="text-xs text-slate-500 text-center uppercase tracking-wider font-semibold mb-3">Supabase Accounts</p>
         <div className="flex flex-wrap justify-center gap-2">
-            {['admin', 'teacher', 'student', 'accountant', 'governing', 'librarian'].map(role => (
+            {(isStudentLogin ? ['student'] : ['admin', 'teacher', 'accountant', 'governing', 'librarian']).map(role => (
               <span key={role} className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-xs font-mono">
                 {role}@school.edu
               </span>

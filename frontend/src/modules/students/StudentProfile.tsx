@@ -9,7 +9,7 @@ const StudentProfile = () => {
   const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = () => {
-    void logout().finally(() => navigate('/login'));
+    void logout().finally(() => navigate('/student-login'));
   };
 
   return (
