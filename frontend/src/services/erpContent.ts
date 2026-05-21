@@ -599,83 +599,33 @@ export const fetchFeeRecords = async (studentEmail?: string) => {
   }
 
   const { data, error } = await query;
-  if (!error) {
-    return (data || []).map((row: any) => {
-      const notes = [...(row.accountant_notes || [])].sort((left: any, right: any) =>
-        String(right.updated_at || '').localeCompare(String(left.updated_at || ''))
-      );
-
-      return {
-        id: row.id,
-        studentId: row.student_id,
-        studentEmail: row.students?.email,
-        studentName: row.students?.name,
-        rollNo: row.students?.roll_no,
-        categoryId: row.students?.category_id,
-        sectionId: row.students?.section_id,
-        sectionName: row.students?.sections?.name,
-        totalAmount: row.total_amount ?? row.amount,
-        paidAmount: row.paid_amount,
-        pendingAmount: row.remaining_amount,
-        dueDate: row.due_date,
-        type: row.fee_categories?.name,
-        status: row.status,
-        latestNote: notes[0]?.note,
-      };
-    }) as FeeRecord[];
-  }
-
-  if (!String(error.message || '').includes('student_fee_records')) {
+  if (error) {
     throw error;
   }
 
-  let legacyQuery = client
-    .from('fee_records')
-    .select(`
-      id,
-      student_id,
-      student_email,
-      total_amount,
-      paid_amount,
-      pending_amount,
-      due_date,
-      type,
-      status,
-      students (
-        name,
-        roll_no,
-        category_id,
-        section_id,
-        sections (
-          name
-        )
-      )
-    `)
-    .order('due_date', { ascending: true });
+  return (data || []).map((row: any) => {
+    const notes = [...(row.accountant_notes || [])].sort((left: any, right: any) =>
+      String(right.updated_at || '').localeCompare(String(left.updated_at || ''))
+    );
 
-  if (studentEmail) {
-    legacyQuery = legacyQuery.eq('student_email', studentEmail);
-  }
-
-  const { data: legacyData, error: legacyError } = await legacyQuery;
-  if (legacyError) throw legacyError;
-
-  return (legacyData || []).map((row: any) => ({
-    id: row.id,
-    studentId: row.student_id,
-    studentEmail: row.student_email,
-    studentName: row.students?.name,
-    rollNo: row.students?.roll_no,
-    categoryId: row.students?.category_id,
-    sectionId: row.students?.section_id,
-    sectionName: row.students?.sections?.name,
-    totalAmount: row.total_amount,
-    paidAmount: row.paid_amount,
-    pendingAmount: row.pending_amount,
-    dueDate: row.due_date,
-    type: row.type,
-    status: row.status,
-  })) as FeeRecord[];
+    return {
+      id: row.id,
+      studentId: row.student_id,
+      studentEmail: row.students?.email,
+      studentName: row.students?.name,
+      rollNo: row.students?.roll_no,
+      categoryId: row.students?.category_id,
+      sectionId: row.students?.section_id,
+      sectionName: row.students?.sections?.name,
+      totalAmount: row.total_amount,
+      paidAmount: row.paid_amount,
+      pendingAmount: row.remaining_amount,
+      dueDate: row.due_date,
+      type: row.fee_categories?.name,
+      status: row.status,
+      latestNote: notes[0]?.note,
+    };
+  }) as FeeRecord[];
 };
 
 export const updateFeeStatuses = async (
@@ -719,6 +669,32 @@ export const sendFeeReminders = async (recordIds: string[], message?: string) =>
   });
 
   if (error) throw error;
+};
+
+export const setStandardTermFee = async ({
+  standard,
+  term,
+  amount,
+  dueDate,
+  message,
+}: {
+  standard: number;
+  term: 'Term 1' | 'Term 2' | 'Term 3';
+  amount: number;
+  dueDate: string;
+  message?: string;
+}) => {
+  const client = assertSupabase();
+  const { data, error } = await client.rpc('set_standard_term_fee', {
+    target_standard: standard,
+    target_term: term,
+    target_total_amount: amount,
+    target_due_date: dueDate,
+    reminder_message: message || null,
+  });
+
+  if (error) throw error;
+  return Number(data || 0);
 };
 
 export const updateFeeCategoryDueDate = async (categoryName: string, dueDate: string, recordIds?: string[]) => {

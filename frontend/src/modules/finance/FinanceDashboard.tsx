@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  AlertTriangle,
   ArrowLeft,
   Bell,
   CalendarDays,
@@ -12,7 +13,10 @@ import {
   FileText,
   Filter,
   GraduationCap,
+  IndianRupee,
+  Megaphone,
   MessageSquare,
+  Save,
   Send,
   Users,
 } from 'lucide-react';
@@ -26,6 +30,7 @@ import {
   fetchFeeRecords,
   saveAccountantNote,
   sendFeeReminders,
+  setStandardTermFee,
   updateFeeCategoryDueDate,
   updateFeeStatuses,
   type FeeRecord,
@@ -37,6 +42,17 @@ type PartialPaymentDialog = {
   recordIds: string[];
   amount: string;
 } | null;
+type TermFeeForm = {
+  standard: string;
+  term: 'Term 1' | 'Term 2' | 'Term 3';
+  amount: string;
+  dueDate: string;
+  message: string;
+};
+type PaymentDraft = {
+  paidAmount: string;
+  status: FeeStatus;
+};
 
 interface ClassSummary {
   key: string;
@@ -50,9 +66,10 @@ interface ClassSummary {
   completion: number;
 }
 
-const feeCategories = ['All Categories', 'Tuition Fee', 'Term Fee', 'Book Fee', 'Note Fee', 'Exam Fee'];
-const statusFilters = ['All Status', 'Paid', 'Pending'];
+const feeCategories = ['All Categories', 'Term 1 Fee', 'Term 2 Fee', 'Term 3 Fee'];
+const statusFilters = ['All Status', 'Paid', 'Partial', 'Pending'];
 const dueDateStorageKey = 'vernex-accountant-category-due-dates';
+const termOptions: TermFeeForm['term'][] = ['Term 1', 'Term 2', 'Term 3'];
 
 const splitSectionName = (sectionName?: string) => {
   if (!sectionName) {
@@ -89,6 +106,9 @@ const normalizeStatus = (status?: string): FeeStatus => {
   if (status === 'Paid') {
     return 'Paid';
   }
+  if (status === 'Partial') {
+    return 'Partial';
+  }
   return 'Pending';
 };
 
@@ -97,6 +117,8 @@ const statusStyles: Record<FeeStatus, string> = {
   Pending: 'border-amber-200 bg-amber-50 text-amber-700',
   Partial: 'border-sky-200 bg-sky-50 text-sky-700',
 };
+
+const getStatusLabel = (status: FeeStatus) => status === 'Pending' ? 'Not Paid' : status;
 
 const categoryStateStyles: Record<CategoryDueState, {
   panel: string;
@@ -196,7 +218,16 @@ const FinanceDashboard = () => {
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [paymentDrafts, setPaymentDrafts] = useState<Record<string, PaymentDraft>>({});
   const [partialPaymentDialog, setPartialPaymentDialog] = useState<PartialPaymentDialog>(null);
+  const [isAssigningTermFee, setIsAssigningTermFee] = useState(false);
+  const [termFeeForm, setTermFeeForm] = useState<TermFeeForm>({
+    standard: '',
+    term: 'Term 1',
+    amount: '',
+    dueDate: '',
+    message: '',
+  });
   const [categoryDueDates, setCategoryDueDates] = useState<Record<string, string>>(() => {
     if (typeof window === 'undefined') {
       return {};
@@ -298,7 +329,8 @@ const FinanceDashboard = () => {
     showToast('Bill downloaded successfully.');
   };
 
-  const staffView = user?.role === 'Admin' || user?.role === 'Accountant';
+  const canManageFees = user?.role === 'Accountant';
+  const staffView = user?.role === 'Admin' || canManageFees;
 
   const recordsWithLocalStatus = useMemo(
     () => feeRecords.map((fee) => ({ ...fee, status: normalizeStatus(fee.status) })),
@@ -309,6 +341,14 @@ const FinanceDashboard = () => {
     if (!recordsWithLocalStatus.length) {
       return;
     }
+
+    setPaymentDrafts(Object.fromEntries(recordsWithLocalStatus.map((fee) => [
+        fee.id,
+        {
+          paidAmount: String(Number(fee.paidAmount || 0)),
+          status: fee.status,
+        },
+      ])));
 
     setCategoryDueDates((current) => {
       const next = { ...current };
@@ -479,6 +519,25 @@ const FinanceDashboard = () => {
   const selectedClass = classSummaries.find((classInfo) => classInfo.key === selectedClassKey);
   const selectedSet = new Set(selectedRecords);
   const allVisibleSelected = visibleRecords.length > 0 && visibleRecords.every((fee) => selectedSet.has(fee.id));
+  const availableStandards = useMemo(() => {
+    const standards = new Set<number>();
+
+    sections.forEach((section) => {
+      const grade = getGradeNumber(section.name);
+      if (grade >= 1 && grade <= 12) {
+        standards.add(grade);
+      }
+    });
+
+    recordsWithLocalStatus.forEach((fee) => {
+      const grade = getGradeNumber(fee.sectionName);
+      if (grade >= 1 && grade <= 12) {
+        standards.add(grade);
+      }
+    });
+
+    return Array.from(standards).sort((left, right) => left - right);
+  }, [recordsWithLocalStatus, sections]);
 
   const handleSelectGrade = (grade: number) => {
     setSelectedGrade(grade);
@@ -491,7 +550,64 @@ const FinanceDashboard = () => {
     setSelectedRecords([]);
   };
 
+  const handleAssignTermFee = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!canManageFees) {
+      showToast('Admin has read-only access to fee operations.');
+      return;
+    }
+
+    const standard = Number(termFeeForm.standard);
+    const amount = Number(termFeeForm.amount);
+
+    if (!Number.isInteger(standard) || standard < 1 || standard > 12) {
+      showToast('Choose a valid standard.');
+      return;
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showToast('Enter a valid fee amount.');
+      return;
+    }
+
+    if (!termFeeForm.dueDate) {
+      showToast('Choose a due date.');
+      return;
+    }
+
+    try {
+      setIsAssigningTermFee(true);
+      const studentCount = await setStandardTermFee({
+        standard,
+        term: termFeeForm.term,
+        amount,
+        dueDate: termFeeForm.dueDate,
+        message: termFeeForm.message.trim() || undefined,
+      });
+      await loadFees();
+      setSelectedGrade(standard);
+      setSelectedClassKey(null);
+      setSelectedCategory(`${termFeeForm.term} Fee`);
+      setCategoryDueDates((current) => ({ ...current, [`${termFeeForm.term} Fee`]: termFeeForm.dueDate }));
+      setTermFeeForm((current) => ({ ...current, amount: '', message: '' }));
+      const message = `${termFeeForm.term} fee assigned to ${studentCount} student${studentCount === 1 ? '' : 's'} in Standard ${standard}.`;
+      pushRecentAction(message);
+      showToast(message);
+    } catch (error) {
+      console.error('Failed to assign standard term fee:', error);
+      showToast('Could not assign term fee in Supabase.');
+    } finally {
+      setIsAssigningTermFee(false);
+    }
+  };
+
   const handleMarkRecords = async (recordIds: string[], status: FeeStatus, partialPaidAmount?: number) => {
+    if (!canManageFees) {
+      showToast('Admin has read-only access to fee operations.');
+      return false;
+    }
+
     if (!recordIds.length) {
       showToast('Select at least one student fee record first.');
       return false;
@@ -510,6 +626,76 @@ const FinanceDashboard = () => {
     } catch (error) {
       console.error('Failed to update fee status:', error);
       showToast('Could not update fee status in Supabase.');
+      return false;
+    }
+  };
+
+  const updatePaymentDraft = (recordId: string, updates: Partial<PaymentDraft>) => {
+    if (!canManageFees) {
+      return;
+    }
+
+    setPaymentDrafts((current) => {
+      const fee = recordsWithLocalStatus.find((record) => record.id === recordId);
+      const existing = current[recordId] || {
+        paidAmount: String(Number(fee?.paidAmount || 0)),
+        status: fee?.status || 'Pending',
+      };
+
+      return {
+        ...current,
+        [recordId]: {
+          ...existing,
+          ...updates,
+        },
+      };
+    });
+  };
+
+  const savePaymentDrafts = async (recordIds: string[]) => {
+    if (!canManageFees) {
+      showToast('Admin has read-only access to fee operations.');
+      return false;
+    }
+
+    if (!recordIds.length) {
+      showToast('Select at least one student fee record first.');
+      return false;
+    }
+
+    try {
+      for (const recordId of recordIds) {
+        const fee = recordsWithLocalStatus.find((record) => record.id === recordId);
+        const draft = paymentDrafts[recordId];
+
+        if (!fee || !draft) {
+          continue;
+        }
+
+        const paidAmount = Number(draft.paidAmount);
+        if (!Number.isFinite(paidAmount) || paidAmount < 0) {
+          throw new Error(`Invalid paid amount for ${fee.studentName || fee.studentEmail}.`);
+        }
+
+        if (draft.status === 'Partial') {
+          if (paidAmount <= 0 || paidAmount >= Number(fee.totalAmount)) {
+            throw new Error(`Partial amount for ${fee.studentName || fee.studentEmail} must be greater than 0 and less than total fee.`);
+          }
+          await updateFeeStatuses([recordId], 'Partial', paidAmount);
+        } else if (draft.status === 'Paid') {
+          await updateFeeStatuses([recordId], 'Paid');
+        } else {
+          await updateFeeStatuses([recordId], 'Pending');
+        }
+      }
+
+      await loadFees();
+      pushRecentAction(`${recordIds.length} payment update${recordIds.length === 1 ? '' : 's'} saved.`);
+      showToast('Payment details saved in Supabase.');
+      return true;
+    } catch (error: any) {
+      console.error('Failed to save payment details:', error);
+      showToast(error?.message || 'Could not save payment details.');
       return false;
     }
   };
@@ -546,14 +732,39 @@ const FinanceDashboard = () => {
   };
 
   const handleReminder = async (recordIds: string[]) => {
+    if (!canManageFees) {
+      showToast('Admin has read-only access to fee operations.');
+      return;
+    }
+
     if (!recordIds.length) {
       showToast('Select at least one student before sending reminders.');
       return;
     }
 
     try {
-      await sendFeeReminders(recordIds);
-      const message = `Reminder queued for ${recordIds.length} student${recordIds.length > 1 ? 's' : ''}.`;
+      const saved = await savePaymentDrafts(recordIds);
+      if (!saved) {
+        return;
+      }
+
+      const refreshedRecords = await fetchFeeRecords(user?.role === 'Student' ? user.email : undefined);
+      setFeeRecords(refreshedRecords);
+      const normalizedRefreshedRecords = refreshedRecords.map((fee) => ({ ...fee, status: normalizeStatus(fee.status) }));
+      const targetRecords = normalizedRefreshedRecords.filter((fee) => recordIds.includes(fee.id) && fee.status !== 'Paid');
+      const unpaidRecordIds = targetRecords.filter((fee) => Number(fee.paidAmount) <= 0).map((fee) => fee.id);
+      const partialRecordIds = targetRecords.filter((fee) => Number(fee.paidAmount) > 0).map((fee) => fee.id);
+
+      if (unpaidRecordIds.length) {
+        await sendFeeReminders(unpaidRecordIds, 'High priority reminder: the full fee amount is still pending. Please complete payment before the due date.');
+      }
+
+      if (partialRecordIds.length) {
+        await sendFeeReminders(partialRecordIds, 'Balance reminder: your partial payment is recorded. Please clear the remaining amount before the due date.');
+      }
+
+      const skippedPaid = recordIds.length - targetRecords.length;
+      const message = `Reminder queued for ${targetRecords.length} pending student${targetRecords.length === 1 ? '' : 's'}${skippedPaid ? `; ${skippedPaid} paid record${skippedPaid === 1 ? '' : 's'} skipped` : ''}.`;
       pushRecentAction(message);
       showToast('Reminder saved and notification linked in Supabase.');
       setSelectedRecords([]);
@@ -564,6 +775,10 @@ const FinanceDashboard = () => {
   };
 
   const handleSaveNote = async (recordId: string) => {
+    if (!canManageFees) {
+      return;
+    }
+
     try {
       await saveAccountantNote(recordId, notes[recordId] || '');
       pushRecentAction('Accountant note saved.');
@@ -575,6 +790,10 @@ const FinanceDashboard = () => {
   };
 
   const handlePersistDueDate = async (category: string, dueDate: string) => {
+    if (!canManageFees) {
+      return;
+    }
+
     if (!dueDate || category === 'All Categories') {
       return;
     }
@@ -654,7 +873,7 @@ const FinanceDashboard = () => {
                   <p className="mt-1 text-xs font-bold text-slate-400">Due: {fee.dueDate}</p>
                 </div>
                 <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusStyles[normalizeStatus(fee.status)]}`}>
-                  {fee.status}
+                  {getStatusLabel(normalizeStatus(fee.status))}
                 </span>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2">
@@ -695,7 +914,9 @@ const FinanceDashboard = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Fee Operations</h1>
           <p className="mt-1 max-w-2xl text-sm font-medium text-slate-500">
-            Manage school fee status by grade, class, student, and fee category without payment gateway steps.
+            {canManageFees
+              ? 'Manage school fee status by grade, class, student, and fee category without payment gateway steps.'
+              : 'View accountant fee assignments, payment updates, reminders, and student status without editing access.'}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
@@ -718,6 +939,135 @@ const FinanceDashboard = () => {
             <p className="text-sm font-semibold">{notification}</p>
           </div>
         </div>
+      )}
+
+      {!canManageFees && (
+        <section className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-white p-2 text-indigo-600 shadow-sm">
+              <FileText size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-slate-950">Admin read-only finance view</h2>
+              <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
+                Fee amounts, payment statuses, notes, and reminders shown here are maintained by the accountant. Admin can review them but cannot alter fees or remind students.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {canManageFees && (
+      <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="border-b border-slate-100 bg-slate-950 p-5 text-white lg:border-b-0 lg:border-r lg:border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-white/10 p-3 text-emerald-300">
+                <Megaphone size={22} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">Standard Fee Setup</p>
+                <h2 className="mt-1 text-xl font-black">Assign Term Fee</h2>
+              </div>
+            </div>
+            <p className="mt-4 text-sm font-medium leading-6 text-slate-300">
+              Set Term 1, Term 2, or Term 3 for a full standard. Standard 3 automatically covers 3-A, 3-B, and 3-C students and creates student notifications.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="font-black text-white">{availableStandards.length}</p>
+                <p className="mt-1 font-semibold text-slate-400">Standards available</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="font-black text-white">{recordsWithLocalStatus.filter((fee) => fee.status !== 'Paid').length}</p>
+                <p className="mt-1 font-semibold text-slate-400">Open dues</p>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleAssignTermFee} className="grid gap-4 p-4 lg:p-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Standard</span>
+                <select
+                  value={termFeeForm.standard}
+                  onChange={(event) => setTermFeeForm((current) => ({ ...current, standard: event.target.value }))}
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                >
+                  <option value="">Select</option>
+                  {availableStandards.map((standard) => (
+                    <option key={standard} value={standard}>Standard {standard}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Term</span>
+                <select
+                  value={termFeeForm.term}
+                  onChange={(event) => setTermFeeForm((current) => ({ ...current, term: event.target.value as TermFeeForm['term'] }))}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                >
+                  {termOptions.map((term) => (
+                    <option key={term} value={term}>{term}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</span>
+                <div className="relative">
+                  <IndianRupee size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={termFeeForm.amount}
+                    onChange={(event) => setTermFeeForm((current) => ({ ...current, amount: event.target.value }))}
+                    required
+                    placeholder="0.00"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 pl-9 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Due Date</span>
+                <input
+                  type="date"
+                  value={termFeeForm.dueDate}
+                  onChange={(event) => setTermFeeForm((current) => ({ ...current, dueDate: event.target.value }))}
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-end">
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Reminder Message</span>
+                <textarea
+                  value={termFeeForm.message}
+                  onChange={(event) => setTermFeeForm((current) => ({ ...current, message: event.target.value }))}
+                  rows={2}
+                  placeholder="Optional message for students and parents"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={isAssigningTermFee}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                <Send size={16} />
+                {isAssigningTermFee ? 'Assigning...' : 'Assign & Notify'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
       )}
 
       <section className={`rounded-2xl border border-slate-100 bg-white p-4 shadow-sm lg:p-5 ${
@@ -846,18 +1196,22 @@ const FinanceDashboard = () => {
                     ))}
                   </select>
                 </label>
-                <button
-                  onClick={toggleAllVisible}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
-                >
-                  {allVisibleSelected ? 'Clear Selection' : 'Select Visible'}
-                </button>
-                <button
-                  onClick={() => handleReminder(selectedRecords)}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-indigo-700"
-                >
-                  <Send size={14} /> Bulk Reminder
-                </button>
+                {canManageFees && (
+                  <>
+                    <button
+                      onClick={toggleAllVisible}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
+                    >
+                      {allVisibleSelected ? 'Clear Selection' : 'Select Visible'}
+                    </button>
+                    <button
+                      onClick={() => handleReminder(selectedRecords)}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-indigo-700"
+                    >
+                      <Send size={14} /> Bulk Reminder
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -910,7 +1264,7 @@ const FinanceDashboard = () => {
                   </div>
                   <CalendarDays size={22} className={selectedDueStyles.accent} />
                 </div>
-                {selectedCategory !== 'All Categories' && (
+                {canManageFees && selectedCategory !== 'All Categories' && (
                   <label className="mt-4 block">
                     <span className="mb-2 block text-[10px] font-black uppercase tracking-widest opacity-75">Edit Due Date</span>
                     <input
@@ -928,9 +1282,10 @@ const FinanceDashboard = () => {
               </div>
             </div>
 
-            {selectedRecords.length > 0 && (
+            {canManageFees && selectedRecords.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-100 bg-white p-3">
                 <span className="text-xs font-black uppercase tracking-widest text-indigo-700">{selectedRecords.length} selected</span>
+                <button onClick={() => savePaymentDrafts(selectedRecords)} className="flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Save size={14} /> Save Payments</button>
                 <button onClick={() => handleMarkRecords(selectedRecords, 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Mark Paid</button>
                 <button onClick={() => openPartialPaymentDialog(selectedRecords)} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-black text-white">Mark Partial</button>
                 <button onClick={() => setSelectedRecords([])} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">Reject Selection</button>
@@ -941,6 +1296,10 @@ const FinanceDashboard = () => {
           <div className="grid gap-3 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-3">
             {visibleRecords.map((fee) => {
               const status = normalizeStatus(fee.status);
+              const draft = paymentDrafts[fee.id] || {
+                paidAmount: String(Number(fee.paidAmount || 0)),
+                status,
+              };
               const isSelected = selectedSet.has(fee.id);
               const feeCategorySummary = categorySummaries.find((summary) => summary.category === fee.type);
               const cardDueDate = categoryDueDates[fee.type] || fee.dueDate;
@@ -951,6 +1310,19 @@ const FinanceDashboard = () => {
                 : status === 'Paid'
                   ? ''
                   : `Remaining ${formatCurrency(Number(fee.pendingAmount).toFixed(2))}`;
+              const reminderLevel = status === 'Pending'
+                ? {
+                    label: 'High reminder',
+                    className: 'border-rose-200 bg-rose-50 text-rose-700',
+                    message: 'Full amount pending',
+                  }
+                : status === 'Partial'
+                  ? {
+                      label: 'Balance reminder',
+                      className: 'border-sky-200 bg-sky-50 text-sky-700',
+                      message: 'Partial payment received',
+                    }
+                  : null;
 
               return (
                 <article
@@ -961,12 +1333,14 @@ const FinanceDashboard = () => {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <label className="flex min-w-0 cursor-pointer items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleRecord(fee.id)}
-                        className="mt-1 h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
-                      />
+                      {canManageFees && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleRecord(fee.id)}
+                          className="mt-1 h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
+                        />
+                      )}
                       <div className="min-w-0">
                         <h3 className="break-words text-base font-black text-slate-900">{fee.studentName || fee.studentEmail}</h3>
                         <p className="mt-1 text-xs font-bold text-slate-500">Roll {fee.rollNo || '-'} - {getClassLabel(fee.sectionName)}</p>
@@ -974,7 +1348,7 @@ const FinanceDashboard = () => {
                     </label>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusStyles[status]}`}>
-                        {status}
+                        {getStatusLabel(status)}
                       </span>
                       {cardDueState === 'overdue' && status !== 'Paid' && (
                         <span className="rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-rose-700">
@@ -983,6 +1357,14 @@ const FinanceDashboard = () => {
                       )}
                     </div>
                   </div>
+
+                  {reminderLevel && (
+                    <div className={`mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-black ${reminderLevel.className}`}>
+                      <AlertTriangle size={14} />
+                      <span>{reminderLevel.label}</span>
+                      <span className="font-semibold opacity-80">- {reminderLevel.message}</span>
+                    </div>
+                  )}
 
                   <div className="mt-4 rounded-2xl bg-slate-50 p-3">
                     <div className="flex items-center justify-between gap-3">
@@ -1008,6 +1390,49 @@ const FinanceDashboard = () => {
                     </div>
                   </div>
 
+                  <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-3">
+                    <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                      <IndianRupee size={13} /> Payment Entry
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-[1fr_0.9fr]">
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Amount Paid</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={Number(fee.totalAmount)}
+                          step="0.01"
+                          value={draft.paidAmount}
+                          onChange={(event) => updatePaymentDraft(fee.id, { paidAmount: event.target.value })}
+                          disabled={!canManageFees}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Status</span>
+                        <select
+                          value={draft.status}
+                          onChange={(event) => updatePaymentDraft(fee.id, { status: event.target.value as FeeStatus })}
+                          disabled={!canManageFees}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                        >
+                          <option value="Pending">Not Paid</option>
+                          <option value="Partial">Partial</option>
+                          <option value="Paid">Paid</option>
+                        </select>
+                      </label>
+                    </div>
+                    {canManageFees && (
+                      <button
+                        type="button"
+                        onClick={() => savePaymentDrafts([fee.id])}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800"
+                      >
+                        <Save size={14} /> Save Payment Info
+                      </button>
+                    )}
+                  </div>
+
                   <label className="mt-4 block">
                     <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
                       <Edit3 size={13} /> Pending Note
@@ -1016,19 +1441,22 @@ const FinanceDashboard = () => {
                       value={note}
                       onChange={(event) => setNotes((current) => ({ ...current, [fee.id]: event.target.value }))}
                       onBlur={() => void handleSaveNote(fee.id)}
+                      disabled={!canManageFees}
                       rows={2}
                       placeholder="Add pending note"
                       className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                     />
                   </label>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <button onClick={() => handleMarkRecords([fee.id], 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Paid</button>
-                    <button onClick={() => openPartialPaymentDialog([fee.id])} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-black text-white">Partial</button>
-                    <button onClick={() => handleReminder([fee.id])} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
-                      <MessageSquare size={14} /> Reminder
-                    </button>
-                  </div>
+                  {canManageFees && (
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <button onClick={() => handleMarkRecords([fee.id], 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Paid</button>
+                      <button onClick={() => updatePaymentDraft(fee.id, { paidAmount: '0', status: 'Pending' })} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white">Not Paid</button>
+                      <button onClick={() => handleReminder([fee.id])} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
+                        <MessageSquare size={14} /> Reminder
+                      </button>
+                    </div>
+                  )}
                 </article>
               );
             })}
