@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Search, BookOpen, Plus, Pencil, Trash2, MoreVertical } from 'lucide-react';
 import Modal from '../../../components/common/Modal';
 import { fetchBooks, fetchStudents, createIssueRecord, createBook, updateBook, deleteBook, type LibraryBook } from '../../../services/erpContent';
 
@@ -25,6 +25,7 @@ const BooksPage = () => {
   const [bookForm, setBookForm] = useState(emptyBookForm);
   const [bookFormError, setBookFormError] = useState('');
   const [isSavingBook, setIsSavingBook] = useState(false);
+  const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -38,13 +39,23 @@ const BooksPage = () => {
     return () => { mounted = false; };
   }, []);
 
+  useEffect(() => {
+    if (!openMenuBookId) return;
+    const closeMenu = () => setOpenMenuBookId(null);
+    window.addEventListener('click', closeMenu);
+    return () => window.removeEventListener('click', closeMenu);
+  }, [openMenuBookId]);
+
   const filtered = useMemo(() => books.filter(b => b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase())), [books, search]);
 
   const openIssue = (book: LibraryBook) => {
     setSelectedBook(book);
     setIsModalOpen(true);
     setSelectedStudent(null);
-    setDueDate('');
+    const nextDueDate = new Date();
+    nextDueDate.setDate(nextDueDate.getDate() + 21);
+    setDueDate(nextDueDate.toISOString().slice(0, 10));
+    setOpenMenuBookId(null);
   };
 
   const handleIssue = async () => {
@@ -77,6 +88,7 @@ const BooksPage = () => {
     });
     setBookFormError('');
     setIsBookModalOpen(true);
+    setOpenMenuBookId(null);
   };
 
   const updateBookForm = (field: keyof typeof emptyBookForm, value: string) => {
@@ -182,16 +194,29 @@ const BooksPage = () => {
                   <div className="text-sm text-slate-500">by {book.author}</div>
                   <div className="mt-2 text-sm"><span className={`font-semibold ${book.availableCopies>0?'text-emerald-600':'text-rose-600'}`}>{book.availableCopies} available</span> <span className="text-xs text-slate-400 ml-2">out of {book.totalCopies}</span></div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <button onClick={() => openIssue(book)} disabled={book.availableCopies===0} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm hover:bg-slate-50">Issue</button>
-                  <button onClick={() => openEditBook(book)} className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm hover:bg-slate-50">
-                    <Pencil size={14} />
-                    Edit
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setOpenMenuBookId((current) => current === book.id ? null : book.id);
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50"
+                    aria-label={`Actions for ${book.title}`}
+                  >
+                    <MoreVertical size={18} />
                   </button>
-                  <button onClick={() => void handleDeleteBook(book)} className="inline-flex items-center justify-center gap-1 px-3 py-2 bg-white border border-rose-100 text-rose-600 rounded-xl text-sm hover:bg-rose-50">
-                    <Trash2 size={14} />
-                    Delete
-                  </button>
+                  {openMenuBookId === book.id && (
+                    <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-10 z-20 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                      <button type="button" onClick={() => openIssue(book)} disabled={book.availableCopies===0} className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:text-slate-300">Issue</button>
+                      <button type="button" onClick={() => openEditBook(book)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50">
+                        <Pencil size={14} /> Edit
+                      </button>
+                      <button type="button" onClick={() => void handleDeleteBook(book)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50">
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -293,9 +318,8 @@ const BooksPage = () => {
               {students.map(s=> <option key={s.id} value={s.id}>{s.name} {s.sectionName ? `- ${s.sectionName}` : ''}</option>)}
             </select>
           </div>
-          <div>
-            <label className="text-sm font-semibold">Due Date</label>
-            <input type="date" value={dueDate} onChange={(e)=>setDueDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200" />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            Return due date: <span className="font-semibold text-slate-900">{dueDate}</span>
           </div>
           <div className="flex gap-3 pt-2">
             <button onClick={()=>setIsModalOpen(false)} className="flex-1 px-4 py-2 border rounded-xl">Cancel</button>
