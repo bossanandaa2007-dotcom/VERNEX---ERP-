@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Bell, BookOpen, Clock, Search } from 'lucide-react';
 import {
   createIssueRecord,
   fetchBooks,
   fetchLibraryIssues,
   fetchStudentByRollNo,
+  findOrCreateLibraryBookByTitle,
   type LibraryBook,
   type LibraryStudent,
 } from '../../../services/erpContent';
@@ -19,9 +20,14 @@ const LibrarianDashboard = () => {
   const [studentLookup, setStudentLookup] = useState<LibraryStudent | null>(null);
   const [isLookingUpStudent, setIsLookingUpStudent] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState('');
+  const [bookQuery, setBookQuery] = useState('');
+  const [debouncedBookQuery, setDebouncedBookQuery] = useState('');
+  const [showBookSuggestions, setShowBookSuggestions] = useState(false);
+  const [highlightedBookIndex, setHighlightedBookIndex] = useState(0);
+  const [isIssuing, setIsIssuing] = useState(false);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 14);
+    d.setDate(d.getDate() + 21);
     return d.toISOString().slice(0, 10);
   });
   const [quickMsg, setQuickMsg] = useState<string | null>(null);
@@ -34,7 +40,7 @@ const LibrarianDashboard = () => {
         const issues = await fetchLibraryIssues();
         if (!mounted) return;
         setBookCount(books.length);
-        setIssuedCount(issues.filter((issue) => issue.status === 'Issued').length);
+        setIssuedCount(issues.filter((issue) => issue.status !== 'returned').length);
         const now = new Date();
         setOverdueCount(issues.filter((issue) => !issue.returned_at && new Date(issue.due_date) < now).length);
         setAllBooks(books);
@@ -79,6 +85,25 @@ const LibrarianDashboard = () => {
     };
   }, [rollNo]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedBookQuery(bookQuery.trim()), 220);
+    return () => window.clearTimeout(timer);
+  }, [bookQuery]);
+
+  const bookSuggestions = useMemo(() => {
+    const query = debouncedBookQuery.toLowerCase();
+    if (!query) return allBooks.slice(0, 6);
+    return allBooks
+      .filter((book) => book.title.toLowerCase().replace(/\s+/g, ' ').includes(query))
+      .slice(0, 6);
+  }, [allBooks, debouncedBookQuery]);
+
+  const selectBook = (book: LibraryBook) => {
+    setSelectedBookId(book.id);
+    setBookQuery(book.title);
+    setShowBookSuggestions(false);
+  };
+
   const handleQuickIssue = async () => {
     setQuickMsg(null);
 
@@ -92,14 +117,35 @@ const LibrarianDashboard = () => {
       return;
     }
 
-    const bookToUse = allBooks.find((book) => book.id === selectedBookId);
-    if (!bookToUse) {
-      setQuickMsg('Please select a book.');
+    if (!bookQuery.trim()) {
+      setQuickMsg('Please enter a book title.');
+      return;
+    }
+
+    if (dueDate < new Date().toISOString().slice(0, 10)) {
+      setQuickMsg('Return date cannot be in the past.');
+      return;
+    }
+
+    let bookToUse = allBooks.find((book) => book.id === selectedBookId && book.title.toLowerCase() === bookQuery.trim().toLowerCase());
+
+    try {
+      setIsIssuing(true);
+      if (!bookToUse) {
+        bookToUse = await findOrCreateLibraryBookByTitle(bookQuery);
+        setAllBooks((current) => current.some((book) => book.id === bookToUse!.id) ? current : [bookToUse!, ...current]);
+        setBookCount((count) => allBooks.some((book) => book.id === bookToUse!.id) ? count : count + 1);
+      }
+    } catch (error) {
+      console.error('Failed to prepare book:', error);
+      setQuickMsg('Could not find or create this book.');
+      setIsIssuing(false);
       return;
     }
 
     if (bookToUse.availableCopies <= 0) {
       setQuickMsg('No copies available for the selected book.');
+      setIsIssuing(false);
       return;
     }
 
@@ -113,11 +159,14 @@ const LibrarianDashboard = () => {
           : book
       )));
       setSelectedBookId('');
+      setBookQuery('');
       setStudentLookup(null);
       setRollNo('');
     } catch (error) {
       console.error('Failed to issue book:', error);
       setQuickMsg('Failed to issue book. Try again.');
+    } finally {
+      setIsIssuing(false);
     }
   };
 
@@ -149,28 +198,63 @@ const LibrarianDashboard = () => {
             <label className="text-xs text-slate-600">Book</label>
             <div className="relative">
               <Search className="absolute left-3 top-3 text-slate-400" size={16} />
-              <select
-                value={selectedBookId}
-                onChange={(event) => setSelectedBookId(event.target.value)}
+              <input
+                value={bookQuery}
+                onChange={(event) => {
+                  setBookQuery(event.target.value);
+                  setSelectedBookId('');
+                  setShowBookSuggestions(true);
+                  setHighlightedBookIndex(0);
+                }}
+                onFocus={() => setShowBookSuggestions(true)}
+                onKeyDown={(event) => {
+                  if (!bookSuggestions.length) return;
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    setHighlightedBookIndex((index) => Math.min(index + 1, bookSuggestions.length - 1));
+                  }
+                  if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    setHighlightedBookIndex((index) => Math.max(index - 1, 0));
+                  }
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    selectBook(bookSuggestions[highlightedBookIndex]);
+                  }
+                }}
+                placeholder="Type book title"
                 className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-white"
-              >
-                <option value="">Select book</option>
-                {allBooks.map((book) => (
-                  <option key={book.id} value={book.id} disabled={book.availableCopies <= 0}>
-                    {book.title} - {book.author} ({book.availableCopies} available)
-                  </option>
-                ))}
-              </select>
+              />
+              {showBookSuggestions && (
+                <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                  {bookSuggestions.map((book, index) => (
+                    <button
+                      key={book.id}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectBook(book)}
+                      className={`block w-full px-3 py-2 text-left text-sm ${index === highlightedBookIndex ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50'}`}
+                    >
+                      <span className="font-semibold">{book.title}</span>
+                      <span className="ml-2 text-xs text-slate-500">{book.availableCopies} available</span>
+                    </button>
+                  ))}
+                  {!bookSuggestions.length && debouncedBookQuery && (
+                    <div className="px-3 py-2 text-sm text-slate-500">Press Issue to create "{debouncedBookQuery}".</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-slate-600">Due Date</label>
+            <label className="text-xs text-slate-600">Return Due</label>
             <input
               type="date"
+              min={new Date().toISOString().slice(0, 10)}
               value={dueDate}
               onChange={(event) => setDueDate(event.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700"
             />
           </div>
         </div>
@@ -207,10 +291,10 @@ const LibrarianDashboard = () => {
         <div className="mt-3 flex items-center gap-3">
           <button
             onClick={handleQuickIssue}
-            disabled={isLookingUpStudent}
+            disabled={isLookingUpStudent || isIssuing}
             className="px-4 py-2 bg-indigo-600 text-white rounded-xl disabled:opacity-60"
           >
-            Issue
+            {isIssuing ? 'Issuing...' : 'Issue'}
           </button>
           <div className="text-sm text-slate-500">{quickMsg}</div>
         </div>

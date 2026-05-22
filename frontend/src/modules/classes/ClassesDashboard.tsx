@@ -8,8 +8,16 @@ import {
     Calendar, AlertTriangle, MapPin, Hash, Upload
 } from 'lucide-react';
 import { useClassStore } from '../../store/useClassStore';
-import type { IStudent } from '../../types/school';
+import type { IClassSubjectGroup, IStudent } from '../../types/school';
 import { getTodayInputDate } from '../../utils/dateLimits';
+
+type AddModalState =
+    | { type: 'SECTION' | 'TEACHER' | 'STUDENT' | 'BULK_STUDENTS' }
+    | { type: 'SUBJECT'; gradeKey: string; gradeLabel: string };
+
+type DeleteState =
+    | { type: 'SECTION' | 'TEACHER' | 'STUDENT'; id: string; name: string }
+    | { type: 'SUBJECT'; name: string; gradeKey: string; gradeLabel: string };
 
 // ─── Shared Mini Components ────────────────────────────────────
 const IconBtn = ({ icon: Icon, onClick, variant = 'gray' }: any) => {
@@ -113,6 +121,30 @@ const parseBulkStudents = (
     });
 };
 
+const getSectionGradeKey = (sectionName: string) => {
+    const normalized = sectionName.trim().replace(/^(class|std|standard)\s+/i, '');
+    const match = normalized.match(/^(lkg|ukg|\d{1,2})/i);
+    return match?.[1].toUpperCase() || '';
+};
+
+const getGradeLabel = (gradeKey: string) => (['LKG', 'UKG'].includes(gradeKey) ? gradeKey : `Class ${gradeKey}`);
+
+const findGradeCurriculumGroup = (
+    groups: IClassSubjectGroup[],
+    sectionNames: string[]
+) => {
+    const gradeSectionSet = new Set(sectionNames);
+    const exactGroup = groups.find((group) =>
+        group.sectionNames.length === sectionNames.length && group.sectionNames.every((name) => gradeSectionSet.has(name))
+    );
+
+    if (exactGroup) {
+        return exactGroup;
+    }
+
+    return groups.find((group) => sectionNames.some((name) => group.sectionNames.includes(name))) || null;
+};
+
 export default function ClassesDashboard() {
     const store = useClassStore();
     const initialize = useClassStore((state) => state.initialize);
@@ -121,16 +153,37 @@ export default function ClassesDashboard() {
     const [activeCategoryID, setActiveCategoryID] = useState<string | null>(null);
     const [activeSectionID, setActiveSectionID] = useState<string | null>(null);
     const [activeProfile, setActiveProfile] = useState<any>(null);
-    const [showModal, setShowModal] = useState<any>(null); // { type: 'SECTION' | 'TEACHER' | 'STUDENT' }
-    const [confirmDelete, setConfirmDelete] = useState<any>(null); // { type, id, name }
+    const [showModal, setShowModal] = useState<AddModalState | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<DeleteState | null>(null);
     const [toast, setToast] = useState<string | null>(null);
-    const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+    const [selectedGradeKey, setSelectedGradeKey] = useState<string>('');
+    const [isSubjectSaving, setIsSubjectSaving] = useState(false);
 
     const activeClass = store.categories.find(c => c.id === activeCategoryID);
     const activeSection = store.sections.find(s => s.id === activeSectionID);
-    const selectedCurriculumGroup = useMemo(
-        () => store.curriculumGroups.find((group) => group.id === selectedGroupId) || store.curriculumGroups[0] || null,
-        [selectedGroupId, store.curriculumGroups]
+    const gradeOptions = useMemo(() => {
+        const gradesByKey = new Map<string, string[]>();
+        store.sections.forEach((section) => {
+            const gradeKey = getSectionGradeKey(section.name);
+            if (!gradeKey) {
+                return;
+            }
+
+            gradesByKey.set(gradeKey, [...(gradesByKey.get(gradeKey) || []), section.name]);
+        });
+
+        return Array.from(gradesByKey.entries())
+            .map(([key, sectionNames]) => ({
+                key,
+                label: getGradeLabel(key),
+                sectionNames: sectionNames.sort((left, right) => left.localeCompare(right, undefined, { numeric: true })),
+            }))
+            .sort((left, right) => left.label.localeCompare(right.label, undefined, { numeric: true }));
+    }, [store.sections]);
+    const selectedGrade = gradeOptions.find((grade) => grade.key === selectedGradeKey) || gradeOptions[0] || null;
+    const selectedGradeGroup = useMemo(
+        () => selectedGrade ? findGradeCurriculumGroup(store.curriculumGroups, selectedGrade.sectionNames) : null,
+        [selectedGrade, store.curriculumGroups]
     );
 
     useEffect(() => {
@@ -138,10 +191,10 @@ export default function ClassesDashboard() {
     }, [initialize]);
 
     useEffect(() => {
-        if (!selectedGroupId && store.curriculumGroups.length) {
-            setSelectedGroupId(store.curriculumGroups[0].id);
+        if (!selectedGradeKey && gradeOptions.length) {
+            setSelectedGradeKey(gradeOptions[0].key);
         }
-    }, [selectedGroupId, store.curriculumGroups]);
+    }, [gradeOptions, selectedGradeKey]);
 
     const notify = (msg: string) => {
         setToast(msg);
@@ -150,11 +203,16 @@ export default function ClassesDashboard() {
 
     const handleDelete = async () => {
         if (!confirmDelete) return;
-        if (confirmDelete.type === 'SECTION') await store.deleteSection(confirmDelete.id);
-        if (confirmDelete.type === 'TEACHER') await store.deleteTeacher(confirmDelete.id);
-        if (confirmDelete.type === 'STUDENT') await store.deleteStudent(confirmDelete.id);
-        setConfirmDelete(null);
-        notify('Entry removed from registry.');
+        try {
+            if (confirmDelete.type === 'SECTION') await store.deleteSection(confirmDelete.id);
+            if (confirmDelete.type === 'TEACHER') await store.deleteTeacher(confirmDelete.id);
+            if (confirmDelete.type === 'STUDENT') await store.deleteStudent(confirmDelete.id);
+            if (confirmDelete.type === 'SUBJECT') await store.deleteGradeSubject(confirmDelete.gradeKey, confirmDelete.name);
+            setConfirmDelete(null);
+            notify(confirmDelete.type === 'SUBJECT' ? `${confirmDelete.name} has been successfully deleted from ${confirmDelete.gradeLabel}.` : 'Entry removed from registry.');
+        } catch (error: any) {
+            notify(error?.message || 'Delete failed.');
+        }
     };
 
     const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -192,14 +250,50 @@ export default function ClassesDashboard() {
                 const bulkStudents = parseBulkStudents(get('students'), activeCategoryID!, activeSectionID!);
                 await store.addStudents(bulkStudents);
                 notify(`${bulkStudents.length} students imported. Logins use Student@123.`);
+            } else if (showModal?.type === 'SUBJECT') {
+                if (!showModal.gradeKey) {
+                    throw new Error('Choose a class group first.');
+                }
+
+                setIsSubjectSaving(true);
+                await store.addGradeSubject(showModal.gradeKey, get('subject'));
+                notify(`${get('subject').trim()} added to ${showModal.gradeLabel}.`);
             }
         } catch (error: any) {
             notify(error?.message || 'Registration failed.');
+            setIsSubjectSaving(false);
             return;
         }
 
+        setIsSubjectSaving(false);
         setShowModal(null);
     };
+
+    const renderModalStack = () => (
+        <>
+            <AnimatePresence>
+                {showModal && (
+                    <AddModal
+                        key={showModal.type === 'SUBJECT' ? `SUBJECT:${showModal.gradeKey}` : showModal.type}
+                        onClose={() => setShowModal(null)}
+                        onSubmit={handleAdd}
+                        type={showModal.type}
+                        gradeLabel={showModal.type === 'SUBJECT' ? showModal.gradeLabel : undefined}
+                        isSubmitting={isSubjectSaving}
+                    />
+                )}
+                {confirmDelete && (
+                    <DeleteConfirm
+                        key={confirmDelete.type === 'SUBJECT' ? `SUBJECT:${confirmDelete.gradeKey}:${confirmDelete.name}` : `${confirmDelete.type}:${confirmDelete.name}`}
+                        item={confirmDelete}
+                        onCancel={() => setConfirmDelete(null)}
+                        onConfirm={handleDelete}
+                    />
+                )}
+            </AnimatePresence>
+            <AnimatePresence>{toast && <Toast msg={toast} onClose={() => setToast(null)} />}</AnimatePresence>
+        </>
+    );
 
     // ── DASHBOARD ──────────────────────────────────────────────────
     if (view === 'DASHBOARD') {
@@ -216,35 +310,49 @@ export default function ClassesDashboard() {
                     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-2xl">
                             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-500">Class Subject Groups</p>
-                            <h2 className="mt-3 text-2xl font-black text-slate-900">Subjects are now managed from curriculum groups, not teacher assignments.</h2>
-                            <p className="mt-2 text-sm font-medium text-slate-500">Pick a group to see the sections covered by that group and the exact subject list those classes should carry.</p>
+                            <h2 className="mt-3 text-2xl font-black text-slate-900">Subjects are managed per grade and applied to every section in that grade.</h2>
+                            <p className="mt-2 text-sm font-medium text-slate-500">Choose a class, add a subject, or remove a subject relationship from all matching sections.</p>
                         </div>
-                        <div className="w-full max-w-sm">
-                            <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Select Group</label>
-                            <select
-                                value={selectedCurriculumGroup?.id || ''}
-                                onChange={(event) => setSelectedGroupId(event.target.value)}
-                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                        <div className="flex w-full flex-col gap-3 sm:max-w-md sm:flex-row sm:items-end">
+                            <div className="flex-1">
+                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Select Class</label>
+                                <select
+                                    value={selectedGrade?.key || ''}
+                                    onChange={(event) => setSelectedGradeKey(event.target.value)}
+                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                                >
+                                    {gradeOptions.map((grade) => (
+                                        <option key={grade.key} value={grade.key}>{grade.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                type="button"
+                                disabled={!selectedGrade}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    if (!selectedGrade) return;
+                                    setShowModal({ type: 'SUBJECT', gradeKey: selectedGrade.key, gradeLabel: selectedGrade.label });
+                                }}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-teal-100 transition-all hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
-                                {store.curriculumGroups.map((group) => (
-                                    <option key={group.id} value={group.id}>{group.name}</option>
-                                ))}
-                            </select>
+                                <Plus size={18} /> Add Subject
+                            </button>
                         </div>
                     </div>
 
-                    {selectedCurriculumGroup && (
+                    {selectedGrade && selectedGradeGroup && (
                         <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)]">
                             <div>
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <h3 className="text-xl font-black text-slate-900">{selectedCurriculumGroup.name}</h3>
+                                    <h3 className="text-xl font-black text-slate-900">{selectedGrade.label}</h3>
                                     <span className="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-teal-600">
-                                        {selectedCurriculumGroup.sectionNames.length} Sections
+                                        {selectedGrade.sectionNames.length} Sections
                                     </span>
                                 </div>
-                                <p className="mt-2 text-sm font-medium text-slate-500">{selectedCurriculumGroup.description}</p>
+                                <p className="mt-2 text-sm font-medium text-slate-500">Current source: {selectedGradeGroup.name}</p>
                                 <div className="mt-5 flex flex-wrap gap-2">
-                                    {selectedCurriculumGroup.sectionNames.map((sectionName) => (
+                                    {selectedGrade.sectionNames.map((sectionName) => (
                                         <span key={sectionName} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
                                             {sectionName}
                                         </span>
@@ -253,21 +361,44 @@ export default function ClassesDashboard() {
                             </div>
 
                             <div className="rounded-3xl border border-slate-100 bg-slate-50 p-6">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Group Subjects</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Class Subjects</p>
                                 <div className="mt-4 space-y-3">
-                                    {selectedCurriculumGroup.subjects.map((subject) => (
-                                        <div key={`${selectedCurriculumGroup.id}:${subject.name}`} className="flex items-center justify-between rounded-2xl border border-white bg-white px-4 py-3 shadow-sm">
+                                    {selectedGradeGroup.subjects.map((subject) => (
+                                        <div key={`${selectedGradeGroup.id}:${subject.name}`} className="flex items-center justify-between gap-3 rounded-2xl border border-white bg-white px-4 py-3 shadow-sm">
                                             <div>
                                                 <p className="text-sm font-black text-slate-900">{subject.name}</p>
                                                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">{subject.code}</p>
                                             </div>
-                                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
-                                                #{subject.sortOrder + 1}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                                                    #{subject.sortOrder + 1}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        setConfirmDelete({ type: 'SUBJECT', name: subject.name, gradeKey: selectedGrade.key, gradeLabel: selectedGrade.label });
+                                                    }}
+                                                    className="rounded-xl bg-rose-50 p-2 text-rose-400 transition-all hover:bg-rose-100 hover:text-rose-600"
+                                                    aria-label={`Delete ${subject.name}`}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
+                                    {selectedGradeGroup.subjects.length === 0 && (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-sm font-bold text-slate-400">
+                                            No subjects assigned yet.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+                        </div>
+                    )}
+                    {selectedGrade && !selectedGradeGroup && (
+                        <div className="mt-8 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-sm font-bold text-slate-500">
+                            No subject group is mapped to {selectedGrade.label} yet. Add a subject to create the grade group.
                         </div>
                     )}
                 </section>
@@ -298,7 +429,7 @@ export default function ClassesDashboard() {
                     })}
                 </div>
 
-                <AnimatePresence>{toast && <Toast msg={toast} onClose={() => setToast(null)} />}</AnimatePresence>
+                {renderModalStack()}
             </div>
         );
     }
@@ -319,15 +450,9 @@ export default function ClassesDashboard() {
                     <div className="flex gap-3">
                         <button
                             onClick={() => setShowModal({ type: 'SECTION' })}
-                            className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-600 hover:border-teal-300 hover:shadow-md transition-all"
-                        >
-                            Add Section
-                        </button>
-                        <button
-                            onClick={() => setShowModal({ type: 'TEACHER' })}
                             className="px-5 py-2.5 bg-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-teal-100 hover:bg-teal-700 transition-all flex items-center gap-2"
                         >
-                            <Plus size={18} /> New Faculty
+                            <Plus size={18} /> Add Section
                         </button>
                     </div>
                 </div>
@@ -419,12 +544,7 @@ export default function ClassesDashboard() {
                     </div>
                 </div>
 
-                {/* Modals */}
-                <AnimatePresence>
-                    {showModal && <AddModal onClose={() => setShowModal(null)} onSubmit={handleAdd} type={showModal.type} />}
-                    {confirmDelete && <DeleteConfirm item={confirmDelete} onCancel={() => setConfirmDelete(null)} onConfirm={handleDelete} />}
-                </AnimatePresence>
-                <AnimatePresence>{toast && <Toast msg={toast} onClose={() => setToast(null)} />}</AnimatePresence>
+                {renderModalStack()}
             </div>
         );
     }
@@ -553,12 +673,7 @@ export default function ClassesDashboard() {
                     </div>
                 </div>
 
-                {/* Modals */}
-                <AnimatePresence>
-                    {showModal && <AddModal onClose={() => setShowModal(null)} onSubmit={handleAdd} type={showModal.type} />}
-                    {confirmDelete && <DeleteConfirm item={confirmDelete} onCancel={() => setConfirmDelete(null)} onConfirm={handleDelete} />}
-                </AnimatePresence>
-                <AnimatePresence>{toast && <Toast msg={toast} onClose={() => setToast(null)} />}</AnimatePresence>
+                {renderModalStack()}
             </div>
         );
     }
@@ -657,28 +772,25 @@ export default function ClassesDashboard() {
     // Fallback (modals rendered here when no view matched yet)
     return (
         <>
-            <AnimatePresence>
-                {showModal && <AddModal onClose={() => setShowModal(null)} onSubmit={handleAdd} type={showModal.type} />}
-                {confirmDelete && <DeleteConfirm item={confirmDelete} onCancel={() => setConfirmDelete(null)} onConfirm={handleDelete} />}
-            </AnimatePresence>
-            <AnimatePresence>{toast && <Toast msg={toast} onClose={() => setToast(null)} />}</AnimatePresence>
+            {renderModalStack()}
         </>
     );
 }
 
 // ─── Add Modal ─────────────────────────────────────────────────
-function AddModal({ onClose, onSubmit, type }: { onClose: () => void; onSubmit: any; type: string }) {
+function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }: { onClose: () => void; onSubmit: any; type: string; gradeLabel?: string; isSubmitting?: boolean }) {
     const maxDob = getTodayInputDate();
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/10">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/10" onClick={onClose}>
             <motion.div
+                onClick={(event) => event.stopPropagation()}
                 initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
                 className={`bg-white rounded-[40px] shadow-2xl w-full p-10 ${type === 'BULK_STUDENTS' ? 'max-w-3xl' : 'max-w-md'}`}
             >
                 <div className="flex justify-between items-center mb-8">
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">Add <span className="text-slate-300">{type === 'BULK_STUDENTS' ? 'STUDENTS' : type}</span></h2>
-                    <button onClick={onClose} className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:bg-slate-100">
+                    <button type="button" onClick={onClose} className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:bg-slate-100">
                         <X size={20} />
                     </button>
                 </div>
@@ -741,8 +853,23 @@ function AddModal({ onClose, onSubmit, type }: { onClose: () => void; onSubmit: 
                             />
                         </div>
                     )}
-                    <button type="submit" className="w-full py-5 bg-teal-600 text-white rounded-[20px] font-black text-sm shadow-xl shadow-teal-500/20 hover:bg-teal-700 transition-all uppercase tracking-widest mt-2">
-                        {type === 'BULK_STUDENTS' ? 'Import Students' : 'Confirm Registration'}
+                    {type === 'SUBJECT' && (
+                        <>
+                            <div className="rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3">
+                                <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">{gradeLabel}</p>
+                                <p className="mt-1 text-xs font-bold text-teal-900">The subject will apply to every section in this class.</p>
+                            </div>
+                            <input
+                                name="subject"
+                                required
+                                autoFocus
+                                placeholder="Subject name (e.g. Music)"
+                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none"
+                            />
+                        </>
+                    )}
+                    <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-teal-600 text-white rounded-[20px] font-black text-sm shadow-xl shadow-teal-500/20 hover:bg-teal-700 transition-all uppercase tracking-widest mt-2 disabled:cursor-not-allowed disabled:bg-slate-300">
+                        {isSubmitting ? 'Saving...' : type === 'BULK_STUDENTS' ? 'Import Students' : type === 'SUBJECT' ? 'Add Subject' : 'Confirm Registration'}
                     </button>
                 </form>
             </motion.div>
@@ -754,10 +881,12 @@ function AddModal({ onClose, onSubmit, type }: { onClose: () => void; onSubmit: 
 function DeleteConfirm({ item, onCancel, onConfirm }: { item: any; onCancel: () => void; onConfirm: () => void }) {
     const [isFinalTeacherStep, setIsFinalTeacherStep] = useState(false);
     const isTeacherDelete = item.type === 'TEACHER';
+    const isSubjectDelete = item.type === 'SUBJECT';
 
     return (
-        <div className={`fixed inset-0 z-[160] flex items-center justify-center p-6 backdrop-blur-md ${isTeacherDelete ? 'bg-sky-100/80' : 'bg-rose-900/10'}`}>
+        <div className={`fixed inset-0 z-[160] flex items-center justify-center p-6 backdrop-blur-md ${isTeacherDelete ? 'bg-sky-100/80' : 'bg-rose-900/10'}`} onClick={onCancel}>
             <motion.div
+                onClick={(event) => event.stopPropagation()}
                 initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                 className={`bg-white shadow-2xl w-full max-w-sm text-center ${isTeacherDelete ? 'rounded-xl border border-slate-200 px-8 py-7' : 'rounded-[40px] p-12'}`}
             >
@@ -765,30 +894,33 @@ function DeleteConfirm({ item, onCancel, onConfirm }: { item: any; onCancel: () 
                     <AlertTriangle size={isTeacherDelete ? 22 : 36} />
                 </div>
                 <h3 className={`${isTeacherDelete ? 'text-lg' : 'text-3xl'} font-black text-slate-900 mb-3`}>
-                    {isTeacherDelete ? (isFinalTeacherStep ? 'Final confirmation' : 'Are you sure?') : 'Delete Permanently?'}
+                    {isTeacherDelete ? (isFinalTeacherStep ? 'Final confirmation' : 'Are you sure?') : isSubjectDelete ? 'Delete Subject?' : 'Delete Permanently?'}
                 </h3>
                 <p className={`${isTeacherDelete ? 'mx-auto max-w-xs text-sm leading-6' : ''} text-slate-500 font-medium mb-10`}>
                     {isTeacherDelete
                         ? isFinalTeacherStep
                             ? <>Deleting <span className="font-bold text-rose-600">{item.name}</span> will remove this faculty record and its linked staffing references.</>
                             : 'This action cannot be undone. All values associated with this teacher will be lost.'
+                        : isSubjectDelete
+                            ? <>Are you sure you want to delete <span className="font-bold text-rose-600">{item.name}</span> from all {item.gradeLabel} sections?</>
                         : <>You are removing <span className="font-bold text-rose-600">{item.name}</span>. This cannot be undone.</>}
                 </p>
                 <div className={isTeacherDelete ? 'space-y-3' : 'flex gap-4'}>
                     {isTeacherDelete ? (
                         <>
                             <button
+                                type="button"
                                 onClick={() => (isFinalTeacherStep ? onConfirm() : setIsFinalTeacherStep(true))}
                                 className="w-full rounded-md bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-sm transition-colors hover:bg-rose-700"
                             >
                                 {isFinalTeacherStep ? 'Yes, delete teacher' : 'Delete teacher'}
                             </button>
-                            <button onClick={onCancel} className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
+                            <button type="button" onClick={onCancel} className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
                         </>
                     ) : (
                         <>
-                            <button onClick={onCancel} className="flex-1 py-4 bg-slate-50 text-slate-400 font-black rounded-2xl hover:bg-slate-100">Cancel</button>
-                            <button onClick={onConfirm} className="flex-1 py-4 bg-rose-500 text-white font-black rounded-2xl shadow-xl shadow-rose-200 hover:bg-rose-600">Delete</button>
+                            <button type="button" onClick={onCancel} className="flex-1 py-4 bg-slate-50 text-slate-400 font-black rounded-2xl hover:bg-slate-100">Cancel</button>
+                            <button type="button" onClick={onConfirm} className="flex-1 py-4 bg-rose-500 text-white font-black rounded-2xl shadow-xl shadow-rose-200 hover:bg-rose-600">Delete</button>
                         </>
                     )}
                 </div>

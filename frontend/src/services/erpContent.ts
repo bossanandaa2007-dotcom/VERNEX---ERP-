@@ -92,6 +92,25 @@ const assertSupabase = () => {
 
 const LIBRARIAN_BOOKS_TABLE = 'librarian_books';
 
+const normalizeTitle = (title: string) => title.trim().replace(/\s+/g, ' ');
+
+const defaultLibraryDueDate = () => {
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 21);
+  return dueDate.toISOString().slice(0, 10);
+};
+
+const mapLibraryBook = (row: any): LibraryBook => ({
+  id: row.id,
+  title: row.title,
+  author: row.author,
+  category: row.category,
+  isbn: row.isbn,
+  totalCopies: row.total_copies,
+  availableCopies: row.available_copies,
+  status: row.status,
+});
+
 export const fetchAssignments = async (classNames?: string[]) => {
   const client = assertSupabase();
   let query = client
@@ -347,16 +366,7 @@ export const fetchBooks = async () => {
 
   if (error) throw error;
 
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    title: row.title,
-    author: row.author,
-    category: row.category,
-    isbn: row.isbn,
-    totalCopies: row.total_copies,
-    availableCopies: row.available_copies,
-    status: row.status,
-  })) as LibraryBook[];
+  return (data || []).map(mapLibraryBook) as LibraryBook[];
 };
 
 export const createBook = async (book: Omit<LibraryBook, 'id' | 'status'>) => {
@@ -378,16 +388,7 @@ export const createBook = async (book: Omit<LibraryBook, 'id' | 'status'>) => {
 
   if (error) throw error;
 
-  return {
-    id: data.id,
-    title: data.title,
-    author: data.author,
-    category: data.category,
-    isbn: data.isbn,
-    totalCopies: data.total_copies,
-    availableCopies: data.available_copies,
-    status: data.status,
-  } as LibraryBook;
+  return mapLibraryBook(data);
 };
 
 export const updateBook = async (id: string, book: Omit<LibraryBook, 'id' | 'status'>) => {
@@ -409,16 +410,32 @@ export const updateBook = async (id: string, book: Omit<LibraryBook, 'id' | 'sta
 
   if (error) throw error;
 
-  return {
-    id: data.id,
-    title: data.title,
-    author: data.author,
-    category: data.category,
-    isbn: data.isbn,
-    totalCopies: data.total_copies,
-    availableCopies: data.available_copies,
-    status: data.status,
-  } as LibraryBook;
+  return mapLibraryBook(data);
+};
+
+export const findOrCreateLibraryBookByTitle = async (rawTitle: string) => {
+  const client = assertSupabase();
+  const title = normalizeTitle(rawTitle);
+  if (!title) throw new Error('Enter a book title.');
+
+  const { data: matches, error: matchError } = await client
+    .from(LIBRARIAN_BOOKS_TABLE)
+    .select('id, title, author, category, isbn, total_copies, available_copies, status')
+    .ilike('title', title);
+
+  if (matchError) throw matchError;
+
+  const existing = (matches || []).find((book: any) => normalizeTitle(book.title).toLowerCase() === title.toLowerCase());
+  if (existing) return mapLibraryBook(existing);
+
+  return createBook({
+    title,
+    author: 'Unknown',
+    category: 'General',
+    isbn: '',
+    totalCopies: 1,
+    availableCopies: 1,
+  });
 };
 
 export const deleteBook = async (id: string) => {
@@ -495,17 +512,47 @@ export interface LibraryIssue {
   issue_date: string;
   due_date: string;
   returned_at?: string | null;
+  returned_date?: string | null;
   status: string;
+  reminderSent?: boolean;
+  reminderSentAt?: string | null;
+  overdueStatus?: string;
+  reminderCount?: number;
   book?: LibraryBook;
+  student?: { id: string; name: string; rollNo?: string; sectionName?: string };
+}
+
+export interface LibraryReminderHistory {
+  id: string;
+  issueId: string;
+  studentId: string;
+  bookId: string;
+  message: string;
+  createdAt: string;
+  book?: Pick<LibraryBook, 'id' | 'title'>;
   student?: { id: string; name: string; rollNo?: string; sectionName?: string };
 }
 
 export const fetchLibraryIssues = async () => {
   const client = assertSupabase();
-  const { data, error } = await client
+  try {
+    await client.rpc('process_library_overdue_reminders');
+  } catch {
+    // Older Supabase schemas may not have the overdue processor yet.
+  }
+  let { data, error }: { data: any[] | null; error: any } = await client
     .from('library_issues')
-    .select('id, student_id, book_id, issue_date, due_date, returned_at, status, book:librarian_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, roll_no, section_id, sections(name))')
-    .order('due_date', { ascending: false });
+    .select('id, student_id, book_id, issue_date, due_date, returned_at, returned_date, status, reminder_sent, reminder_sent_at, overdue_status, updated_at, library_reminders(id), book:librarian_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, roll_no, section_id, sections(name))')
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    const fallback = await client
+      .from('library_issues')
+      .select('id, student_id, book_id, issue_date, due_date, returned_at, status, book:librarian_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, roll_no, section_id, sections(name))')
+      .order('due_date', { ascending: false });
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) throw error;
 
@@ -516,27 +563,23 @@ export const fetchLibraryIssues = async () => {
     issue_date: row.issue_date,
     due_date: row.due_date,
     returned_at: row.returned_at,
-    status: row.status,
-    book: row.book ? {
-      id: row.book.id,
-      title: row.book.title,
-      author: row.book.author,
-      category: row.book.category,
-      isbn: row.book.isbn,
-      totalCopies: row.book.total_copies,
-      availableCopies: row.book.available_copies,
-      status: row.book.status,
-    } : undefined,
+    returned_date: row.returned_date,
+    status: String(row.status || '').toLowerCase(),
+    reminderSent: Boolean(row.reminder_sent),
+    reminderSentAt: row.reminder_sent_at,
+    overdueStatus: row.overdue_status || (!row.returned_at && row.due_date < new Date().toISOString().slice(0, 10) ? 'overdue' : 'current'),
+    reminderCount: row.library_reminders?.length || 0,
+    book: row.book ? mapLibraryBook(row.book) : undefined,
     student: row.student ? { id: row.student.id, name: row.student.name, rollNo: row.student.roll_no, sectionName: row.student.sections?.name } : undefined,
   })) as LibraryIssue[];
 };
 
-export const createIssueRecord = async (studentId: string, bookId: string, dueDate: string) => {
+export const createIssueRecord = async (studentId: string, bookId: string, dueDate = defaultLibraryDueDate()) => {
   const client = assertSupabase();
   const { data, error } = await client.rpc('issue_library_book', {
     target_student_id: studentId,
     target_book_id: bookId,
-    target_due_date: dueDate,
+    target_due_date: dueDate || null,
   });
 
   if (error) throw error;
@@ -558,6 +601,27 @@ export const sendReturnReminders = async (issueIds: string[], message?: string) 
   // simple RPC or insert to notifications table if available
   const { error } = await client.rpc('send_library_reminders', { issue_ids: issueIds, reminder_message: message || 'Please return the issued library book.' });
   if (error) throw error;
+};
+
+export const fetchLibraryReminderHistory = async () => {
+  const client = assertSupabase();
+  const { data, error } = await client
+    .from('library_reminders')
+    .select('id, issue_id, student_id, book_id, reminder_message, created_at, book:librarian_books(id, title), student:students(id, name, roll_no, section_id, sections(name))')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    issueId: row.issue_id,
+    studentId: row.student_id,
+    bookId: row.book_id,
+    message: row.reminder_message,
+    createdAt: row.created_at,
+    book: row.book ? { id: row.book.id, title: row.book.title } : undefined,
+    student: row.student ? { id: row.student.id, name: row.student.name, rollNo: row.student.roll_no, sectionName: row.student.sections?.name } : undefined,
+  })) as LibraryReminderHistory[];
 };
 
 export const fetchFeeRecords = async (studentEmail?: string) => {
