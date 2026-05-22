@@ -41,7 +41,21 @@ const divisionCards: { title: ComplaintDivision; description: string }[] = [
   },
 ];
 
-const complaintTypes: ComplaintType[] = ['Academic', 'Hostel', 'Discipline', 'Infrastructure', 'Fees', 'Other'];
+const complaintTypes: ComplaintType[] = [
+  'Academic',
+  'Hostel',
+  'Discipline',
+  'Infrastructure',
+  'Fees',
+  'Transport',
+  'Canteen',
+  'Library',
+  'Exam',
+  'Bullying',
+  'Health & Safety',
+  'Cleanliness',
+  'Other',
+];
 const priorities: ComplaintPriority[] = ['Low', 'Medium', 'High'];
 
 const formatTrackingId = (complaintId: string) => complaintId.replace(/^cmp/i, 'CMP');

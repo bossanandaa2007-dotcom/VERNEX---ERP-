@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, BookCheck, AlertCircle, Search, Plus, Filter, CheckCircle } from 'lucide-react';
 import Modal from '../../components/common/Modal';
-import { createBook, createIssueRecord, fetchBooks, fetchStudents, type LibraryBook } from '../../services/erpContent';
+import { createBook, createIssueRecord, fetchBooks, fetchLibraryIssues, fetchStudents, type LibraryBook, type LibraryIssue } from '../../services/erpContent';
 
 const LibraryDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,6 +13,8 @@ const LibraryDashboard = () => {
   const [issueBookTarget, setIssueBookTarget] = useState<LibraryBook | null>(null);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [issuedBooks, setIssuedBooks] = useState<LibraryIssue[]>([]);
+  const [isIssuedModalOpen, setIsIssuedModalOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -20,10 +22,11 @@ const LibraryDashboard = () => {
     const loadBooks = async () => {
       try {
         setIsLoading(true);
-        const [data, studentData] = await Promise.all([fetchBooks(), fetchStudents()]);
+        const [data, studentData, issueData] = await Promise.all([fetchBooks(), fetchStudents(), fetchLibraryIssues()]);
         if (isMounted) {
           setBooks(data);
           setStudents(studentData);
+          setIssuedBooks(issueData);
         }
       } catch (error) {
         console.error('Failed to load library books:', error);
@@ -74,10 +77,12 @@ const LibraryDashboard = () => {
 
     try {
       await createIssueRecord(selectedStudent, issueBookTarget.id, dueDate);
+      const refreshedIssues = await fetchLibraryIssues();
       setBooks((prev) => prev.map((entry) => entry.id === issueBookTarget.id ? {
         ...entry,
         availableCopies: Math.max(entry.availableCopies - 1, 0),
       } : entry));
+      setIssuedBooks(refreshedIssues);
       setIssueBookTarget(null);
       showToast(`Successfully issued "${issueBookTarget.title}"!`);
     } catch (error) {
@@ -111,6 +116,10 @@ const LibraryDashboard = () => {
 
   const issuedCount = books.reduce((sum, book) => sum + Math.max(book.totalCopies - book.availableCopies, 0), 0);
   const unavailableCount = books.filter((book) => book.availableCopies === 0).length;
+  const activeIssuedBooks = useMemo(
+    () => issuedBooks.filter((issue) => issue.status !== 'returned' && !issue.returned_at && !issue.returned_date),
+    [issuedBooks]
+  );
 
   return (
     <div className="space-y-6 lg:pb-12 h-full">
@@ -139,10 +148,15 @@ const LibraryDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           { title: 'Total Catalog', value: books.length.toString(), icon: BookOpen, color: 'bg-indigo-500' },
-          { title: 'Currently Issued', value: issuedCount.toString(), icon: BookCheck, color: 'bg-blue-500' },
+          { title: 'Currently Issued', value: issuedCount.toString(), icon: BookCheck, color: 'bg-blue-500', onClick: () => setIsIssuedModalOpen(true) },
           { title: 'Unavailable Titles', value: unavailableCount.toString(), icon: AlertCircle, color: 'bg-rose-500' },
         ].map((stat, i) => (
           <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+            <button
+              type="button"
+              onClick={stat.onClick}
+              className={`flex w-full items-center gap-4 text-left ${stat.onClick ? 'cursor-pointer' : 'cursor-default'}`}
+            >
             <div className={`p-4 rounded-xl ${stat.color} text-white shadow-md shrink-0`}>
               <stat.icon size={24} />
             </div>
@@ -150,6 +164,7 @@ const LibraryDashboard = () => {
               <h3 className="text-slate-500 text-sm font-medium">{stat.title}</h3>
               <p className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</p>
             </div>
+            </button>
           </div>
         ))}
       </div>
@@ -171,7 +186,7 @@ const LibraryDashboard = () => {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-sm text-slate-500">Loading catalog from Supabase...</div>
+          <div className="p-8 text-sm text-slate-500">Loading catalog...</div>
         ) : (
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
@@ -292,6 +307,48 @@ const LibraryDashboard = () => {
             <button type="button" onClick={() => setIssueBookTarget(null)} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-slate-700 hover:bg-slate-50">Cancel</button>
             <button type="button" onClick={() => void handleIssueBook()} className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 font-bold text-white hover:bg-indigo-700">Issue Book</button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={isIssuedModalOpen} onClose={() => setIsIssuedModalOpen(false)} title="Currently Issued Books">
+        <div className="space-y-3">
+          {activeIssuedBooks.length ? activeIssuedBooks.map((issue) => (
+            <div key={issue.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-slate-900">{issue.book?.title || 'Unknown book'}</p>
+                  <p className="mt-1 text-sm text-slate-500">by {issue.book?.author || 'Unknown author'}</p>
+                </div>
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                  Issued
+                </span>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-white px-3 py-2.5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Student</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">{issue.student?.name || 'Unknown student'}</p>
+                </div>
+                <div className="rounded-xl bg-white px-3 py-2.5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Roll / Section</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">
+                    {issue.student?.rollNo || '-'} {issue.student?.sectionName ? `• ${issue.student.sectionName}` : ''}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-white px-3 py-2.5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Issued On</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">{issue.issue_date}</p>
+                </div>
+                <div className="rounded-xl bg-white px-3 py-2.5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Due Date</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">{issue.due_date}</p>
+                </div>
+              </div>
+            </div>
+          )) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm font-semibold text-slate-500">
+              No active issued books right now.
+            </div>
+          )}
         </div>
       </Modal>
     </div>

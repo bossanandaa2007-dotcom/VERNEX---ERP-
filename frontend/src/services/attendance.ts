@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { AttendanceValue } from '../types/attendance';
 import type { IStudent } from '../types/school';
+import { isAttendanceDateEditable, isFutureDateInput } from '../utils/dateLimits';
 
 export interface AttendancePreviewRow {
   studentName: string;
@@ -252,6 +253,14 @@ export const fetchAttendanceSheet = async (classId: string, attendanceDate: stri
 };
 
 export const upsertManualAttendance = async (classId: string, attendanceDate: string, students: AttendanceSheetRow[]) => {
+  if (isFutureDateInput(attendanceDate)) {
+    throw new Error('Attendance cannot be marked for a future date.');
+  }
+
+  if (!isAttendanceDateEditable(attendanceDate)) {
+    throw new Error('Attendance for this date is frozen and can no longer be changed.');
+  }
+
   const client = assertSupabase();
   const payload = students.map((student) => ({
     class_id: classId,

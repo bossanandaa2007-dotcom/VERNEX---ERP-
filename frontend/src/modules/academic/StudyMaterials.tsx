@@ -186,7 +186,7 @@ const StudyMaterials = () => {
 
       {isLoading ? (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 text-sm text-slate-500 shadow-sm">
-          Loading study materials from Supabase...
+          Loading study materials...
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

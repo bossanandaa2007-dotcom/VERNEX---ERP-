@@ -193,7 +193,7 @@ const Assignments = () => {
 
       {isLoading ? (
         <div className="bg-white rounded-2xl border border-slate-100 p-8 text-sm text-slate-500 shadow-sm">
-          Loading assignments from Supabase...
+          Loading assignments...
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

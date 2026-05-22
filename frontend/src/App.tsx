@@ -17,6 +17,7 @@ import LibrarianStudents from './modules/library/librarian/StudentsPage';
 import LibrarianIssued from './modules/library/librarian/IssuedBooksPage';
 import LibrarianReminders from './modules/library/librarian/RemindersPage';
 import FinanceDashboard from './modules/finance/FinanceDashboard';
+import FinanceReportsPage from './modules/finance/FinanceReportsPage';
 import EventDashboard from './modules/events/EventDashboard';
 import StudentList from './modules/students/StudentList';
 import StudentAcademics from './modules/students/StudentAcademics';
@@ -165,6 +166,7 @@ function App() {
 
           {/* --- Accountant Routes --- */}
           <Route path="/accountant/fees" element={<ProtectedRoute allowedRoles={['Accountant']}><FinanceDashboard /></ProtectedRoute>} />
+          <Route path="/accountant/reports" element={<ProtectedRoute allowedRoles={['Accountant']}><FinanceReportsPage /></ProtectedRoute>} />
 
           {/* --- Governing Body Routes --- */}
           <Route path="/governing/complaints" element={<ProtectedRoute allowedRoles={['Governing Body']}><div className="p-3 lg:p-8"><ComplaintInbox /></div></ProtectedRoute>} />

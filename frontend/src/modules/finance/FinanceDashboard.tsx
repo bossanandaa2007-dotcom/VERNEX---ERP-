@@ -51,7 +51,6 @@ type TermFeeForm = {
 };
 type PaymentDraft = {
   paidAmount: string;
-  status: FeeStatus;
 };
 
 interface ClassSummary {
@@ -119,6 +118,69 @@ const statusStyles: Record<FeeStatus, string> = {
 };
 
 const getStatusLabel = (status: FeeStatus) => status === 'Pending' ? 'Not Paid' : status;
+
+const sanitizeNumericInput = (value: string) => {
+  const cleaned = value.replace(/[^0-9.]/g, '');
+  const [integerPart, ...decimalParts] = cleaned.split('.');
+  if (!decimalParts.length) {
+    return integerPart;
+  }
+  return `${integerPart}.${decimalParts.join('')}`;
+};
+
+const formatIndianNumberInput = (value: string) => {
+  if (!value) {
+    return '';
+  }
+
+  const sanitized = sanitizeNumericInput(value);
+  if (!sanitized) {
+    return '';
+  }
+
+  const endsWithDecimal = sanitized.endsWith('.');
+  const [integerPart = '0', decimalPart] = sanitized.split('.');
+  const formattedInteger = new Intl.NumberFormat('en-IN').format(Number(integerPart || '0'));
+
+  if (endsWithDecimal) {
+    return `${formattedInteger}.`;
+  }
+
+  if (decimalPart !== undefined) {
+    return `${formattedInteger}.${decimalPart}`;
+  }
+
+  return formattedInteger;
+};
+
+const parseFormattedNumber = (value: string) => Number(sanitizeNumericInput(value));
+
+const clampCurrencyInput = (value: string, maxAmount: number) => {
+  const sanitized = sanitizeNumericInput(value);
+  if (!sanitized) {
+    return '';
+  }
+
+  const numericValue = Number(sanitized);
+  if (!Number.isFinite(numericValue)) {
+    return '';
+  }
+
+  const clampedValue = Math.min(Math.max(numericValue, 0), maxAmount);
+  return String(clampedValue);
+};
+
+const getAutoPaymentStatus = (paidAmount: number, totalAmount: number): FeeStatus => {
+  if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
+    return 'Pending';
+  }
+
+  if (paidAmount >= totalAmount) {
+    return 'Paid';
+  }
+
+  return 'Partial';
+};
 
 const categoryStateStyles: Record<CategoryDueState, {
   panel: string;
@@ -342,11 +404,10 @@ const FinanceDashboard = () => {
       return;
     }
 
-    setPaymentDrafts(Object.fromEntries(recordsWithLocalStatus.map((fee) => [
+      setPaymentDrafts(Object.fromEntries(recordsWithLocalStatus.map((fee) => [
         fee.id,
         {
           paidAmount: String(Number(fee.paidAmount || 0)),
-          status: fee.status,
         },
       ])));
 
@@ -449,7 +510,19 @@ const FinanceDashboard = () => {
 
   const visibleRecords = useMemo(() => {
     if (!staffView) {
-      return recordsWithLocalStatus;
+      return recordsWithLocalStatus.slice().sort((left, right) => {
+        const classCompare = getClassLabel(left.sectionName).localeCompare(getClassLabel(right.sectionName), undefined, { numeric: true });
+        if (classCompare !== 0) {
+          return classCompare;
+        }
+
+        const rollCompare = String(left.rollNo || '').localeCompare(String(right.rollNo || ''), undefined, { numeric: true });
+        if (rollCompare !== 0) {
+          return rollCompare;
+        }
+
+        return String(left.studentName || left.studentEmail || '').localeCompare(String(right.studentName || right.studentEmail || ''), undefined, { numeric: true });
+      });
     }
 
     return recordsWithLocalStatus.filter((fee) => {
@@ -458,6 +531,18 @@ const FinanceDashboard = () => {
       const matchesCategory = selectedCategory === 'All Categories' || fee.type === selectedCategory;
       const matchesStatus = selectedStatus === 'All Status' || fee.status === selectedStatus;
       return matchesGrade && matchesClass && matchesCategory && matchesStatus;
+    }).sort((left, right) => {
+      const classCompare = getClassLabel(left.sectionName).localeCompare(getClassLabel(right.sectionName), undefined, { numeric: true });
+      if (classCompare !== 0) {
+        return classCompare;
+      }
+
+      const rollCompare = String(left.rollNo || '').localeCompare(String(right.rollNo || ''), undefined, { numeric: true });
+      if (rollCompare !== 0) {
+        return rollCompare;
+      }
+
+      return String(left.studentName || left.studentEmail || '').localeCompare(String(right.studentName || right.studentEmail || ''), undefined, { numeric: true });
     });
   }, [recordsWithLocalStatus, selectedCategory, selectedClassKey, selectedGrade, selectedStatus, staffView]);
 
@@ -639,7 +724,6 @@ const FinanceDashboard = () => {
       const fee = recordsWithLocalStatus.find((record) => record.id === recordId);
       const existing = current[recordId] || {
         paidAmount: String(Number(fee?.paidAmount || 0)),
-        status: fee?.status || 'Pending',
       };
 
       return {
@@ -672,17 +756,23 @@ const FinanceDashboard = () => {
           continue;
         }
 
-        const paidAmount = Number(draft.paidAmount);
+        const paidAmount = parseFormattedNumber(draft.paidAmount);
         if (!Number.isFinite(paidAmount) || paidAmount < 0) {
           throw new Error(`Invalid paid amount for ${fee.studentName || fee.studentEmail}.`);
         }
 
-        if (draft.status === 'Partial') {
+        if (paidAmount > Number(fee.totalAmount)) {
+          throw new Error(`Paid amount for ${fee.studentName || fee.studentEmail} cannot exceed total fee.`);
+        }
+
+        const autoStatus = getAutoPaymentStatus(paidAmount, Number(fee.totalAmount));
+
+        if (autoStatus === 'Partial') {
           if (paidAmount <= 0 || paidAmount >= Number(fee.totalAmount)) {
             throw new Error(`Partial amount for ${fee.studentName || fee.studentEmail} must be greater than 0 and less than total fee.`);
           }
           await updateFeeStatuses([recordId], 'Partial', paidAmount);
-        } else if (draft.status === 'Paid') {
+        } else if (autoStatus === 'Paid') {
           await updateFeeStatuses([recordId], 'Paid');
         } else {
           await updateFeeStatuses([recordId], 'Pending');
@@ -719,7 +809,7 @@ const FinanceDashboard = () => {
       return;
     }
 
-    const paidAmount = Number(partialPaymentDialog.amount);
+    const paidAmount = parseFormattedNumber(partialPaymentDialog.amount);
     if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
       showToast('Enter a valid paid amount.');
       return;
@@ -1020,11 +1110,10 @@ const FinanceDashboard = () => {
                 <div className="relative">
                   <IndianRupee size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={termFeeForm.amount}
-                    onChange={(event) => setTermFeeForm((current) => ({ ...current, amount: event.target.value }))}
+                    type="text"
+                    inputMode="decimal"
+                    value={formatIndianNumberInput(termFeeForm.amount)}
+                    onChange={(event) => setTermFeeForm((current) => ({ ...current, amount: sanitizeNumericInput(event.target.value) }))}
                     required
                     placeholder="0.00"
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 pl-9 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -1198,11 +1287,20 @@ const FinanceDashboard = () => {
                 </label>
                 {canManageFees && (
                   <>
+                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        onChange={toggleAllVisible}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
+                      />
+                      <span>Select All Students</span>
+                    </label>
                     <button
                       onClick={toggleAllVisible}
                       className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
                     >
-                      {allVisibleSelected ? 'Clear Selection' : 'Select Visible'}
+                      {allVisibleSelected ? 'Clear Selection' : 'Select All Students'}
                     </button>
                     <button
                       onClick={() => handleReminder(selectedRecords)}
@@ -1287,7 +1385,7 @@ const FinanceDashboard = () => {
                 <span className="text-xs font-black uppercase tracking-widest text-indigo-700">{selectedRecords.length} selected</span>
                 <button onClick={() => savePaymentDrafts(selectedRecords)} className="flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Save size={14} /> Save Payments</button>
                 <button onClick={() => handleMarkRecords(selectedRecords, 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Mark Paid</button>
-                <button onClick={() => openPartialPaymentDialog(selectedRecords)} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-black text-white">Mark Partial</button>
+                <button onClick={() => handleMarkRecords(selectedRecords, 'Pending')} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white">Mark Not Paid</button>
                 <button onClick={() => setSelectedRecords([])} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">Reject Selection</button>
               </div>
             )}
@@ -1295,32 +1393,31 @@ const FinanceDashboard = () => {
 
           <div className="grid gap-3 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-3">
             {visibleRecords.map((fee) => {
-              const status = normalizeStatus(fee.status);
+              const savedStatus = normalizeStatus(fee.status);
               const draft = paymentDrafts[fee.id] || {
                 paidAmount: String(Number(fee.paidAmount || 0)),
-                status,
               };
               const isSelected = selectedSet.has(fee.id);
               const feeCategorySummary = categorySummaries.find((summary) => summary.category === fee.type);
               const cardDueDate = categoryDueDates[fee.type] || fee.dueDate;
-              const cardDueState = status === 'Paid' ? 'completed' : feeCategorySummary?.state || selectedCategorySummary?.state || 'unscheduled';
-              const cardStyles = categoryStateStyles[cardDueState];
-              const note = Object.prototype.hasOwnProperty.call(notes, fee.id)
-                ? notes[fee.id]
-                : status === 'Paid'
-                  ? ''
-                  : `Remaining ${formatCurrency(Number(fee.pendingAmount).toFixed(2))}`;
-              const reminderLevel = status === 'Pending'
-                ? {
-                    label: 'High reminder',
-                    className: 'border-rose-200 bg-rose-50 text-rose-700',
-                    message: 'Full amount pending',
-                  }
-                : status === 'Partial'
-                  ? {
-                      label: 'Balance reminder',
-                      className: 'border-sky-200 bg-sky-50 text-sky-700',
-                      message: 'Partial payment received',
+               const cardDueState = savedStatus === 'Paid' ? 'completed' : feeCategorySummary?.state || selectedCategorySummary?.state || 'unscheduled';
+               const cardStyles = categoryStateStyles[cardDueState];
+               const note = Object.prototype.hasOwnProperty.call(notes, fee.id)
+                 ? notes[fee.id]
+                 : savedStatus === 'Paid'
+                   ? ''
+                   : `Remaining ${formatCurrency(Number(fee.pendingAmount).toFixed(2))}`;
+               const reminderLevel = savedStatus === 'Pending'
+                 ? {
+                     label: 'High reminder',
+                     className: 'border-rose-200 bg-rose-50 text-rose-700',
+                     message: 'Full amount pending',
+                   }
+                 : savedStatus === 'Partial'
+                   ? {
+                       label: 'Balance reminder',
+                       className: 'border-sky-200 bg-sky-50 text-sky-700',
+                       message: 'Partial payment received',
                     }
                   : null;
 
@@ -1347,10 +1444,10 @@ const FinanceDashboard = () => {
                       </div>
                     </label>
                     <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusStyles[status]}`}>
-                        {getStatusLabel(status)}
+                      <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusStyles[savedStatus]}`}>
+                        {getStatusLabel(savedStatus)}
                       </span>
-                      {cardDueState === 'overdue' && status !== 'Paid' && (
+                      {cardDueState === 'overdue' && savedStatus !== 'Paid' && (
                         <span className="rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-rose-700">
                           Overdue
                         </span>
@@ -1390,39 +1487,38 @@ const FinanceDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-3">
-                    <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
-                      <IndianRupee size={13} /> Payment Entry
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-[1fr_0.9fr]">
-                      <label className="block">
-                        <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Amount Paid</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max={Number(fee.totalAmount)}
-                          step="0.01"
-                          value={draft.paidAmount}
-                          onChange={(event) => updatePaymentDraft(fee.id, { paidAmount: event.target.value })}
-                          disabled={!canManageFees}
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Status</span>
-                        <select
-                          value={draft.status}
-                          onChange={(event) => updatePaymentDraft(fee.id, { status: event.target.value as FeeStatus })}
-                          disabled={!canManageFees}
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-                        >
-                          <option value="Pending">Not Paid</option>
-                          <option value="Partial">Partial</option>
-                          <option value="Paid">Paid</option>
-                        </select>
-                      </label>
-                    </div>
-                    {canManageFees && (
+                  {canManageFees && (
+                    <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-3">
+                      <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                        <IndianRupee size={13} /> Payment Entry
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-[1fr_0.9fr]">
+                        <label className="block">
+                          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Amount Paid</span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={formatIndianNumberInput(draft.paidAmount)}
+                            onChange={(event) => updatePaymentDraft(fee.id, {
+                              paidAmount: clampCurrencyInput(event.target.value, Number(fee.totalAmount)),
+                            })}
+                            disabled={!canManageFees}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </label>
+                        <div className="block">
+                          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Status</span>
+                          <div className={`flex h-[42px] items-center rounded-xl border px-3 py-2 text-sm font-black ${
+                            savedStatus === 'Paid'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : savedStatus === 'Partial'
+                                ? 'border-sky-200 bg-sky-50 text-sky-700'
+                                : 'border-amber-200 bg-amber-50 text-amber-700'
+                          }`}>
+                            {getStatusLabel(savedStatus)}
+                          </div>
+                        </div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => savePaymentDrafts([fee.id])}
@@ -1430,8 +1526,8 @@ const FinanceDashboard = () => {
                       >
                         <Save size={14} /> Save Payment Info
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   <label className="mt-4 block">
                     <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
@@ -1443,7 +1539,7 @@ const FinanceDashboard = () => {
                       onBlur={() => void handleSaveNote(fee.id)}
                       disabled={!canManageFees}
                       rows={2}
-                      placeholder="Add pending note"
+                      placeholder={canManageFees ? 'Add pending note' : 'View pending note'}
                       className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                     />
                   </label>
@@ -1451,7 +1547,7 @@ const FinanceDashboard = () => {
                   {canManageFees && (
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       <button onClick={() => handleMarkRecords([fee.id], 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Paid</button>
-                      <button onClick={() => updatePaymentDraft(fee.id, { paidAmount: '0', status: 'Pending' })} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white">Not Paid</button>
+                      <button onClick={() => updatePaymentDraft(fee.id, { paidAmount: '0' })} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white">Not Paid</button>
                       <button onClick={() => handleReminder([fee.id])} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
                         <MessageSquare size={14} /> Reminder
                       </button>
@@ -1506,12 +1602,11 @@ const FinanceDashboard = () => {
             <label className="mt-5 block">
               <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Paid Amount</span>
               <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={partialPaymentDialog.amount}
+                type="text"
+                inputMode="decimal"
+                value={formatIndianNumberInput(partialPaymentDialog.amount)}
                 onChange={(event) => setPartialPaymentDialog((current) =>
-                  current ? { ...current, amount: event.target.value } : current
+                  current ? { ...current, amount: sanitizeNumericInput(event.target.value) } : current
                 )}
                 className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-black text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
                 placeholder="Enter amount paid"
