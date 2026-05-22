@@ -1,7 +1,20 @@
 import { create } from 'zustand';
 
 export type ComplaintStatus = 'OPEN' | 'RESOLVED';
-export type ComplaintType = 'Academic' | 'Infrastructure' | 'Discipline' | 'Hostel' | 'Fees' | 'Other';
+export type ComplaintType =
+  | 'Academic'
+  | 'Infrastructure'
+  | 'Discipline'
+  | 'Hostel'
+  | 'Fees'
+  | 'Transport'
+  | 'Canteen'
+  | 'Library'
+  | 'Exam'
+  | 'Bullying'
+  | 'Health & Safety'
+  | 'Cleanliness'
+  | 'Other';
 export type ComplaintPriority = 'Low' | 'Medium' | 'High';
 export type ComplaintDivision = 'Boys' | 'Girls';
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Award, BookOpen, CalendarCheck, Mail, Phone, Plus, Trash2, Upload, UserRound, Users, X } from 'lucide-react';
+import { ArrowLeft, Award, BookOpen, CalendarCheck, Mail, Phone, Plus, Upload, UserRound, Users, X } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useClassStore } from '../../store/useClassStore';
 import { fetchStudentMarksByProfile, fetchTeacherMarkScopes, type StudentMarkRecord, type TeacherMarkScope } from '../../services/marks';
@@ -86,7 +86,6 @@ const TeacherClasses = () => {
   const students = useClassStore((state) => state.students);
   const addStudent = useClassStore((state) => state.addStudent);
   const addStudents = useClassStore((state) => state.addStudents);
-  const deleteStudent = useClassStore((state) => state.deleteStudent);
   const isLoading = useClassStore((state) => state.isLoading);
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
@@ -96,13 +95,34 @@ const TeacherClasses = () => {
   const [error, setError] = useState<string | null>(null);
   const [markScopes, setMarkScopes] = useState<TeacherMarkScope[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<IStudent | null>(null);
+  const [studentMetrics, setStudentMetrics] = useState<Record<string, { averageMarks: number | null; attendanceRate: number | null }>>({});
   const [studentDetail, setStudentDetail] = useState<{
     attendanceRate: number | null;
     attendanceTotal: number;
     marks: StudentMarkRecord[];
   }>({ attendanceRate: null, attendanceTotal: 0, marks: [] });
   const [isStudentDetailLoading, setIsStudentDetailLoading] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [isMobileRosterOpen, setIsMobileRosterOpen] = useState(false);
   const maxDob = getTodayInputDate();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const syncViewport = () => setIsMobileView(mediaQuery.matches);
+    syncViewport();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncViewport);
+      return () => mediaQuery.removeEventListener('change', syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
+  }, []);
 
   useEffect(() => {
     void initialize();
@@ -166,7 +186,9 @@ const TeacherClasses = () => {
   const canEditActiveSection = !!activeSection && activeSection.name === ownedClass;
 
   const visibleStudents = useMemo(
-    () => students.filter((student) => student.sectionId === activeSectionId),
+    () => students
+      .filter((student) => student.sectionId === activeSectionId)
+      .sort((left, right) => left.rollNo.localeCompare(right.rollNo, undefined, { numeric: true })),
     [students, activeSectionId]
   );
 
@@ -184,6 +206,61 @@ const TeacherClasses = () => {
 
     setSelectedStudent(null);
   }, [selectedStudent, visibleStudents]);
+
+  useEffect(() => {
+    if (!isMobileView) {
+      setIsMobileRosterOpen(false);
+    }
+  }, [isMobileView]);
+
+  useEffect(() => {
+    if (!visibleStudents.length) {
+      setStudentMetrics({});
+      return;
+    }
+
+    let active = true;
+
+    Promise.all(
+      visibleStudents.map(async (student) => {
+        const [attendanceSummary, markRows] = await Promise.all([
+          fetchStudentAttendanceSummary(student.id).catch(() => null),
+          student.profileId
+            ? fetchStudentMarksByProfile(student.profileId).catch(() => [])
+            : Promise.resolve([]),
+        ]);
+        const markPercentages = markRows
+          .map((mark) => (mark.maxMarks ? Math.round((mark.marks / mark.maxMarks) * 100) : null))
+          .filter((score): score is number => typeof score === 'number');
+
+        return {
+          studentId: student.id,
+          averageMarks: markPercentages.length
+            ? Math.round(markPercentages.reduce((sum, score) => sum + score, 0) / markPercentages.length)
+            : null,
+          attendanceRate: attendanceSummary?.attendanceRate ?? null,
+        };
+      })
+    ).then((rows) => {
+      if (!active) {
+        return;
+      }
+
+      setStudentMetrics(
+        rows.reduce<Record<string, { averageMarks: number | null; attendanceRate: number | null }>>((acc, row) => {
+          acc[row.studentId] = {
+            averageMarks: row.averageMarks,
+            attendanceRate: row.attendanceRate,
+          };
+          return acc;
+        }, {})
+      );
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [visibleStudents]);
 
   useEffect(() => {
     if (!selectedStudent) {
@@ -280,20 +357,6 @@ const TeacherClasses = () => {
     }
   };
 
-  const handleDeleteStudent = async (studentId: string) => {
-    setError(null);
-    if (!canEditActiveSection) {
-      setError('You can edit only your own class section.');
-      return;
-    }
-
-    try {
-      await deleteStudent(studentId);
-    } catch (deleteError: any) {
-      setError(deleteError?.message || 'Failed to remove student.');
-    }
-  };
-
   const latestMarks = useMemo(() => {
     const bySubject = new Map<string, StudentMarkRecord>();
     studentDetail.marks.forEach((mark) => {
@@ -357,7 +420,12 @@ const TeacherClasses = () => {
               return (
                 <button
                   key={section.id}
-                  onClick={() => setActiveSectionId(section.id)}
+                  onClick={() => {
+                    setActiveSectionId(section.id);
+                    if (isMobileView) {
+                      setIsMobileRosterOpen(true);
+                    }
+                  }}
                   className={`w-full min-w-0 overflow-hidden rounded-[1.4rem] border p-3.5 text-left shadow-sm transition-all lg:rounded-[2rem] lg:p-6 ${
                     isOwned
                       ? 'border-emerald-300 bg-emerald-50/80 shadow-emerald-100'
@@ -394,7 +462,7 @@ const TeacherClasses = () => {
           </div>
 
           {activeSection && (
-            <div className="w-full min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-3.5 shadow-sm lg:rounded-[2rem] lg:p-6">
+            <div className="hidden w-full min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-3.5 shadow-sm md:block lg:rounded-[2rem] lg:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">Roster</p>
@@ -518,7 +586,9 @@ const TeacherClasses = () => {
                 {visibleStudents.length ? (
                   <>
                   <div className="space-y-2 md:hidden">
-                    {visibleStudents.map((student) => (
+                    {visibleStudents.map((student) => {
+                      const metrics = studentMetrics[student.id];
+                      return (
                       <div
                         key={student.id}
                         role="button"
@@ -534,29 +604,12 @@ const TeacherClasses = () => {
                       >
                         <div className="flex min-w-0 items-center gap-2.5">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-emerald-50 text-sm font-black text-emerald-700">
-                            {student.name.charAt(0)}
+                            {student.rollNo}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="min-w-0 flex-1 truncate text-base font-black leading-5 text-slate-900">{student.name}</p>
-                              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">
-                                #{student.rollNo}
-                              </span>
-                            </div>
+                            <p className="min-w-0 truncate text-base font-black leading-5 text-slate-900">{student.name}</p>
                             <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{student.email || 'No email'}</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleDeleteStudent(student.id);
-                            }}
-                            disabled={!canEditActiveSection}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.95rem] bg-rose-50 text-rose-500 transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-                            title={canEditActiveSection ? 'Remove student' : 'Only the class teacher can edit this class'}
-                          >
-                            <Trash2 size={15} />
-                          </button>
                         </div>
 
                         <div className="mt-2.5 grid grid-cols-2 gap-2 rounded-[1rem] bg-slate-50 px-2.5 py-2">
@@ -565,28 +618,42 @@ const TeacherClasses = () => {
                             <p className="mt-0.5 truncate text-xs font-bold text-slate-800">{student.parentName}</p>
                           </div>
                           <div className="min-w-0 border-l border-slate-200 pl-2 text-right">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Contact</p>
-                            <p className="mt-0.5 truncate text-xs font-bold text-slate-800">{student.contact}</p>
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Parent Contact</p>
+                            <p className="mt-0.5 truncate text-xs font-bold text-slate-800">{student.parentContact}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Average Marks</p>
+                            <p className="mt-0.5 truncate text-xs font-bold text-slate-800">
+                              {metrics?.averageMarks === null || !metrics ? 'N/A' : `${metrics.averageMarks}%`}
+                            </p>
+                          </div>
+                          <div className="min-w-0 border-l border-slate-200 pl-2 text-right">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Attendance</p>
+                            <p className="mt-0.5 truncate text-xs font-bold text-slate-800">
+                              {metrics?.attendanceRate === null || !metrics ? 'N/A' : `${metrics.attendanceRate}%`}
+                            </p>
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="hidden overflow-x-auto md:block">
-                    <table className="w-full min-w-[860px] text-left text-sm">
+                    <table className="w-full min-w-[980px] text-left text-sm">
                       <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                         <tr>
                           <th className="px-5 py-4">Roll</th>
                           <th className="px-5 py-4">Student</th>
                           <th className="px-5 py-4">Parent</th>
                           <th className="px-5 py-4">Parent Contact</th>
-                          <th className="px-5 py-4">Student Contact</th>
-                          <th className="px-5 py-4">DOB</th>
-                          <th className="px-5 py-4 text-right">Actions</th>
+                          <th className="px-5 py-4">Average Marks</th>
+                          <th className="px-5 py-4">Attendance</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {visibleStudents.map((student) => (
+                        {visibleStudents.map((student) => {
+                          const metrics = studentMetrics[student.id];
+                          return (
                           <tr key={student.id} className="border-t border-slate-100 bg-white hover:bg-slate-50/60 transition-colors">
                             <td className="px-5 py-4 font-black text-slate-300">{student.rollNo}</td>
                             <td className="px-5 py-4">
@@ -596,30 +663,21 @@ const TeacherClasses = () => {
                                 </div>
                                 <div>
                                   <p className="font-bold text-slate-900">{student.name}</p>
-                                  <p className="text-xs text-slate-500">
-                                    {student.gender} · {student.email || 'No email'}
-                                  </p>
+                                  <p className="text-xs text-slate-500">{student.email || 'No email'}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-5 py-4 font-semibold text-slate-700">{student.parentName}</td>
                             <td className="px-5 py-4 text-slate-500">{student.parentContact}</td>
-                            <td className="px-5 py-4 text-slate-500">{student.contact}</td>
-                            <td className="px-5 py-4 text-slate-500">{student.dob}</td>
-                            <td className="px-5 py-4">
-                              <div className="flex justify-end">
-                                <button
-                                  onClick={() => void handleDeleteStudent(student.id)}
-                                  disabled={!canEditActiveSection}
-                                  className="rounded-2xl bg-rose-50 p-3 text-rose-500 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
-                                  title={canEditActiveSection ? 'Remove student' : 'Only the class teacher can edit this class'}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
+                            <td className="px-5 py-4 font-black text-slate-900">
+                              {metrics?.averageMarks === null || !metrics ? 'N/A' : `${metrics.averageMarks}%`}
+                            </td>
+                            <td className="px-5 py-4 font-black text-slate-900">
+                              {metrics?.attendanceRate === null || !metrics ? 'N/A' : `${metrics.attendanceRate}%`}
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -749,6 +807,96 @@ const TeacherClasses = () => {
                   )}
                 </div>
               </section>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {isMobileView && isMobileRosterOpen && activeSection && (
+        <div className="fixed inset-0 z-[75] md:hidden">
+          <button
+            type="button"
+            aria-label="Close class roster"
+            onClick={() => setIsMobileRosterOpen(false)}
+            className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
+          />
+          <section className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-[2rem] bg-[#f7f8fb] p-3 shadow-2xl">
+            <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-300" />
+            <div className="rounded-[1.5rem] bg-slate-950 p-4 text-white shadow-xl">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-200">Class Roster</p>
+                  <h3 className="mt-1 text-2xl font-black">{activeSection.name}</h3>
+                  <p className="mt-1 text-xs font-bold text-slate-300">
+                    {visibleStudents.length} student{visibleStudents.length === 1 ? '' : 's'} • tap a student for full details
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileRosterOpen(false)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {visibleStudents.length ? visibleStudents.map((student) => {
+                const metrics = studentMetrics[student.id];
+                return (
+                  <div
+                    key={student.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedStudent(student)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setSelectedStudent(student);
+                      }
+                    }}
+                    className="w-full min-w-0 rounded-[1.15rem] border border-slate-100 bg-white p-2.5 text-left shadow-sm transition-all active:scale-[0.99] active:bg-slate-50"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-emerald-50 text-sm font-black text-emerald-700">
+                        {student.rollNo}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="min-w-0 truncate text-base font-black leading-5 text-slate-900">{student.name}</p>
+                        <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{student.email || 'No email'}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 grid grid-cols-2 gap-2 rounded-[1rem] bg-slate-50 px-2.5 py-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Parent</p>
+                        <p className="mt-0.5 truncate text-xs font-bold text-slate-800">{student.parentName}</p>
+                      </div>
+                      <div className="min-w-0 border-l border-slate-200 pl-2 text-right">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Parent Contact</p>
+                        <p className="mt-0.5 truncate text-xs font-bold text-slate-800">{student.parentContact}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Average Marks</p>
+                        <p className="mt-0.5 truncate text-xs font-bold text-slate-800">
+                          {metrics?.averageMarks === null || !metrics ? 'N/A' : `${metrics.averageMarks}%`}
+                        </p>
+                      </div>
+                      <div className="min-w-0 border-l border-slate-200 pl-2 text-right">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Attendance</p>
+                        <p className="mt-0.5 truncate text-xs font-bold text-slate-800">
+                          {metrics?.attendanceRate === null || !metrics ? 'N/A' : `${metrics.attendanceRate}%`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }) : (
+                <div className="rounded-[1.35rem] bg-white px-5 py-10 text-center text-sm font-bold text-slate-400">
+                  No students found in this section yet.
+                </div>
+              )}
             </div>
           </section>
         </div>

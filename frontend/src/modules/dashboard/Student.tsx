@@ -7,19 +7,19 @@ import { useEffect, useState } from 'react';
 import { fetchStudentAttendanceSummary } from '../../services/attendance';
 import { fetchStudentByProfile } from '../../services/schoolData';
 import { useClassStore } from '../../store/useClassStore';
+import { fetchStudentMarksOverview, MARK_EXAMS, type StudentMarksOverview } from '../../services/marks';
 
-const performanceData = [
-  { name: 'Unit 1', score: 75 },
-  { name: 'Unit 2', score: 82 },
-  { name: 'Mid Term', score: 88 },
-  { name: 'Unit 3', score: 85 },
-];
+const scorePercent = (marks?: number | null, maxMarks = 100) => {
+  if (typeof marks !== 'number' || !maxMarks) return null;
+  return Math.round((marks / maxMarks) * 100);
+};
 
 const StudentDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [studentData, setStudentData] = useState<any>(null);
   const [attendance, setAttendance] = useState(0);
+  const [marksOverview, setMarksOverview] = useState<StudentMarksOverview | null>(null);
   const initialize = useClassStore((state) => state.initialize);
   const sections = useClassStore((state) => state.sections);
 
@@ -39,11 +39,28 @@ const StudentDashboard = () => {
         const summary = await fetchStudentAttendanceSummary(student.id);
         setAttendance(summary.attendanceRate);
       }
+      const overview = await fetchStudentMarksOverview(user.id);
+      setMarksOverview(overview);
     })();
   }, [user?.id]);
 
   const activeSection = sections.find((section) => section.id === studentData?.sectionId || section.name === user?.class);
   const activeSubjects = activeSection?.subjectTeachers || [];
+  const performanceData = MARK_EXAMS.map((examType) => {
+    const scores = (marksOverview?.subjects || [])
+      .map((subject) => {
+        const cell = subject.exams[examType];
+        return scorePercent(cell.marks, cell.maxMarks);
+      })
+      .filter((score): score is number => typeof score === 'number');
+
+    return {
+      name: examType,
+      score: scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0,
+      hasMarks: scores.length > 0,
+    };
+  });
+  const hasPerformanceMarks = performanceData.some((item) => item.hasMarks);
 
   return (
     <div className="space-y-5 lg:space-y-6">
@@ -75,10 +92,6 @@ const StudentDashboard = () => {
           >
             <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wider">Attendance</p>
             <p className="text-xl font-bold text-indigo-700">{attendance}%</p>
-          </div>
-          <div className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl text-center">
-            <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wider">Grade</p>
-            <p className="text-xl font-bold text-emerald-700">A</p>
           </div>
         </div>
       </div>
@@ -149,23 +162,32 @@ const StudentDashboard = () => {
 
         {/* Performance Chart */}
         <div className="rounded-[1.75rem] border border-slate-100 bg-white p-5 shadow-sm lg:rounded-2xl lg:p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-6">My Performance Over Time</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-6">My Average Marks by Exam</h2>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={performanceData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} domain={[0, 100]} />
-                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {hasPerformanceMarks ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={performanceData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} domain={[0, 100]} />
+                  <Tooltip
+                    formatter={(value) => [`${value}%`, 'Average']}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                  />
+                  <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-2xl bg-slate-50 text-center text-sm font-bold text-slate-400">
+                No marks recorded yet.
+              </div>
+            )}
           </div>
         </div>
 

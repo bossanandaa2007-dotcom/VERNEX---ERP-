@@ -6,8 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -20,6 +18,25 @@ const scoreColor = (marks?: number | null) => {
   if (marks >= 75) return 'text-emerald-600';
   if (marks >= 40) return 'text-indigo-600';
   return 'text-rose-600';
+};
+
+const scorePercent = (marks?: number | null, maxMarks = 100) => {
+  if (typeof marks !== 'number' || !maxMarks) return null;
+  return Math.round((marks / maxMarks) * 100);
+};
+
+const formatScore = (score: number | null) => (score === null ? 'N/A' : `${score}%`);
+
+const tamilNaduGrade = (score: number | null) => {
+  if (score === null) return 'N/A';
+  if (score >= 91) return 'A1';
+  if (score >= 81) return 'A2';
+  if (score >= 71) return 'B1';
+  if (score >= 61) return 'B2';
+  if (score >= 51) return 'C1';
+  if (score >= 41) return 'C2';
+  if (score >= 35) return 'D';
+  return 'E';
 };
 
 const StudentMarks = () => {
@@ -42,31 +59,47 @@ const StudentMarks = () => {
       const cell = subject.exams[selectedExam];
       return {
         subject: subject.subject,
-        marks: typeof cell.marks === 'number' ? cell.marks : 0,
+        marks: scorePercent(cell.marks, cell.maxMarks) ?? 0,
         actualMarks: cell.marks,
-        highestMarks: cell.highestMarks,
+        highestMarks: scorePercent(cell.highestMarks, cell.maxMarks),
         maxMarks: cell.maxMarks,
       };
     });
   }, [overview?.subjects, selectedExam]);
 
   const completedRows = selectedExamRows.filter((row) => typeof row.actualMarks === 'number');
-  const highestScore = completedRows.length ? Math.max(...completedRows.map((row) => row.actualMarks || 0)) : null;
-  const examHighestScore = selectedExamRows.some((row) => typeof row.highestMarks === 'number')
-    ? Math.max(...selectedExamRows.map((row) => row.highestMarks ?? -1))
-    : null;
+  const highestScore = completedRows.length ? Math.max(...completedRows.map((row) => row.marks)) : null;
 
-  const trendData = useMemo(() => (
-    (overview?.examHighs || []).map((exam) => ({
-      exam: exam.examType,
-      highestMarks: exam.highestMarks ?? 0,
-      label: exam.highestMarks === null ? 'Pending' : `${exam.highestMarks}%`,
-    }))
-  ), [overview?.examHighs]);
+  const examAverages = useMemo(() => (
+    MARK_EXAMS.map((examType) => {
+      const scores = (overview?.subjects || [])
+        .map((subject) => {
+          const cell = subject.exams[examType];
+          return scorePercent(cell.marks, cell.maxMarks);
+        })
+        .filter((score): score is number => typeof score === 'number');
+
+      const average = scores.length
+        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+        : null;
+
+      return {
+        examType,
+        average,
+        grade: tamilNaduGrade(average),
+        completedSubjects: scores.length,
+        totalSubjects: overview?.subjects.length || 0,
+      };
+    })
+  ), [overview?.subjects]);
+
+  const selectedAverage = examAverages.find((exam) => exam.examType === selectedExam)?.average ?? null;
+  const selectedGrade = tamilNaduGrade(selectedAverage);
 
   const stats = [
-    { title: 'Your Highest', value: highestScore === null ? 'N/A' : `${highestScore}%`, icon: BarChart3, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { title: 'Exam Highest', value: examHighestScore === null ? 'N/A' : `${examHighestScore}%`, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { title: 'Highest Marks', value: formatScore(highestScore), icon: BarChart3, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { title: 'Average Marks', value: formatScore(selectedAverage), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { title: 'Grade', value: selectedGrade, icon: Award, color: 'text-violet-600', bg: 'bg-violet-50' },
     { title: 'Subjects', value: overview?.subjects.length || 0, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
     { title: 'Class', value: overview?.className || '-', icon: GraduationCap, color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
@@ -101,7 +134,7 @@ const StudentMarks = () => {
       </div>
       {examFilter(true)}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 md:gap-6">
         {stats.map((stat) => (
           <div key={stat.title} className="flex min-w-0 flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm md:flex-row md:items-center md:gap-4 md:p-5">
             <div className={`w-fit rounded-xl p-2.5 md:p-3 ${stat.bg} ${stat.color}`}>
@@ -131,8 +164,8 @@ const StudentMarks = () => {
                 <Tooltip
                   cursor={{ fill: '#f8fafc' }}
                   formatter={(_value, _name, item) => {
-                    const payload = item.payload as { actualMarks?: number };
-                    return [typeof payload.actualMarks === 'number' ? `${payload.actualMarks}%` : 'Pending', 'Marks'];
+                    const payload = item.payload as { actualMarks?: number; marks: number };
+                    return [typeof payload.actualMarks === 'number' ? `${payload.marks}%` : 'Pending', 'Marks'];
                   }}
                   contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(15 23 42 / 0.08)' }}
                 />
@@ -142,9 +175,9 @@ const StudentMarks = () => {
                       key={entry.subject}
                       fill={typeof entry.actualMarks !== 'number'
                         ? '#cbd5e1'
-                        : entry.actualMarks >= 75
+                        : entry.marks >= 75
                           ? '#10b981'
-                          : entry.actualMarks >= 40
+                          : entry.marks >= 40
                             ? '#6366f1'
                             : '#f43f5e'}
                     />
@@ -156,28 +189,28 @@ const StudentMarks = () => {
         </div>
 
         <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm md:rounded-2xl md:p-6">
-          <h3 className="mb-6 text-lg font-bold text-slate-900">Highest Marks Trend</h3>
-          <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ left: -20, right: 16, top: 10, bottom: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="exam" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
-                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
-                <Tooltip
-                  formatter={(_value, _name, item) => [(item.payload as { label: string }).label, 'Highest']}
-                  contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(15 23 42 / 0.08)' }}
-                />
-                <Line type="monotone" dataKey="highestMarks" stroke="#0f172a" strokeWidth={3} dot={{ r: 5, fill: '#0f172a' }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 space-y-2">
-            {overview?.examHighs.map((exam) => (
-              <div key={exam.examType} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm">
-                <span className="font-bold text-slate-700">{exam.examType}</span>
-                <span className="font-black text-slate-900">
-                  {exam.highestMarks === null ? 'Pending' : `${exam.highestMarks}%`}
-                </span>
+          <h3 className="mb-6 text-lg font-bold text-slate-900">Average Marks by Exam</h3>
+          <div className="space-y-3">
+            {examAverages.map((exam) => (
+              <div key={exam.examType} className="rounded-2xl bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-black text-slate-900">{exam.examType}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-400">
+                      {exam.completedSubjects}/{exam.totalSubjects} subjects completed
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-2xl font-black ${scoreColor(exam.average)}`}>{formatScore(exam.average)}</p>
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-400">Grade {exam.grade}</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                  <div
+                    className="h-full rounded-full bg-indigo-600"
+                    style={{ width: `${exam.average ?? 0}%` }}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -197,6 +230,8 @@ const StudentMarks = () => {
         <div className="space-y-2 bg-slate-50 p-2.5 md:hidden">
           {(overview?.subjects || []).map((subject) => {
             const cell = subject.exams[selectedExam];
+            const marks = scorePercent(cell.marks, cell.maxMarks);
+            const highestMarks = scorePercent(cell.highestMarks, cell.maxMarks);
             return (
               <div key={subject.subject} className="rounded-[1.35rem] border border-slate-100 bg-white p-4 shadow-sm">
                 <div className="flex items-start gap-3">
@@ -208,14 +243,14 @@ const StudentMarks = () => {
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                       <div className="rounded-2xl bg-slate-50 px-3 py-2">
                         <p className="font-black uppercase tracking-wider text-slate-400">{selectedExam}</p>
-                        <p className={`mt-1 text-lg font-black ${scoreColor(cell.marks)}`}>
-                          {typeof cell.marks === 'number' ? `${cell.marks}%` : 'Pending'}
+                        <p className={`mt-1 text-lg font-black ${scoreColor(marks)}`}>
+                          {marks === null ? 'Pending' : `${marks}%`}
                         </p>
                       </div>
                       <div className="rounded-2xl bg-slate-50 px-3 py-2">
                         <p className="font-black uppercase tracking-wider text-slate-400">Highest</p>
-                        <p className={`mt-1 text-lg font-black ${scoreColor(cell.highestMarks)}`}>
-                          {typeof cell.highestMarks === 'number' ? `${cell.highestMarks}%` : 'Pending'}
+                        <p className={`mt-1 text-lg font-black ${scoreColor(highestMarks)}`}>
+                          {highestMarks === null ? 'Pending' : `${highestMarks}%`}
                         </p>
                       </div>
                     </div>
@@ -236,12 +271,14 @@ const StudentMarks = () => {
             <tr>
               <th className="px-6 py-4">Subject</th>
               <th className="px-6 py-4">{selectedExam}</th>
-              <th className="px-6 py-4">Subject Highest</th>
+              <th className="px-6 py-4">Highest Marks</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {(overview?.subjects || []).map((subject) => {
               const cell = subject.exams[selectedExam];
+              const marks = scorePercent(cell.marks, cell.maxMarks);
+              const highestMarks = scorePercent(cell.highestMarks, cell.maxMarks);
               return (
                 <tr key={subject.subject} className="hover:bg-slate-50/60">
                   <td className="px-6 py-4">
@@ -253,14 +290,14 @@ const StudentMarks = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`text-lg font-black ${scoreColor(cell.marks)}`}>
-                      {typeof cell.marks === 'number' ? `${cell.marks}%` : 'Pending'}
+                    <span className={`text-lg font-black ${scoreColor(marks)}`}>
+                      {marks === null ? 'Pending' : `${marks}%`}
                     </span>
                     <p className="text-xs font-semibold text-slate-400">Max {cell.maxMarks}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`font-black ${scoreColor(cell.highestMarks)}`}>
-                      {typeof cell.highestMarks === 'number' ? `${cell.highestMarks}%` : 'Pending'}
+                    <span className={`font-black ${scoreColor(highestMarks)}`}>
+                      {highestMarks === null ? 'Pending' : `${highestMarks}%`}
                     </span>
                   </td>
                 </tr>

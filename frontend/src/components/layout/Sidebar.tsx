@@ -66,7 +66,8 @@ const getNavItems = (role: string) => {
 
   if (role === 'Accountant') {
     items.push(
-      { name: 'Fees & Finance', icon: IndianRupee, path: '/accountant/fees' }
+      { name: 'Fees & Finance', icon: IndianRupee, path: '/accountant/fees' },
+      { name: 'Reports', icon: FileText, path: '/accountant/reports' }
     );
   }
 

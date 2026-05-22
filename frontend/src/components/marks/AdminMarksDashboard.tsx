@@ -295,7 +295,7 @@ const AdminMarksDashboard = () => {
             {isLoading && (
               <tr>
                 <td colSpan={5} className="px-8 py-16 text-center text-sm font-medium text-slate-500">
-                  Loading marks from Supabase...
+                  Loading marks...
                 </td>
               </tr>
             )}

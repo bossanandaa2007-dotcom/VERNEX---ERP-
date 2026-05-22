@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Award, BookOpen, CheckCircle, Filter, Lock, Search, Users } from 'lucide-react';
+import { Award, BookOpen, CheckCircle, Filter, Lock, Search, Users } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   fetchTeacherStudentPerformance,
@@ -21,12 +21,14 @@ const MarksEntry = () => {
   const { user } = useAuthStore();
   const [examType, setExamType] = useState<ExamType>('Quarterly');
   const [rows, setRows] = useState<TeacherStudentPerformanceRow[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [classFilter, setClassFilter] = useState('All');
   const [subjectFilter, setSubjectFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<string | null>(null);
+  const [draftMarks, setDraftMarks] = useState<Record<string, string>>({});
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [savingCells, setSavingCells] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (user?.role !== 'Teacher' || !user.id) {
@@ -37,7 +39,7 @@ const MarksEntry = () => {
     void fetchTeacherStudentPerformance(user.id, examType)
       .then((items) => {
         setRows(items);
-        setSelectedStudentId((current) => current || items[0]?.studentId || '');
+        setDraftMarks({});
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -66,22 +68,6 @@ const MarksEntry = () => {
     });
   }, [classFilter, rows, search, subjectFilter]);
 
-  useEffect(() => {
-    if (!filteredRows.length) {
-      setSelectedStudentId('');
-      return;
-    }
-
-    setSelectedStudentId((current) => filteredRows.some((row) => row.studentId === current)
-      ? current
-      : filteredRows[0].studentId);
-  }, [filteredRows]);
-
-  const selectedStudent = useMemo(
-    () => rows.find((row) => row.studentId === selectedStudentId) || filteredRows[0],
-    [filteredRows, rows, selectedStudentId]
-  );
-
   const visibleSubjectMarks = useMemo(
     () => filteredRows.flatMap((row) => row.subjects),
     [filteredRows]
@@ -96,6 +82,7 @@ const MarksEntry = () => {
     )).sort((left, right) => left.localeCompare(right, undefined, { numeric: true })),
     [rows]
   );
+
   const subjectHighestCards = useMemo(() => {
     const cards = new Map<string, { subject: string; highestMarks: number | null; savedMarks: number; totalMarks: number }>();
 
@@ -133,57 +120,135 @@ const MarksEntry = () => {
     setTimeout(() => setNotification(null), 2500);
   };
 
-  const handleSaveMarks = async (
-    student: TeacherStudentPerformanceRow,
-    subject: TeacherStudentSubjectPerformance,
-    value: string
-  ) => {
-    const markValue = parseInt(value, 10);
+  const getCellKey = (studentId: string, subject: string) => `${studentId}:${subject.toLowerCase()}`;
+
+  const getInputValue = (studentId: string, subject: TeacherStudentSubjectPerformance) => {
+    const cellKey = getCellKey(studentId, subject.subject);
+    return Object.prototype.hasOwnProperty.call(draftMarks, cellKey)
+      ? draftMarks[cellKey]
+      : typeof subject.marks === 'number'
+        ? String(subject.marks)
+        : '';
+  };
+
+  const getDraftMarkValue = (_student: TeacherStudentPerformanceRow, subject: TeacherStudentSubjectPerformance, value: string) => {
+    const trimmedValue = value.trim();
+
+    if (trimmedValue === '') {
+      return typeof subject.marks === 'number' ? null : undefined;
+    }
+
+    const markValue = parseInt(trimmedValue, 10);
     if (isNaN(markValue) || markValue < 0 || markValue > 100) {
+      return Number.NaN;
+    }
+
+    return markValue;
+  };
+
+  const hasDraftChange = (student: TeacherStudentPerformanceRow, subject: TeacherStudentSubjectPerformance) => {
+    const cellKey = getCellKey(student.studentId, subject.subject);
+    if (!Object.prototype.hasOwnProperty.call(draftMarks, cellKey)) {
+      return false;
+    }
+
+    const rawValue = draftMarks[cellKey] ?? '';
+    const trimmedValue = rawValue.trim();
+    if (trimmedValue === '') {
+      return false;
+    }
+
+    const parsedValue = getDraftMarkValue(student, subject, rawValue);
+    return typeof parsedValue === 'number' && !Number.isNaN(parsedValue) && parsedValue !== subject.marks;
+  };
+
+  const pendingSaveCount = useMemo(
+    () => rows.reduce((count, student) => count + student.subjects.filter((subject) => hasDraftChange(student, subject)).length, 0),
+    [draftMarks, rows]
+  );
+
+  const handleSaveAllMarks = async () => {
+    const changes = rows.flatMap((student) => student.subjects.map((subject) => ({
+      student,
+      subject,
+      cellKey: getCellKey(student.studentId, subject.subject),
+      draftValue: getInputValue(student.studentId, subject),
+    }))).filter(({ student, subject }) => hasDraftChange(student, subject));
+
+    if (!changes.length) {
+      showNotification('No new marks to save.');
       return;
     }
 
-    if (!subject.canEdit) {
-      showNotification(subject.isLocked ? 'Admin has locked this class exam.' : 'You can edit only the subjects you handle for this class.');
+    const invalidChange = changes.find(({ student, subject, draftValue }) => Number.isNaN(getDraftMarkValue(student, subject, draftValue)));
+    if (invalidChange) {
+      showNotification('Enter marks between 0 and 100 before saving.');
       return;
     }
 
-    await upsertStudentMark({
-      studentId: student.studentId,
-      studentName: student.studentName,
-      sectionId: student.sectionId,
-      className: student.className,
-      subject: subject.subject,
-      examType,
-      marks: markValue,
-      maxMarks: subject.maxMarks || 100,
-      teacherProfileId: user?.id,
-    });
+    setIsSavingAll(true);
+    setSavingCells(Object.fromEntries(changes.map((change) => [change.cellKey, true])));
+    try {
+      await Promise.all(changes.map(async ({ student, subject, draftValue }) => {
+        const markValue = getDraftMarkValue(student, subject, draftValue);
+        if (typeof markValue !== 'number' || Number.isNaN(markValue)) {
+          return;
+        }
 
-    setRows((current) => current.map((row) => {
-      if (row.studentId !== student.studentId) {
-        return row;
-      }
+        await upsertStudentMark({
+          studentId: student.studentId,
+          studentName: student.studentName,
+          sectionId: student.sectionId,
+          className: student.className,
+          subject: subject.subject,
+          examType,
+          marks: markValue,
+          maxMarks: subject.maxMarks || 100,
+          teacherProfileId: user?.id,
+        });
+      }));
 
-      const subjects = row.subjects.map((item) =>
-        item.subject === subject.subject
-          ? {
-              ...item,
-              marks: markValue,
-              maxMarks: subject.maxMarks || 100,
-              highestMarks: typeof item.highestMarks === 'number' ? Math.max(item.highestMarks, markValue) : markValue,
-            }
-          : item
-      );
-      const savedSubjects = subjects.filter((item) => typeof item.marks === 'number');
+      setRows((current) => current.map((row) => {
+        const subjects = row.subjects.map((item) => {
+          const change = changes.find(({ student, subject }) =>
+            student.studentId === row.studentId && subject.subject === item.subject
+          );
+          if (!change) {
+            return item;
+          }
 
-      return {
-        ...row,
-        subjects,
-        completedSubjects: savedSubjects.length,
-      };
-    }));
-    showNotification(`Marks updated for ${student.studentName}`);
+          const markValue = getDraftMarkValue(change.student, change.subject, change.draftValue);
+          if (typeof markValue !== 'number' || Number.isNaN(markValue)) {
+            return item;
+          }
+
+          return {
+            ...item,
+            marks: markValue,
+            maxMarks: item.maxMarks || 100,
+            highestMarks: typeof item.highestMarks === 'number' ? Math.max(item.highestMarks, markValue) : markValue,
+          };
+        });
+        const savedSubjects = subjects.filter((item) => typeof item.marks === 'number');
+
+        return {
+          ...row,
+          subjects,
+          completedSubjects: savedSubjects.length,
+        };
+      }));
+      setDraftMarks((current) => {
+        const next = { ...current };
+        changes.forEach(({ cellKey, draftValue }) => {
+          next[cellKey] = draftValue.trim();
+        });
+        return next;
+      });
+      showNotification(`${changes.length} mark${changes.length === 1 ? '' : 's'} saved successfully.`);
+    } finally {
+      setIsSavingAll(false);
+      setSavingCells({});
+    }
   };
 
   return (
@@ -191,7 +256,7 @@ const MarksEntry = () => {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-black text-slate-900 md:font-bold">Marks Hub</h2>
-          <p className="mt-1 text-sm leading-5 text-slate-500">Review your students across every subject. Only your assigned subject cells are editable.</p>
+          <p className="mt-1 text-sm leading-5 text-slate-500">Edit marks directly in the student list. Only your assigned subject cells are editable.</p>
         </div>
 
         {notification && (
@@ -312,66 +377,95 @@ const MarksEntry = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
-        <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm md:rounded-2xl">
-          <div className="space-y-2 bg-slate-50 p-2.5 md:hidden">
-            {filteredRows.map((student) => (
-              <button
-                key={student.studentId}
-                onClick={() => setSelectedStudentId(student.studentId)}
-                className={`w-full rounded-[1.35rem] border p-3.5 text-left shadow-sm transition-all active:scale-[0.99] ${
-                  selectedStudent?.studentId === student.studentId
-                    ? 'border-indigo-200 bg-indigo-50'
-                    : 'border-slate-100 bg-white'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-xs font-black uppercase text-white">
-                    {student.studentName.charAt(0)}
+      <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm md:rounded-2xl">
+        <div className="space-y-2 bg-slate-50 p-2.5 md:hidden">
+          {filteredRows.map((student) => (
+            <div
+              key={student.studentId}
+              className="w-full rounded-[1.35rem] border border-slate-100 bg-white p-3.5 text-left shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-xs font-black uppercase text-white">
+                  {student.studentName.charAt(0)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-black leading-5 text-slate-900">{student.studentName}</p>
+                      <p className="mt-1 text-xs font-bold text-slate-400">Class {student.className} - Roll {student.rollNo || '-'}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-indigo-600">
+                      {student.completedSubjects}/{student.subjects.length}
+                    </span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="break-words text-sm font-black leading-5 text-slate-900">{student.studentName}</p>
-                        <p className="mt-1 text-xs font-bold text-slate-400">Class {student.className} - Roll {student.rollNo || '-'}</p>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-indigo-600">
-                        {student.completedSubjects}/{student.subjects.length}
-                      </span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {student.subjects.slice(0, 4).map((subject) => (
-                        <span
-                          key={subject.subject}
-                          className={`rounded-lg px-2 py-1 text-[10px] font-black ${
-                            subject.isLocked ? 'bg-rose-50 text-rose-700' : subject.canEdit ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {subject.subject}: {typeof subject.marks === 'number' ? subject.marks : '-'}
-                        </span>
-                      ))}
-                      {student.subjects.length > 4 && (
-                        <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">
-                          +{student.subjects.length - 4}
-                        </span>
-                      )}
-                    </div>
+                  <div className="mt-3 space-y-3">
+                    {student.subjects
+                      .filter((subject) => subjectFilter === 'All' || subject.subject === subjectFilter)
+                      .map((subject) => {
+                        const cellKey = getCellKey(student.studentId, subject.subject);
+                        const isSaving = !!savingCells[cellKey];
+                        return (
+                          <div key={subject.subject} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-black text-slate-900">{subject.subject}</p>
+                                <p className={`text-[11px] font-bold ${subject.canEdit ? 'text-indigo-600' : 'text-slate-400'}`}>
+                                  {subject.isLocked ? 'Locked by admin' : subject.canEdit ? 'Editable for you' : 'Read only'}
+                                </p>
+                              </div>
+                              <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider ${
+                                isSaving
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : hasDraftChange(student, subject)
+                                    ? 'bg-amber-50 text-amber-700'
+                                    : typeof subject.marks === 'number'
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {isSaving ? 'Saving' : hasDraftChange(student, subject) ? 'Unsaved' : typeof subject.marks === 'number' ? 'Saved' : 'Pending'}
+                              </span>
+                            </div>
+                            <div className="relative w-full">
+                              <input
+                                type="number"
+                                value={getInputValue(student.studentId, subject)}
+                                disabled={!subject.canEdit || isSaving}
+                                min="0"
+                                max="100"
+                                onChange={(event) => setDraftMarks((current) => ({ ...current, [cellKey]: event.target.value }))}
+                                className={`w-full rounded-xl border px-4 py-2.5 pr-12 text-base font-black outline-none focus:ring-2 ${
+                                  subject.canEdit
+                                    ? 'border-slate-200 bg-white text-slate-900 focus:ring-indigo-100'
+                                    : 'border-slate-100 bg-slate-100 text-slate-400'
+                                }`}
+                                placeholder="00"
+                              />
+                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">/100</span>
+                            </div>
+                            {typeof subject.highestMarks === 'number' && (
+                              <p className="mt-2 text-[11px] font-bold text-slate-500">Highest: {subject.highestMarks}</p>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
-              </button>
-            ))}
-            {!loading && filteredRows.length === 0 && (
-              <div className="rounded-[1.35rem] bg-white px-5 py-10 text-center text-sm font-bold text-slate-400">
-                No students found for the selected filters.
               </div>
-            )}
-            {loading && (
-              <div className="rounded-[1.35rem] bg-white px-5 py-10 text-center text-sm font-bold text-slate-500">
-                Loading marks from Supabase...
-              </div>
-            )}
-          </div>
-          <div className="hidden md:block">
+            </div>
+          ))}
+          {!loading && filteredRows.length === 0 && (
+            <div className="rounded-[1.35rem] bg-white px-5 py-10 text-center text-sm font-bold text-slate-400">
+              No students found for the selected filters.
+            </div>
+          )}
+          {loading && (
+            <div className="rounded-[1.35rem] bg-white px-5 py-10 text-center text-sm font-bold text-slate-500">
+              Loading marks...
+            </div>
+          )}
+        </div>
+
+        <div className="hidden md:block">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
               <tr>
@@ -384,10 +478,9 @@ const MarksEntry = () => {
               {filteredRows.map((student) => (
                 <tr
                   key={student.studentId}
-                  onClick={() => setSelectedStudentId(student.studentId)}
-                  className={`cursor-pointer transition-colors hover:bg-slate-50 ${selectedStudent?.studentId === student.studentId ? 'bg-indigo-50/60' : ''}`}
+                  className="transition-colors hover:bg-slate-50"
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 align-top">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-xs font-black uppercase text-white">
                         {student.studentName.charAt(0)}
@@ -398,17 +491,56 @@ const MarksEntry = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm font-bold text-slate-600">Class {student.className}</td>
+                  <td className="px-6 py-4 align-top text-sm font-bold text-slate-600">Class {student.className}</td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-2">
-                      {student.subjects.map((subject) => (
-                        <span
-                          key={subject.subject}
-                          className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${subject.isLocked ? 'bg-rose-50 text-rose-700' : subject.canEdit ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                          {subject.subject}: {typeof subject.marks === 'number' ? subject.marks : '-'}
-                        </span>
-                      ))}
+                    <div className="flex flex-col gap-3">
+                      {student.subjects
+                        .filter((subject) => subjectFilter === 'All' || subject.subject === subjectFilter)
+                        .map((subject) => {
+                          const cellKey = getCellKey(student.studentId, subject.subject);
+                          const isSaving = !!savingCells[cellKey];
+                          return (
+                            <div key={subject.subject} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+                              <div className="min-w-[120px]">
+                                <p className="text-sm font-black text-slate-900">{subject.subject}</p>
+                                <p className={`text-[11px] font-bold ${subject.canEdit ? 'text-indigo-600' : 'text-slate-400'}`}>
+                                  {subject.isLocked ? 'Locked by admin' : subject.canEdit ? 'Editable for you' : 'Read only'}
+                                </p>
+                              </div>
+                              <div className="relative w-full max-w-[140px]">
+                                <input
+                                  type="number"
+                                  value={getInputValue(student.studentId, subject)}
+                                  disabled={!subject.canEdit || isSaving}
+                                  min="0"
+                                  max="100"
+                                  onChange={(event) => setDraftMarks((current) => ({ ...current, [cellKey]: event.target.value }))}
+                                  className={`w-full rounded-xl border px-3 py-2 pr-11 text-base font-black outline-none focus:ring-2 ${
+                                    subject.canEdit
+                                      ? 'border-slate-200 bg-white text-slate-900 focus:ring-indigo-100'
+                                      : 'border-slate-100 bg-slate-100 text-slate-400'
+                                  }`}
+                                  placeholder="00"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-black text-slate-400">/100</span>
+                              </div>
+                              <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider ${
+                                isSaving
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : hasDraftChange(student, subject)
+                                    ? 'bg-amber-50 text-amber-700'
+                                    : typeof subject.marks === 'number'
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {isSaving ? 'Saving' : hasDraftChange(student, subject) ? 'Unsaved' : typeof subject.marks === 'number' ? 'Saved' : 'Pending'}
+                              </span>
+                              {typeof subject.highestMarks === 'number' && (
+                                <span className="text-[11px] font-bold text-slate-500">Highest: {subject.highestMarks}</span>
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
                   </td>
                 </tr>
@@ -422,62 +554,27 @@ const MarksEntry = () => {
               )}
             </tbody>
           </table>
-          </div>
-        </div>
-
-        <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm md:rounded-2xl md:p-6">
-          {selectedStudent ? (
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Selected Student</p>
-                <h3 className="mt-1 break-words text-xl font-black text-slate-900">{selectedStudent.studentName}</h3>
-                <p className="text-sm font-semibold text-slate-500">Class {selectedStudent.className} - Roll {selectedStudent.rollNo || '-'}</p>
-              </div>
-
-              <div className="space-y-3">
-                {selectedStudent.subjects.map((subject) => (
-                  <div key={subject.subject} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 md:p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-slate-900">{subject.subject}</p>
-                        <p className={`text-xs font-bold ${subject.canEdit ? 'text-indigo-600' : 'text-slate-400'}`}>
-                          {subject.isLocked ? 'Locked by admin' : subject.canEdit ? 'Editable for you' : 'Read only'}
-                        </p>
-                      </div>
-                      {typeof subject.marks === 'number' ? (
-                        <span className="rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">Saved</span>
-                      ) : (
-                        <span className="rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">Pending</span>
-                      )}
-                    </div>
-                    <div className="relative w-full min-[380px]:max-w-[180px] md:max-w-[150px]">
-                      <input
-                        key={`${selectedStudent.studentId}-${subject.subject}-${examType}-${subject.marks ?? 'blank'}`}
-                        type="number"
-                        defaultValue={subject.marks ?? ''}
-                        disabled={!subject.canEdit}
-                        min="0"
-                        max="100"
-                        onBlur={(event) => void handleSaveMarks(selectedStudent, subject, event.target.value)}
-                        className={`w-full rounded-xl border px-4 py-2 pr-12 text-lg font-black outline-none focus:ring-2 ${
-                          subject.canEdit
-                            ? 'border-slate-200 bg-white text-slate-900 focus:ring-indigo-100'
-                            : 'border-slate-100 bg-slate-100 text-slate-400'
-                        }`}
-                        placeholder="00"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">/100</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="flex min-h-[320px] flex-col items-center justify-center text-center text-slate-400">
-              <AlertCircle size={28} />
-              <p className="mt-3 text-sm font-semibold">Select a student to view marks.</p>
+          {loading && (
+            <div className="px-6 py-8 text-center text-sm font-bold text-slate-500">
+              Loading marks...
             </div>
           )}
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-4 md:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-semibold text-slate-500">
+              {pendingSaveCount > 0 ? `${pendingSaveCount} unsaved mark${pendingSaveCount === 1 ? '' : 's'} ready to save.` : 'No unsaved mark changes.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleSaveAllMarks()}
+              disabled={isSavingAll || pendingSaveCount === 0}
+              className="w-full rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            >
+              {isSavingAll ? 'Saving All Marks...' : 'Save All Marks'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -111,19 +111,26 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
         ? 'bg-emerald-500 text-white hover:bg-emerald-600'
         : 'bg-blue-500 text-white hover:bg-blue-600';
 
+  const getEventCellStyles = (type: EventType) =>
+    type === 'Holiday'
+      ? 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-100 hover:bg-rose-100'
+      : type === 'Festival'
+        ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-100 hover:bg-emerald-100'
+        : 'bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-100 hover:bg-blue-100';
+
   const renderHeader = () => (
     <div className="mb-5 flex flex-col gap-4 lg:mb-8 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
         <h2 className="text-2xl font-black text-slate-900 lg:font-bold">{format(currentMonth, 'MMMM yyyy')}</h2>
-        <p className="mt-1 text-sm leading-5 text-slate-500">Calendar events are loaded from Supabase.</p>
+        <p className="mt-1 text-sm leading-5 text-slate-500">Calendar events for holidays, festivals, and activities.</p>
       </div>
       <div className="flex items-center justify-between gap-3 lg:justify-end lg:gap-4">
         <div className="grid flex-1 grid-cols-[44px_1fr_44px] items-center rounded-2xl border border-slate-100 bg-white p-1 shadow-sm lg:flex-none lg:flex lg:rounded-xl">
           <button onClick={prevMonth} className="flex h-10 items-center justify-center rounded-xl transition-colors hover:bg-slate-50">
             <ChevronLeft size={20} className="text-slate-600" />
           </button>
-          <button onClick={() => setCurrentMonth(new Date())} className="h-10 rounded-xl px-4 text-sm font-black text-slate-700 transition-colors hover:bg-slate-50 lg:font-semibold">
-            Today
+          <button onClick={() => setCurrentMonth(new Date())} className="h-10 min-w-28 rounded-xl px-4 text-sm font-black text-slate-700 transition-colors hover:bg-slate-50 lg:font-semibold">
+            {format(currentMonth, 'MMM yyyy')}
           </button>
           <button onClick={nextMonth} className="flex h-10 items-center justify-center rounded-xl transition-colors hover:bg-slate-50">
             <ChevronRight size={20} className="text-slate-600" />
@@ -172,43 +179,60 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
           const isSelected = isSameDay(day, new Date());
           const isCurrentMonth = isSameMonth(day, monthStart);
           const dayEvents = filteredEvents.filter((event) => isSameDay(parseISO(event.date), day));
+          const primaryEvent = dayEvents[0];
+          const isSunday = day.getDay() === 0;
 
           return (
             <div
               key={index}
+              onClick={() => primaryEvent && setSelectedEvent(primaryEvent)}
               className={cn(
-                'min-h-[58px] bg-white p-1.5 transition-colors lg:min-h-[120px] lg:p-2',
-                !isCurrentMonth && 'bg-slate-50/50 text-slate-300'
+                'min-h-[58px] p-1.5 transition-colors lg:min-h-[120px] lg:p-2',
+                primaryEvent
+                  ? cn('cursor-pointer', getEventCellStyles(primaryEvent.type))
+                  : isSunday
+                    ? 'bg-slate-100 text-slate-500'
+                    : 'bg-white text-slate-700',
+                !isCurrentMonth && !primaryEvent && (isSunday ? 'bg-slate-100/70 text-slate-400' : 'bg-slate-50/50 text-slate-300')
               )}
+              title={primaryEvent ? `${primaryEvent.title} - ${primaryEvent.type}` : undefined}
             >
-              <div className="flex justify-between items-start mb-1">
+              <div className="flex items-start justify-between gap-2">
                 <span className={cn(
                   'flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-all lg:text-sm lg:font-semibold',
-                  isSelected ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700'
+                  isSelected
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : primaryEvent
+                      ? 'bg-white/80 text-current'
+                      : 'text-current'
                 )}>
                   {format(day, 'd')}
                 </span>
-              </div>
-              <div className="space-y-1 lg:space-y-1.5">
-                {dayEvents.slice(0, 1).map((event) => (
-                  <div
-                    key={event.id}
-                    onClick={() => setSelectedEvent(event)}
-                    className={cn(
-                      'w-full cursor-pointer overflow-hidden rounded-lg px-1.5 py-1 text-left shadow-sm transition-all lg:rounded-xl lg:px-3 lg:py-2.5',
-                      getEventBlockStyles(event.type)
-                    )}
-                  >
-                    <div className="truncate text-[9px] font-bold leading-tight text-white lg:text-[11px]">{event.title}</div>
-                  </div>
-                ))}
                 {dayEvents.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => setSelectedEvent(dayEvents[1])}
-                    className="w-full rounded-lg bg-slate-100 px-1 py-0.5 text-[9px] font-black text-slate-500 lg:hidden"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedEvent(dayEvents[1]);
+                    }}
+                    className="rounded-full bg-white/80 px-2 py-0.5 text-[9px] font-black text-current shadow-sm"
                   >
                     +{dayEvents.length - 1}
+                  </button>
+                )}
+              </div>
+              <div className="mt-4 hidden lg:block">
+                {primaryEvent && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedEvent(primaryEvent);
+                    }}
+                    className="max-w-full rounded-xl bg-white/75 px-3 py-2 text-left text-[11px] font-black leading-tight text-current shadow-sm"
+                  >
+                    <span className="block truncate">{primaryEvent.title}</span>
+                    <span className="mt-1 block text-[9px] uppercase tracking-wider opacity-70">{primaryEvent.type}</span>
                   </button>
                 )}
               </div>

@@ -30,6 +30,7 @@ const TimetablePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
+  const today = new Date().getDay();
 
   const isAdmin = user?.role === 'Admin';
   const isTeacher = user?.role === 'Teacher';
@@ -176,27 +177,40 @@ const TimetablePage = () => {
           </tr>
         </thead>
         <tbody>
-          {TIMETABLE_DAYS.map((day) => (
-            <tr key={day.value} className="border-t border-slate-100">
-              <td className="bg-slate-50/60 px-5 py-4 font-black text-slate-700">{day.label}</td>
-              {TIMETABLE_PERIODS.map((period) => {
-                const entry = entriesByCell.get(entryKey(day.value, period));
-                return (
-                  <td key={period} className="min-w-36 px-4 py-4 align-top">
-                    {entry ? (
-                      <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-                        <p className="text-sm font-black text-slate-900">{entry.subject}</p>
-                        <p className="mt-1 text-xs font-medium text-indigo-700">{entry.sectionName}</p>
-                        <p className="mt-1 text-xs text-slate-500">{entry.teacherName}</p>
-                      </div>
-                    ) : (
-                      <span className="text-xs font-medium text-slate-300">Free</span>
+          {TIMETABLE_DAYS.map((day) => {
+            const isToday = day.value === today;
+
+            return (
+              <tr key={day.value} className={`border-t border-slate-100 ${isToday ? 'bg-indigo-50/70' : ''}`}>
+                <td className={`px-5 py-4 font-black ${isToday ? 'bg-indigo-100/80 text-indigo-700' : 'bg-slate-50/60 text-slate-700'}`}>
+                  <div className="flex items-center gap-2">
+                    <span>{day.label}</span>
+                    {isToday && (
+                      <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+                        Today
+                      </span>
                     )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+                  </div>
+                </td>
+                {TIMETABLE_PERIODS.map((period) => {
+                  const entry = entriesByCell.get(entryKey(day.value, period));
+                  return (
+                    <td key={period} className="min-w-36 px-4 py-4 align-top">
+                      {entry ? (
+                        <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+                          <p className="text-sm font-black text-slate-900">{entry.subject}</p>
+                          <p className="mt-1 text-xs font-medium text-indigo-700">{entry.sectionName}</p>
+                          <p className="mt-1 text-xs text-slate-500">{entry.teacherName}</p>
+                        </div>
+                      ) : (
+                        <span className="text-xs font-medium text-slate-300">Free</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -223,10 +237,17 @@ const TimetablePage = () => {
           .sort((left, right) => left.periodNumber - right.periodNumber);
 
         return (
-          <section key={day.value} className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+          <section key={day.value} className={`rounded-[1.5rem] border p-4 shadow-sm ${day.value === today ? 'border-indigo-200 bg-indigo-50/70' : 'border-slate-100 bg-white'}`}>
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-black text-slate-900">{day.label}</h2>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900">{day.label}</h2>
+                {day.value === today && (
+                  <span className="rounded-full bg-indigo-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+                    Today
+                  </span>
+                )}
+              </div>
+              <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${day.value === today ? 'bg-white text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
                 {dayEntries.length} periods
               </span>
             </div>
@@ -325,43 +346,56 @@ const TimetablePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {TIMETABLE_DAYS.map((day) => (
-                  <tr key={day.value} className="border-t border-slate-100">
-                    <td className="bg-slate-50/60 px-5 py-4 font-black text-slate-700">{day.label}</td>
-                    {TIMETABLE_PERIODS.map((period) => {
-                      const entry = entriesByCell.get(entryKey(day.value, period));
-                      const teacher = entry ? resolveTeacherForSubject(activeSection, entry.subject) : null;
+                {TIMETABLE_DAYS.map((day) => {
+                  const isToday = day.value === today;
 
-                      return (
-                        <td key={period} className="min-w-36 px-3 py-4 align-top">
-                          <div className="space-y-2">
-                            <select
-                              value={entry?.subject || ''}
-                              onChange={(event) => void handleSubjectChange(day.value, period, event.target.value)}
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-400"
-                            >
-                              <option value="">Free</option>
-                              {subjectOptions.map((subject) => (
-                                <option key={subject} value={subject}>{subject}</option>
-                              ))}
-                            </select>
-                            <div className="min-h-10 rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-medium text-slate-500">
-                              {entry ? teacher?.name || entry.teacherName : 'No teacher assigned'}
-                            </div>
-                            {entry && (
-                              <button
-                                onClick={() => void handleSubjectChange(day.value, period, '')}
-                                className="inline-flex items-center gap-1 rounded-xl bg-rose-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-rose-500 hover:bg-rose-100"
+                  return (
+                    <tr key={day.value} className={`border-t border-slate-100 ${isToday ? 'bg-indigo-50/70' : ''}`}>
+                      <td className={`px-5 py-4 font-black ${isToday ? 'bg-indigo-100/80 text-indigo-700' : 'bg-slate-50/60 text-slate-700'}`}>
+                        <div className="flex items-center gap-2">
+                          <span>{day.label}</span>
+                          {isToday && (
+                            <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+                              Today
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {TIMETABLE_PERIODS.map((period) => {
+                        const entry = entriesByCell.get(entryKey(day.value, period));
+                        const teacher = entry ? resolveTeacherForSubject(activeSection, entry.subject) : null;
+
+                        return (
+                          <td key={period} className="min-w-36 px-3 py-4 align-top">
+                            <div className="space-y-2">
+                              <select
+                                value={entry?.subject || ''}
+                                onChange={(event) => void handleSubjectChange(day.value, period, event.target.value)}
+                                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-400"
                               >
-                                <Trash2 size={12} /> Clear
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                                <option value="">Free</option>
+                                {subjectOptions.map((subject) => (
+                                  <option key={subject} value={subject}>{subject}</option>
+                                ))}
+                              </select>
+                              <div className="min-h-10 rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-medium text-slate-500">
+                                {entry ? teacher?.name || entry.teacherName : 'No teacher assigned'}
+                              </div>
+                              {entry && (
+                                <button
+                                  onClick={() => void handleSubjectChange(day.value, period, '')}
+                                  className="inline-flex items-center gap-1 rounded-xl bg-rose-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-rose-500 hover:bg-rose-100"
+                                >
+                                  <Trash2 size={12} /> Clear
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
