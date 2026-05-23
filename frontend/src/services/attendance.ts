@@ -51,7 +51,7 @@ export interface AttendanceOverview {
   attendanceRate: number;
 }
 
-export type AttendanceOverviewRange = 'today' | 'week' | 'month' | 'twoMonthsAgo';
+export type AttendanceOverviewRange = 'today' | 'week' | 'month' | 'twoMonthsAgo' | 'overall';
 
 export interface AttendanceRegistryRow {
   id: string;
@@ -114,11 +114,15 @@ const normalizeTrendForDates = (records: AttendanceRecordRow[], dates: string[])
     const absentCount = dayRecords.filter((record) => record.status === 'Absent').length;
     const total = dayRecords.length;
 
+    // compute percentages with one decimal place to avoid small ratios rounding to 0
+    const presentPct = total ? Math.round((presentCount / total) * 1000) / 10 : 0;
+    const absentPct = total ? Math.round((absentCount / total) * 1000) / 10 : 0;
+
     return {
       label: formatDayLabel(date),
       date,
-      present: total ? Math.round((presentCount / total) * 100) : 0,
-      absent: total ? Math.round((absentCount / total) * 100) : 0,
+      present: presentPct,
+      absent: absentPct,
       presentCount,
       absentCount,
       total,
@@ -151,6 +155,12 @@ const getAttendanceWindow = (range: AttendanceOverviewRange, days: number) => {
   const today = new Date();
   const endDate = new Date(today);
   const startDate = new Date(today);
+
+  // 'overall' requests the full history: set a very early start date
+  if (range === 'overall') {
+    // Use a safe historical date; the DB likely has no records before year 2000.
+    return { startDate: new Date(2000, 0, 1), endDate };
+  }
 
   if (range === 'today') {
     return { startDate, endDate };
@@ -391,7 +401,8 @@ export const fetchAttendanceOverview = async (
     totalRecords,
     presentCount,
     absentCount,
-    attendanceRate: totalRecords ? Math.round((presentCount / totalRecords) * 100) : 0,
+    // attendanceRate with one decimal to avoid showing 0 for very small ratios
+    attendanceRate: totalRecords ? Math.round((presentCount / totalRecords) * 1000) / 10 : 0,
   };
 };
 

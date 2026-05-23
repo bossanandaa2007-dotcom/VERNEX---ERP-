@@ -24,6 +24,7 @@ const getNavItems = (role: string) => {
   if (role === 'Admin') {
     items.push(
       { name: 'Classes Mgmt', icon: Building2, path: '/admin/classes' },
+      { name: 'Students', icon: Users, path: '/admin/students' },
       { name: 'Faculty', icon: Shield, path: '/admin/teachers' },
       { name: 'Timetable', icon: CalendarDays, path: '/admin/timetable' },
       { name: 'Marks Hub', icon: Award, path: '/admin/marks' },
