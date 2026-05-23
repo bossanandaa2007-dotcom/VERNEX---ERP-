@@ -47,7 +47,7 @@ const ComplaintInbox = () => {
           return matchesTarget && matchesStatus && matchesDateFrom && matchesDateTo && matchesSearch;
         })
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [complaints, dateFrom, dateTo, isTeacher, searchQuery, statusFilter, user?.id]
+    [complaints, dateFrom, dateTo, searchQuery, statusFilter, targetRole, user?.id]
   );
 
   const handleResolve = async (complaintId: string) => {

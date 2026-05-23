@@ -5,7 +5,6 @@ import {
   BarChart3,
   CheckCircle,
   ChevronRight,
-  FileText,
   GraduationCap,
   Home,
   Search,
@@ -32,11 +31,37 @@ import {
 } from 'recharts';
 import { useClassStore } from '../../store/useClassStore';
 import { fetchAttendanceOverview } from '../../services/attendance';
+import type { AttendanceOverviewRange, AttendanceRegistryRow } from '../../services/attendance';
+import { fetchGoverningMarksOverview, MARK_EXAMS } from '../../services/marks';
+import type { ExamType, GoverningMarksOverview } from '../../services/marks';
 import type { IStudent } from '../../types/school';
 
-type Tab = 'DASHBOARD' | 'ANALYTICS' | 'STUDENTS' | 'TEACHERS' | 'ATTENDANCE' | 'MARKS' | 'HOMEWORK';
+type Tab = 'DASHBOARD' | 'ANALYTICS' | 'STUDENTS' | 'TEACHERS' | 'ATTENDANCE' | 'MARKS';
 
 const PIE_COLORS = ['#0f766e', '#e11d48'];
+const ATTENDANCE_FILTERS: Array<{ id: AttendanceOverviewRange; label: string }> = [
+  { id: 'today', label: 'Today' },
+  { id: 'week', label: 'Past week' },
+  { id: 'month', label: 'Past month' },
+  { id: 'twoMonthsAgo', label: '2 months ago' },
+];
+
+const emptyMarksOverview: GoverningMarksOverview = {
+  groups: [],
+  sections: [],
+  subjects: [],
+  subjectPerformance: [],
+  classAverage: [],
+  totalRecords: 0,
+  averagePercent: 0,
+};
+
+const STATIC_ACADEMIC_SNAPSHOT = [
+  { subject: 'LKG-2', avg: 72 },
+  { subject: '3-5', avg: 78 },
+  { subject: '6-8', avg: 82 },
+  { subject: '9-12', avg: 86 },
+];
 
 const viewToTab: Record<string, Tab> = {
   dashboard: 'DASHBOARD',
@@ -46,7 +71,6 @@ const viewToTab: Record<string, Tab> = {
   teachers: 'TEACHERS',
   attendance: 'ATTENDANCE',
   marks: 'MARKS',
-  homework: 'HOMEWORK',
 };
 
 const tabToView: Record<Tab, string> = {
@@ -56,7 +80,6 @@ const tabToView: Record<Tab, string> = {
   TEACHERS: 'teachers',
   ATTENDANCE: 'attendance',
   MARKS: 'marks',
-  HOMEWORK: 'homework',
 };
 
 const StatCard = ({ title, value, icon: Icon, bg, color, subtitle }: any) => (
@@ -96,6 +119,66 @@ const ChartCard = ({ title, children }: { title: string; children: ReactNode }) 
   </section>
 );
 
+const ChartFrame = ({ children, className = 'h-[230px] sm:h-64' }: { children: ReactNode; className?: string }) => (
+  <div className={`${className} w-full min-w-0 overflow-visible`}>
+    {children}
+  </div>
+);
+
+const EmptyChart = ({ message }: { message: string }) => (
+  <div className="flex h-full min-h-[180px] items-center justify-center rounded-2xl bg-slate-50 px-4 text-center text-sm font-bold text-slate-400">
+    {message}
+  </div>
+);
+
+const AttendanceFilter = ({ value, onChange }: { value: AttendanceOverviewRange; onChange: (value: AttendanceOverviewRange) => void }) => (
+  <div className="mb-4 flex flex-wrap gap-2">
+    {ATTENDANCE_FILTERS.map((filter) => (
+      <button
+        key={filter.id}
+        onClick={() => onChange(filter.id)}
+        className={`shrink-0 rounded-full px-3 py-2 text-[11px] font-black transition-all ${
+          value === filter.id ? 'bg-teal-700 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+        }`}
+      >
+        {filter.label}
+      </button>
+    ))}
+  </div>
+);
+
+const GradeFilter = ({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: Array<{ id: string; name: string }>;
+  value: string;
+  onChange: (value: string) => void;
+}) => (
+  <div className="mb-4 flex flex-wrap gap-2">
+    <button
+      onClick={() => onChange('ALL')}
+      className={`rounded-full px-3 py-2 text-[11px] font-black transition-all ${
+        value === 'ALL' ? 'bg-slate-950 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+      }`}
+    >
+      All classes
+    </button>
+    {categories.map((category) => (
+      <button
+        key={category.id}
+        onClick={() => onChange(category.id)}
+        className={`rounded-full px-3 py-2 text-[11px] font-black transition-all ${
+          value === category.id ? 'bg-slate-950 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+        }`}
+      >
+        {category.name}
+      </button>
+    ))}
+  </div>
+);
+
 export default function GoverningDashboard() {
   const store = useClassStore();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -104,9 +187,18 @@ export default function GoverningDashboard() {
   const [filterClass, setFilterClass] = useState('ALL');
   const [activeGradeId, setActiveGradeId] = useState<string | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const [attendanceTrend, setAttendanceTrend] = useState<Array<{ day: string; present: number; absent: number }>>([]);
-  const [classAttendance, setClassAttendance] = useState<Array<{ class: string; pct: number }>>([]);
+  const [attendanceRange, setAttendanceRange] = useState<AttendanceOverviewRange>('week');
+  const [attendanceTrend, setAttendanceTrend] = useState<Array<{ day: string; present: number; absent: number; total: number }>>([]);
+  const [classAttendance, setClassAttendance] = useState<Array<{ classId: string; class: string; pct: number; total: number }>>([]);
+  const [attendanceGradeId, setAttendanceGradeId] = useState('ALL');
   const [pieData, setPieData] = useState([{ name: 'Present', value: 0 }, { name: 'Absent', value: 0 }]);
+  const [liveRegistry, setLiveRegistry] = useState<AttendanceRegistryRow[]>([]);
+  const [attendanceError, setAttendanceError] = useState('');
+  const [marksOverview, setMarksOverview] = useState<GoverningMarksOverview>(emptyMarksOverview);
+  const [marksGroupId, setMarksGroupId] = useState('All');
+  const [marksSectionId, setMarksSectionId] = useState('All');
+  const [marksSubject, setMarksSubject] = useState('All');
+  const [marksExamType, setMarksExamType] = useState<ExamType | 'All'>('All');
 
   const tab = viewToTab[searchParams.get('view') || 'dashboard'] || 'DASHBOARD';
 
@@ -121,10 +213,10 @@ export default function GoverningDashboard() {
     { id: 'TEACHERS', label: 'Teachers', icon: Users },
     { id: 'ATTENDANCE', label: 'Attendance', icon: CheckCircle },
     { id: 'MARKS', label: 'Marks', icon: Award },
-    { id: 'HOMEWORK', label: 'Homework', icon: FileText },
   ];
 
   const sectionLookup = useMemo(() => new Map(store.sections.map((section) => [section.id, section])), [store.sections]);
+  const sectionNameLookup = useMemo(() => new Map(store.sections.map((section) => [section.name, section])), [store.sections]);
   const gradeLookup = useMemo(() => new Map(store.categories.map((category) => [category.id, category])), [store.categories]);
 
   const filteredTeachers = useMemo(
@@ -166,41 +258,82 @@ export default function GoverningDashboard() {
   const activeSections = activeGradeId ? store.sections.filter((section) => section.categoryId === activeGradeId) : [];
 
   useEffect(() => {
-    void fetchAttendanceOverview(7)
+    void fetchAttendanceOverview(7, attendanceRange)
       .then((overview) => {
+        setAttendanceError('');
         setAttendanceTrend(
           overview.trend.map((point) => ({
-            day: point.label,
+            day: attendanceRange === 'week' ? point.label : point.date.slice(5),
             present: point.present,
             absent: point.absent,
+            total: point.total,
           }))
         );
         setClassAttendance(
           overview.classBreakdown.map((point) => ({
-            class: sectionLookup.get(point.classId)?.name || point.classId,
+            classId: point.classId,
+            class: sectionLookup.get(point.classId)?.name || sectionNameLookup.get(point.classId)?.name || point.classId,
             pct: point.pct,
+            total: point.total,
           }))
         );
         setPieData([
           { name: 'Present', value: overview.presentCount },
           { name: 'Absent', value: overview.absentCount },
         ]);
+        setLiveRegistry(overview.liveRegistry);
       })
+      .catch((error) => {
+        console.error(error);
+        setAttendanceError('Attendance data could not be loaded.');
+        setAttendanceTrend([]);
+        setClassAttendance([]);
+        setPieData([{ name: 'Present', value: 0 }, { name: 'Absent', value: 0 }]);
+        setLiveRegistry([]);
+      });
+  }, [attendanceRange, sectionLookup, sectionNameLookup]);
+
+  useEffect(() => {
+    void fetchGoverningMarksOverview({
+      groupId: marksGroupId,
+      sectionId: marksSectionId,
+      subject: marksSubject,
+      examType: marksExamType,
+    })
+      .then(setMarksOverview)
       .catch(console.error);
-  }, [sectionLookup]);
+  }, [marksExamType, marksGroupId, marksSectionId, marksSubject]);
 
-  const marksData = store.categories.map((category, index) => ({
-    subject: category.name.length > 9 ? `${category.name.slice(0, 8)}.` : category.name,
-    avg: 72 + index * 4,
-  }));
+  const marksSections = useMemo(
+    () => marksOverview.sections.filter((section) => marksGroupId === 'All' || section.groupId === marksGroupId),
+    [marksGroupId, marksOverview.sections]
+  );
 
-  const hwData = store.categories.map((category, index) => ({
-    class: category.name.length > 6 ? category.name.slice(0, 6) : category.name,
-    done: Math.max(62, 82 - index * 2),
-    pending: Math.min(38, 18 + index * 2),
-  }));
+  const classAttendanceData = useMemo(() => {
+    const selectedSections = attendanceGradeId === 'ALL'
+      ? store.sections
+      : store.sections.filter((section) => section.categoryId === attendanceGradeId);
+    const attendanceByClass = new Map(classAttendance.map((point) => [point.classId, point]));
 
-  const studentHighlights = useMemo(() => store.students.slice(0, 6), [store.students]);
+    if (!selectedSections.length) {
+      return classAttendance.sort((a, b) => a.class.localeCompare(b.class, undefined, { numeric: true }));
+    }
+
+    return selectedSections
+      .map((section) => {
+        const point = attendanceByClass.get(section.id) || attendanceByClass.get(section.name);
+
+        return {
+          classId: section.id,
+          class: section.name,
+          pct: point?.pct || 0,
+          total: point?.total || 0,
+        };
+      })
+      .sort((a, b) => a.class.localeCompare(b.class, undefined, { numeric: true }));
+  }, [attendanceGradeId, classAttendance, store.sections]);
+  const hasAttendanceTrend = attendanceTrend.some((point) => point.total > 0);
+  const hasClassAttendance = classAttendanceData.some((point) => point.total > 0);
 
   const renderStudentCard = (student: IStudent) => (
     <article
@@ -278,40 +411,54 @@ export default function GoverningDashboard() {
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
             <div className="lg:col-span-2">
               <ChartCard title="Attendance Pulse">
-                <div className="h-60 sm:h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={attendanceTrend}>
-                      <defs>
-                        <linearGradient id="gb-teal" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#0f766e" stopOpacity={0.22} />
-                          <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
-                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                      <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 18px 45px rgba(15,23,42,0.14)' }} />
-                      <Area type="monotone" dataKey="present" stroke="#0f766e" strokeWidth={3} fill="url(#gb-teal)" name="Present %" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                <AttendanceFilter value={attendanceRange} onChange={setAttendanceRange} />
+                <ChartFrame className="h-[220px] sm:h-[300px]">
+                  {attendanceError ? (
+                    <EmptyChart message={attendanceError} />
+                  ) : !hasAttendanceTrend ? (
+                    <EmptyChart message="No attendance records for this period." />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={attendanceTrend}>
+                        <defs>
+                          <linearGradient id="gb-teal" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#0f766e" stopOpacity={0.22} />
+                            <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+                        <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                        <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                        <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 18px 45px rgba(15,23,42,0.14)' }} />
+                        <Area type="monotone" dataKey="present" stroke="#0f766e" strokeWidth={3} fill="url(#gb-teal)" name="Present %" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </ChartFrame>
               </ChartCard>
             </div>
 
             <ChartCard title="Live Registry">
               <div className="space-y-3">
-                {studentHighlights.map((student, index) => (
-                  <div key={student.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
+                {liveRegistry.map((record, index) => (
+                  <div key={record.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-black text-slate-900 shadow-sm">
                       {index + 1}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-black text-slate-900">{student.name}</p>
-                      <p className="text-xs font-bold text-slate-400">Roll {student.rollNo} · {sectionLookup.get(student.sectionId)?.name || 'Section'}</p>
+                      <p className="truncate text-sm font-black text-slate-900">{record.studentName}</p>
+                      <p className="text-xs font-bold text-slate-400">{sectionLookup.get(record.classId)?.name || record.classId} - {record.attendanceDate}</p>
                     </div>
-                    <ChevronRight size={16} className="text-slate-300" />
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${record.status === 'Present' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                      {record.status}
+                    </span>
                   </div>
                 ))}
+                {!liveRegistry.length && (
+                  <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-400">
+                    No attendance records for this filter.
+                  </div>
+                )}
               </div>
             </ChartCard>
           </div>
@@ -320,56 +467,72 @@ export default function GoverningDashboard() {
 
       {(tab === 'ANALYTICS' || tab === 'ATTENDANCE') && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
-          <ChartCard title="Weekly Attendance">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={attendanceTrend}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="present" stroke="#0f766e" strokeWidth={3} dot={{ r: 4 }} name="Present %" />
-                  <Line type="monotone" dataKey="absent" stroke="#e11d48" strokeWidth={3} dot={{ r: 4 }} name="Absent %" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+          <ChartCard title="Attendance Trend">
+            <AttendanceFilter value={attendanceRange} onChange={setAttendanceRange} />
+            <ChartFrame>
+              {hasAttendanceTrend ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={attendanceTrend}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
+                    <Legend />
+                    <Line type="monotone" dataKey="present" stroke="#0f766e" strokeWidth={3} dot={{ r: 4 }} name="Present %" />
+                    <Line type="monotone" dataKey="absent" stroke="#e11d48" strokeWidth={3} dot={{ r: 4 }} name="Absent %" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyChart message="No attendance records for this period." />
+              )}
+            </ChartFrame>
           </ChartCard>
 
           <ChartCard title="Class Attendance">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={classAttendance} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef2f7" />
-                  <XAxis type="number" domain={[60, 100]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <YAxis dataKey="class" type="category" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 800 }} width={90} />
-                  <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
-                  <Bar dataKey="pct" fill="#0f766e" radius={[0, 10, 10, 0]} barSize={24} name="Attendance %" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <AttendanceFilter value={attendanceRange} onChange={setAttendanceRange} />
+            <GradeFilter categories={store.categories} value={attendanceGradeId} onChange={setAttendanceGradeId} />
+            <ChartFrame>
+              {hasClassAttendance ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={classAttendanceData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef2f7" />
+                    <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                    <YAxis dataKey="class" type="category" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 800 }} width={90} />
+                    <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
+                    <Bar dataKey="pct" fill="#0f766e" radius={[0, 10, 10, 0]} barSize={24} name="Attendance %" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyChart message="No section attendance records for this class and period." />
+              )}
+            </ChartFrame>
           </ChartCard>
 
           <ChartCard title="Present vs Absent">
-            <div className="h-60">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPie>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={58} outerRadius={92} paddingAngle={4} dataKey="value">
-                    {pieData.map((_, index) => (
-                      <Cell key={index} fill={PIE_COLORS[index]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
-                  <Legend />
-                </RechartsPie>
-              </ResponsiveContainer>
-            </div>
+            <AttendanceFilter value={attendanceRange} onChange={setAttendanceRange} />
+            <ChartFrame>
+              {pieData.some((point) => point.value > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPie>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={58} outerRadius={92} paddingAngle={4} dataKey="value">
+                      {pieData.map((_, index) => (
+                        <Cell key={index} fill={PIE_COLORS[index]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
+                    <Legend />
+                  </RechartsPie>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyChart message="No present or absent records for this period." />
+              )}
+            </ChartFrame>
           </ChartCard>
 
           <ChartCard title="Academic Snapshot">
-            <div className="h-60">
+            <ChartFrame>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={marksData}>
+                <BarChart data={STATIC_ACADEMIC_SNAPSHOT}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
                   <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <YAxis axisLine={false} tickLine={false} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} />
@@ -377,7 +540,7 @@ export default function GoverningDashboard() {
                   <Bar dataKey="avg" fill="#2563eb" radius={[10, 10, 0, 0]} barSize={30} name="Avg Marks" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartFrame>
           </ChartCard>
         </div>
       )}
@@ -549,52 +712,68 @@ export default function GoverningDashboard() {
       )}
 
       {tab === 'MARKS' && (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <ChartCard title="Subject Performance">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={marksData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
-                  <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis axisLine={false} tickLine={false} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
-                  <Bar dataKey="avg" fill="#2563eb" radius={[10, 10, 0, 0]} barSize={32} name="Avg Marks" />
-                </BarChart>
-              </ResponsiveContainer>
+        <div className="space-y-5">
+          <section className="rounded-[1.6rem] border border-white/80 bg-white/90 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+              <select value={marksGroupId} onChange={(event) => { setMarksGroupId(event.target.value); setMarksSectionId('All'); }} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none">
+                <option value="All">All subject groups</option>
+                {marksOverview.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+              </select>
+              <select value={marksSectionId} onChange={(event) => setMarksSectionId(event.target.value)} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none">
+                <option value="All">All sections</option>
+                {marksSections.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}
+              </select>
+              <select value={marksSubject} onChange={(event) => setMarksSubject(event.target.value)} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none">
+                <option value="All">All subjects</option>
+                {marksOverview.subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
+              </select>
+              <select value={marksExamType} onChange={(event) => setMarksExamType(event.target.value as ExamType | 'All')} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none">
+                <option value="All">All exams</option>
+                {MARK_EXAMS.map((exam) => <option key={exam} value={exam}>{exam}</option>)}
+              </select>
             </div>
-          </ChartCard>
-          <ChartCard title="Class Average">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={marksData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
-                  <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis axisLine={false} tickLine={false} domain={[60, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
-                  <Line type="monotone" dataKey="avg" stroke="#2563eb" strokeWidth={3} dot={{ r: 5, fill: '#2563eb' }} name="Class Avg" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
-        </div>
-      )}
+            <p className="mt-3 text-xs font-black uppercase tracking-widest text-slate-400">
+              {marksOverview.totalRecords} mark records - {marksOverview.averagePercent}% overall average
+            </p>
+          </section>
 
-      {tab === 'HOMEWORK' && (
-        <ChartCard title="Homework Completion">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hwData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
-                <XAxis dataKey="class" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
-                <Legend />
-                <Bar dataKey="done" stackId="a" fill="#0f766e" name="Completed %" barSize={34} />
-                <Bar dataKey="pending" stackId="a" fill="#f59e0b" radius={[10, 10, 0, 0]} name="Pending %" barSize={34} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <ChartCard title="Subject Performance">
+              <ChartFrame>
+                {marksOverview.subjectPerformance.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={marksOverview.subjectPerformance}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+                      <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                      <YAxis axisLine={false} tickLine={false} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                      <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
+                      <Bar dataKey="avg" fill="#2563eb" radius={[10, 10, 0, 0]} barSize={32} name="Avg Marks %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyChart message="No marks found for this filter." />
+                )}
+              </ChartFrame>
+            </ChartCard>
+            <ChartCard title="Class Average">
+              <ChartFrame>
+                {marksOverview.classAverage.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={marksOverview.classAverage}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+                      <XAxis dataKey="class" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                      <YAxis axisLine={false} tickLine={false} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                      <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
+                      <Line type="monotone" dataKey="avg" stroke="#2563eb" strokeWidth={3} dot={{ r: 5, fill: '#2563eb' }} name="Class Avg %" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyChart message="No class average data for this filter." />
+                )}
+              </ChartFrame>
+            </ChartCard>
           </div>
-        </ChartCard>
+        </div>
       )}
 
       <div className="pb-3 pt-1 text-center">

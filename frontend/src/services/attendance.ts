@@ -44,17 +44,33 @@ export interface AttendanceMonthlyPoint {
 export interface AttendanceOverview {
   trend: AttendanceTrendPoint[];
   classBreakdown: AttendanceClassPoint[];
+  liveRegistry: AttendanceRegistryRow[];
   totalRecords: number;
   presentCount: number;
   absentCount: number;
   attendanceRate: number;
 }
 
+export type AttendanceOverviewRange = 'today' | 'week' | 'month' | 'twoMonthsAgo';
+
+export interface AttendanceRegistryRow {
+  id: string;
+  studentId: string;
+  studentName: string;
+  classId: string;
+  attendanceDate: string;
+  status: 'Present' | 'Absent';
+  createdAt: string;
+}
+
 interface AttendanceRecordRow {
+  id?: string;
   attendance_date: string;
   status: 'Present' | 'Absent';
   class_id: string;
   student_id: string;
+  student_name?: string;
+  created_at?: string;
   metadata?: {
     seeded?: boolean;
   } | null;
@@ -70,14 +86,13 @@ const assertSupabase = () => {
 
 const toIsoDate = (date: Date) => date.toISOString().split('T')[0];
 
-const createDateRange = (days: number) => {
+const createDateRangeBetween = (startDate: Date, endDate: Date) => {
   const dates: string[] = [];
-  const today = new Date();
+  const cursor = new Date(startDate);
 
-  for (let offset = days - 1; offset >= 0; offset -= 1) {
-    const current = new Date(today);
-    current.setDate(today.getDate() - offset);
-    dates.push(toIsoDate(current));
+  while (cursor <= endDate) {
+    dates.push(toIsoDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   return dates;
@@ -92,10 +107,8 @@ const formatMonthLabel = (isoDate: string) =>
 const getRealRecords = (records: AttendanceRecordRow[]) =>
   records.filter((record) => !(record.metadata && record.metadata.seeded));
 
-const normalizeTrend = (records: AttendanceRecordRow[], days: number) => {
-  const dates = createDateRange(days);
-
-  return dates.map((date) => {
+const normalizeTrendForDates = (records: AttendanceRecordRow[], dates: string[]) =>
+  dates.map((date) => {
     const dayRecords = records.filter((record) => record.attendance_date === date);
     const presentCount = dayRecords.filter((record) => record.status === 'Present').length;
     const absentCount = dayRecords.filter((record) => record.status === 'Absent').length;
@@ -111,7 +124,6 @@ const normalizeTrend = (records: AttendanceRecordRow[], days: number) => {
       total,
     };
   });
-};
 
 const normalizeClassBreakdown = (records: AttendanceRecordRow[]) => {
   const classMap = new Map<string, { presentCount: number; total: number }>();
@@ -133,6 +145,30 @@ const normalizeClassBreakdown = (records: AttendanceRecordRow[]) => {
       total: stats.total,
     }))
     .sort((a, b) => a.classId.localeCompare(b.classId));
+};
+
+const getAttendanceWindow = (range: AttendanceOverviewRange, days: number) => {
+  const today = new Date();
+  const endDate = new Date(today);
+  const startDate = new Date(today);
+
+  if (range === 'today') {
+    return { startDate, endDate };
+  }
+
+  if (range === 'month') {
+    startDate.setDate(today.getDate() - 29);
+    return { startDate, endDate };
+  }
+
+  if (range === 'twoMonthsAgo') {
+    startDate.setMonth(today.getMonth() - 2, 1);
+    endDate.setMonth(today.getMonth() - 1, 0);
+    return { startDate, endDate };
+  }
+
+  startDate.setDate(today.getDate() - (days - 1));
+  return { startDate, endDate };
 };
 
 export const generateAttendancePreview = async (file: File) => {
@@ -311,15 +347,19 @@ export const fetchStudentAttendanceSummary = async (studentId: string) => {
   };
 };
 
-export const fetchAttendanceOverview = async (days = 7): Promise<AttendanceOverview> => {
+export const fetchAttendanceOverview = async (
+  days = 7,
+  range: AttendanceOverviewRange = 'week'
+): Promise<AttendanceOverview> => {
   const client = assertSupabase();
-  const fromDate = new Date();
-  fromDate.setDate(fromDate.getDate() - (days - 1));
+  const { startDate, endDate } = getAttendanceWindow(range, days);
+  const dateRange = createDateRangeBetween(startDate, endDate);
 
   const { data, error } = await client
     .from('attendance_records')
-    .select('attendance_date, status, class_id, student_id, metadata')
-    .gte('attendance_date', toIsoDate(fromDate))
+    .select('id, attendance_date, status, class_id, student_id, student_name, created_at, metadata')
+    .gte('attendance_date', toIsoDate(startDate))
+    .lte('attendance_date', toIsoDate(endDate))
     .order('attendance_date', { ascending: true });
 
   if (error) {
@@ -332,8 +372,22 @@ export const fetchAttendanceOverview = async (days = 7): Promise<AttendanceOverv
   const totalRecords = records.length;
 
   return {
-    trend: normalizeTrend(records, days),
+    trend: normalizeTrendForDates(records, dateRange),
     classBreakdown: normalizeClassBreakdown(records),
+    liveRegistry: [...records]
+      .sort((a, b) =>
+        String(b.created_at || b.attendance_date).localeCompare(String(a.created_at || a.attendance_date))
+      )
+      .slice(0, 8)
+      .map((record) => ({
+        id: record.id || `${record.attendance_date}-${record.class_id}-${record.student_id}`,
+        studentId: record.student_id,
+        studentName: record.student_name || 'Student',
+        classId: record.class_id,
+        attendanceDate: record.attendance_date,
+        status: record.status,
+        createdAt: record.created_at || record.attendance_date,
+      })),
     totalRecords,
     presentCount,
     absentCount,

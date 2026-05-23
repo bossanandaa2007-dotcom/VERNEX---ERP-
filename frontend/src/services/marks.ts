@@ -91,6 +91,23 @@ export interface ClassExamMarkLock {
   lockedBy?: string | null;
 }
 
+export interface GoverningMarksOverviewFilters {
+  groupId?: string;
+  sectionId?: string;
+  subject?: string;
+  examType?: ExamType | 'All';
+}
+
+export interface GoverningMarksOverview {
+  groups: Array<{ id: string; name: string; categoryId: string }>;
+  sections: Array<{ id: string; name: string; groupId: string }>;
+  subjects: string[];
+  subjectPerformance: Array<{ subject: string; avg: number; records: number }>;
+  classAverage: Array<{ class: string; avg: number; records: number }>;
+  totalRecords: number;
+  averagePercent: number;
+}
+
 const assertSupabase = () => {
   if (!supabase) {
     throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
@@ -646,4 +663,113 @@ export const fetchInstitutionMarks = async (filters?: { className?: string; exam
     record.studentName.toLowerCase().includes(search) ||
     record.subject.toLowerCase().includes(search)
   );
+};
+
+export const fetchGoverningMarksOverview = async (
+  filters: GoverningMarksOverviewFilters = {}
+): Promise<GoverningMarksOverview> => {
+  const client = assertSupabase();
+  const [groupsRes, groupSectionsRes, groupSubjectsRes, subjectsRes, marksRes] = await Promise.all([
+    client.from('class_subject_groups').select('id, category_id, name').order('name', { ascending: true }),
+    client.from('class_subject_group_sections').select('group_id, section_id, sections!inner(name)').order('group_id', { ascending: true }),
+    client.from('class_subject_group_subjects').select('group_id, subject_name, sort_order').order('sort_order', { ascending: true }),
+    client.from('subjects').select('name').order('sort_order', { ascending: true }),
+    client
+      .from('student_marks')
+      .select('id, section_id, class_name, subject_name, marks, max_marks, exam_type')
+      .order('class_name', { ascending: true }),
+  ]);
+
+  if (groupsRes.error) throw groupsRes.error;
+  if (groupSectionsRes.error) throw groupSectionsRes.error;
+  if (groupSubjectsRes.error) throw groupSubjectsRes.error;
+  if (subjectsRes.error) throw subjectsRes.error;
+  if (marksRes.error) throw marksRes.error;
+
+  const groups = (groupsRes.data || []).map((row: any) => ({
+    id: row.id as string,
+    name: row.name as string,
+    categoryId: row.category_id as string,
+  }));
+  const sections = (groupSectionsRes.data || []).map((row: any) => {
+    const section = Array.isArray(row.sections) ? row.sections[0] : row.sections;
+    return {
+      id: row.section_id as string,
+      name: (section?.name || row.section_id) as string,
+      groupId: row.group_id as string,
+    };
+  });
+  const groupSubjectRows = (groupSubjectsRes.data || []).map((row: any) => ({
+    groupId: row.group_id as string,
+    subject: row.subject_name as string,
+  }));
+
+  const allowedSectionIds = new Set(
+    sections
+      .filter((section) => !filters.groupId || filters.groupId === 'All' || section.groupId === filters.groupId)
+      .map((section) => section.id)
+  );
+  const allowedSubjects = new Set(
+    groupSubjectRows
+      .filter((row) => !filters.groupId || filters.groupId === 'All' || row.groupId === filters.groupId)
+      .map((row) => row.subject.toLowerCase())
+  );
+
+  const records = ((marksRes.data || []) as any[]).filter((row) => {
+    const sectionMatch = !filters.sectionId || filters.sectionId === 'All'
+      ? allowedSectionIds.size ? allowedSectionIds.has(row.section_id) : true
+      : row.section_id === filters.sectionId;
+    const subjectMatch = !filters.subject || filters.subject === 'All'
+      ? allowedSubjects.size ? allowedSubjects.has(String(row.subject_name).toLowerCase()) : true
+      : String(row.subject_name).toLowerCase() === filters.subject.toLowerCase();
+    const examMatch = !filters.examType || filters.examType === 'All' || row.exam_type === filters.examType;
+
+    return sectionMatch && subjectMatch && examMatch;
+  });
+
+  const summarize = (keyFor: (row: any) => string) => {
+    const buckets = new Map<string, { earned: number; max: number; records: number }>();
+    records.forEach((row) => {
+      const key = keyFor(row);
+      const current = buckets.get(key) || { earned: 0, max: 0, records: 0 };
+      current.earned += Number(row.marks) || 0;
+      current.max += Number(row.max_marks) || 0;
+      current.records += 1;
+      buckets.set(key, current);
+    });
+
+    return Array.from(buckets.entries())
+      .map(([key, value]) => ({
+        key,
+        avg: value.max ? Math.round((value.earned / value.max) * 100) : 0,
+        records: value.records,
+      }))
+      .sort((left, right) => left.key.localeCompare(right.key, undefined, { numeric: true }));
+  };
+
+  const subjectPerformance = summarize((row) => row.subject_name).map((row) => ({
+    subject: row.key,
+    avg: row.avg,
+    records: row.records,
+  }));
+  const classAverage = summarize((row) => row.class_name || row.section_id).map((row) => ({
+    class: row.key,
+    avg: row.avg,
+    records: row.records,
+  }));
+  const totalMax = records.reduce((sum, row) => sum + (Number(row.max_marks) || 0), 0);
+  const totalMarks = records.reduce((sum, row) => sum + (Number(row.marks) || 0), 0);
+
+  return {
+    groups,
+    sections,
+    subjects: Array.from(new Set([
+      ...groupSubjectRows.map((row) => row.subject),
+      ...(subjectsRes.data || []).map((row: any) => row.name as string),
+    ].filter(Boolean))).sort((left, right) => left.localeCompare(right)),
+    subjectPerformance,
+    classAverage,
+    totalRecords: records.length,
+    averagePercent: totalMax ? Math.round((totalMarks / totalMax) * 100) : 0,
+  };
 };
