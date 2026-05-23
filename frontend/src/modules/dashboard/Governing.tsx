@@ -40,6 +40,7 @@ type Tab = 'DASHBOARD' | 'ANALYTICS' | 'STUDENTS' | 'TEACHERS' | 'ATTENDANCE' | 
 
 const PIE_COLORS = ['#0f766e', '#e11d48'];
 const ATTENDANCE_FILTERS: Array<{ id: AttendanceOverviewRange; label: string }> = [
+  { id: 'overall', label: 'Overall' },
   { id: 'today', label: 'Today' },
   { id: 'week', label: 'Past week' },
   { id: 'month', label: 'Past month' },
@@ -258,17 +259,52 @@ export default function GoverningDashboard() {
   const activeSections = activeGradeId ? store.sections.filter((section) => section.categoryId === activeGradeId) : [];
 
   useEffect(() => {
-    void fetchAttendanceOverview(7, attendanceRange)
+    const days = attendanceRange === 'today' ? 1 : attendanceRange === 'week' ? 7 : attendanceRange === 'month' ? 30 : attendanceRange === 'overall' ? 0 : 60;
+
+    void fetchAttendanceOverview(days, attendanceRange)
       .then((overview) => {
         setAttendanceError('');
-        setAttendanceTrend(
-          overview.trend.map((point) => ({
-            day: attendanceRange === 'week' ? point.label : point.date.slice(5),
-            present: point.present,
-            absent: point.absent,
-            total: point.total,
-          }))
-        );
+
+        if (attendanceRange === 'overall') {
+          // show only months for current year
+          const currentYear = new Date().getFullYear();
+          const currentMonthIndex = new Date().getMonth();
+          const monthsMap = new Map();
+
+          for (let m = 0; m <= currentMonthIndex; m += 1) {
+            const key = `${currentYear}-${String(m + 1).padStart(2, '0')}`;
+            monthsMap.set(key, { presentCount: 0, absentCount: 0, total: 0 });
+          }
+
+          overview.trend.forEach((row) => {
+            if (row.date.slice(0, 4) !== String(currentYear)) return;
+            const monthKey = row.date.slice(0, 7);
+            const current = monthsMap.get(monthKey) || { presentCount: 0, absentCount: 0, total: 0 };
+            current.presentCount += row.presentCount;
+            current.absentCount += row.absentCount;
+            current.total += row.total;
+            monthsMap.set(monthKey, current);
+          });
+
+          const entries = Array.from(monthsMap.entries()).map(([monthKey, stats]) => {
+            const iso = `${monthKey}-01`;
+            const label = new Date(iso).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+            const present = stats.total ? Math.round((stats.presentCount / stats.total) * 1000) / 10 : 0;
+            const absent = stats.total ? Math.round((stats.absentCount / stats.total) * 1000) / 10 : 0;
+            return { day: label, present, absent, total: stats.total };
+          });
+
+          setAttendanceTrend(entries);
+        } else {
+          setAttendanceTrend(
+            overview.trend.map((point) => ({
+              day: attendanceRange === 'week' ? point.label : point.date.slice(5),
+              present: point.present,
+              absent: point.absent,
+              total: point.total,
+            }))
+          );
+        }
         setClassAttendance(
           overview.classBreakdown.map((point) => ({
             classId: point.classId,

@@ -9,8 +9,9 @@ import {
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { Search, ChevronDown, Filter, Mail, Phone } from 'lucide-react';
+import { Search, ChevronDown, Filter, Mail, Phone, UserPlus, Plus, Upload, ArrowLeft } from 'lucide-react';
 import { useClassStore } from '../../store/useClassStore';
+import { getTodayInputDate } from '../../utils/dateLimits';
 import type { IStudent } from '../../types/school';
 
 type StudentRow = IStudent & {
@@ -79,10 +80,19 @@ const StudentList = () => {
   const sections = useClassStore((state) => state.sections);
   const categories = useClassStore((state) => state.categories);
   const isLoading = useClassStore((state) => state.isLoading);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const addStudent = useClassStore((state) => state.addStudent);
+  const addStudents = useClassStore((state) => state.addStudents);
+  // default sort by Roll No ascending
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'rollNo', desc: false }]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [sectionFilter, setSectionFilter] = useState('ALL');
+  const [showForm, setShowForm] = useState(false);
+  const [showBulkForm, setShowBulkForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [bulkInput, setBulkInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const maxDob = getTodayInputDate();
 
   useEffect(() => {
     void initialize();
@@ -143,6 +153,22 @@ const StudentList = () => {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Student Registry</h1>
           <p className="text-slate-500 mt-1">View student records in the same structured list format as faculty.</p>
         </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowBulkForm((s) => !s)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-sm font-medium transition-colors"
+          >
+            {showBulkForm ? <ArrowLeft size={16} /> : <Upload size={16} />}
+            {showBulkForm ? 'Close Bulk' : 'Bulk Add'}
+          </button>
+          <button
+            onClick={() => setShowForm((s) => !s)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-white bg-indigo-600 border border-indigo-600 rounded-xl hover:bg-indigo-700 text-sm font-bold transition-colors"
+          >
+            {showForm ? <ArrowLeft size={16} /> : <Plus size={16} />}
+            {showForm ? 'Close Form' : 'Add Student'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -187,6 +213,123 @@ const StudentList = () => {
             </button>
           </div>
         </div>
+
+        {/* Inline Bulk import form */}
+        {showBulkForm && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setError(null);
+              if (!bulkInput.trim()) return setError('Bulk input is empty');
+              try {
+                setIsSaving(true);
+                const lines = bulkInput
+                  .split(/\r?\n/)
+                  .map((l) => l.trim())
+                  .filter(Boolean)
+                  .map((l, idx) => {
+                    const parts = l.split(/,|\t/).map((c) => c.trim());
+                    const [name, email, rollNo, gender = 'Male', dob = '', contact = '', parentName = '', parentContact = '', address = ''] = parts;
+                    if (!name || !email || !rollNo) throw new Error(`Line ${idx + 1} missing required fields`);
+                    return { name, email: email.toLowerCase(), rollNo, gender, dob, contact, parentName, parentContact, address };
+                  });
+
+                await addStudents(lines.map((s) => ({ ...s, categoryId: categories[0]?.id || '', sectionId: sections[0]?.id || '' })));
+                setBulkInput('');
+                setShowBulkForm(false);
+              } catch (err: any) {
+                setError(err?.message || 'Failed to import students');
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            className="p-4 border-t border-slate-100 bg-slate-50"
+          >
+            <textarea
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              rows={5}
+              placeholder="Name, email, rollNo, gender, dob, contact, parentName, parentContact, address"
+              className="w-full rounded-2xl border border-slate-200 p-3 text-sm outline-none"
+            />
+            {error && <p className="text-rose-600 mt-2">{error}</p>}
+            <div className="mt-3">
+              <button type="submit" disabled={isSaving} className="px-4 py-2 bg-slate-900 text-white rounded-xl">
+                {isSaving ? 'Importing...' : 'Import Students'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Inline single add form */}
+        {showForm && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setError(null);
+              const form = new FormData(e.currentTarget as HTMLFormElement);
+              const payload = {
+                name: String(form.get('name') || '').trim(),
+                email: String(form.get('email') || '').trim().toLowerCase(),
+                rollNo: String(form.get('rollNo') || '').trim(),
+                gender: String(form.get('gender') || 'Male'),
+                dob: String(form.get('dob') || ''),
+                contact: String(form.get('contact') || ''),
+                parentName: String(form.get('parentName') || ''),
+                parentContact: String(form.get('parentContact') || ''),
+                address: String(form.get('address') || ''),
+                categoryId: String(form.get('categoryId') || categories[0]?.id || ''),
+                sectionId: String(form.get('sectionId') || sections[0]?.id || ''),
+              };
+
+              if (!payload.name || !payload.email || !payload.rollNo) {
+                setError('Name, email and roll number are required');
+                return;
+              }
+
+              try {
+                setIsSaving(true);
+                await addStudent(payload);
+                setShowForm(false);
+              } catch (err: any) {
+                setError(err?.message || 'Failed to add student');
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            className="p-4 border-t border-slate-100 bg-slate-50 grid gap-3 md:grid-cols-3"
+          >
+            <input name="name" placeholder="Student name" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="rollNo" placeholder="Roll number" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="email" type="email" placeholder="Student login email" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <select name="gender" className="rounded-2xl border border-slate-200 bg-white px-4 py-2">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            <input name="dob" type="date" max={maxDob} className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="contact" placeholder="Student contact" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="parentName" placeholder="Parent name" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-1" />
+            <input name="parentContact" placeholder="Parent contact" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-1" />
+            <select name="categoryId" className="rounded-2xl border border-slate-200 bg-white px-4 py-2">
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <select name="sectionId" className="rounded-2xl border border-slate-200 bg-white px-4 py-2">
+              {sections.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <input name="address" placeholder="Address" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-3" />
+            {error && <p className="text-rose-600 md:col-span-3">{error}</p>}
+            <div className="md:col-span-3">
+              <button type="submit" disabled={isSaving} className="px-4 py-2 bg-slate-900 text-white rounded-xl">
+                {isSaving ? 'Saving...' : 'Create Student Record'}
+              </button>
+            </div>
+          </form>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
