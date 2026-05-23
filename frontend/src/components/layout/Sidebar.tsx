@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   LayoutDashboard, Users, Shield, CheckCircle, Award,
@@ -82,6 +82,7 @@ const getNavItems = (role: string) => {
   if (role === 'Governing Body') {
     items.push(
       { name: 'Analytics', icon: BarChart3, path: '/governing/dashboard?view=analytics' },
+      { name: 'Teachers', icon: Users, path: '/governing/dashboard?view=teachers' },
       { name: 'Students', icon: Users, path: '/governing/dashboard?view=students' },
       { name: 'Complaints', icon: FileText, path: '/governing/complaints' },
       { name: 'Calendar', icon: Calendar, path: '/governing/calendar' },
@@ -116,7 +117,6 @@ const studentMobilePrimaryPaths = new Set([
 const governingMobilePrimaryPaths = new Set([
   '/governing/dashboard',
   '/governing/dashboard?view=analytics',
-  '/governing/dashboard?view=students',
   '/governing/calendar',
   '/governing/reports',
 ]);
@@ -130,9 +130,22 @@ export const Sidebar = ({
 }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const role = user?.role || 'Admin';
 
   const navItems = getNavItems(role);
+  const currentLocation = `${location.pathname}${location.search}`;
+  const isNavItemActive = (path: string, name: string, isActive: boolean) => {
+    if (role !== 'Governing Body') {
+      return isActive;
+    }
+
+    if (path.startsWith('/governing/dashboard')) {
+      return currentLocation === path || (name === 'Dashboard' && (currentLocation === '/governing/dashboard' || currentLocation === '/governing/dashboard?view=dashboard'));
+    }
+
+    return location.pathname === path;
+  };
 
   const handleLogout = () => {
     void logout().finally(() => {
@@ -178,15 +191,19 @@ export const Sidebar = ({
                 setCollapsed(true);
               }
             }}
-            className={({ isActive }) => cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 group max-lg:rounded-2xl max-lg:py-3.5",
-              role === 'Teacher' && teacherMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
-              role === 'Student' && studentMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
-              role === 'Governing Body' && governingMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
-              isActive
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                : "hover:bg-indigo-900 hover:text-white"
-            )}
+            className={({ isActive }) => {
+              const active = isNavItemActive(item.path, item.name, isActive);
+
+              return cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 group max-lg:rounded-2xl max-lg:py-3.5",
+                role === 'Teacher' && teacherMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
+                role === 'Student' && studentMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
+                role === 'Governing Body' && governingMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
+                active
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "hover:bg-indigo-900 hover:text-white"
+              );
+            }}
             title={collapsed ? item.name : undefined}
           >
             <item.icon size={20} className={cn("shrink-0", collapsed && "mx-auto")} />

@@ -5,6 +5,18 @@ import jsPDF from 'jspdf';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useClassStore } from '../../store/useClassStore';
 import { fetchAttendanceMonthlyTrend, fetchAttendanceOverview } from '../../services/attendance';
+import { fetchGoverningMarksOverview } from '../../services/marks';
+import type { GoverningMarksOverview } from '../../services/marks';
+
+const emptyMarksOverview: GoverningMarksOverview = {
+  groups: [],
+  sections: [],
+  subjects: [],
+  subjectPerformance: [],
+  classAverage: [],
+  totalRecords: 0,
+  averagePercent: 0,
+};
 
 const ReportsPage = () => {
   const { user } = useAuthStore();
@@ -17,6 +29,7 @@ const ReportsPage = () => {
   const [presentCount, setPresentCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [marksOverview, setMarksOverview] = useState<GoverningMarksOverview>(emptyMarksOverview);
 
   useEffect(() => {
     void initialize();
@@ -29,6 +42,7 @@ const ReportsPage = () => {
         setTotalRecords(overview.totalRecords);
       })
       .catch(console.error);
+    void fetchGoverningMarksOverview().then(setMarksOverview).catch(console.error);
   }, [initialize]);
 
   const handleExportAll = () => {
@@ -59,8 +73,22 @@ const ReportsPage = () => {
       y += 8;
     });
 
-    doc.save('institutional_attendance_report.pdf');
-    setNotification('Attendance report generated and downloaded!');
+    y += 10;
+    doc.setFontSize(14);
+    doc.text('Marks Summary', 14, y);
+    y += 10;
+    doc.setFontSize(10);
+    doc.text(`Overall Average: ${marksOverview.averagePercent}%`, 20, y);
+    y += 8;
+    doc.text(`Total Mark Records: ${marksOverview.totalRecords}`, 20, y);
+    y += 8;
+    marksOverview.subjectPerformance.slice(0, 12).forEach((item) => {
+      doc.text(`${item.subject}: ${item.avg}% average from ${item.records} records`, 20, y);
+      y += 8;
+    });
+
+    doc.save('institutional_live_report.pdf');
+    setNotification('Live institutional report generated and downloaded!');
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -81,7 +109,7 @@ const ReportsPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Institutional Reports</h1>
-          <p className="text-slate-500">Analyze live attendance trends from your database.</p>
+          <p className="text-slate-500">Analyze live attendance and marks trends from your database.</p>
         </div>
         <button
           onClick={handleExportAll}
@@ -132,6 +160,8 @@ const ReportsPage = () => {
               { title: 'Present Entries', value: presentCount.toString(), meta: 'Recorded in DB' },
               { title: 'Absent Entries', value: absentCount.toString(), meta: 'Recorded in DB' },
               { title: 'Total Logs', value: totalRecords.toString(), meta: 'Attendance records' },
+              { title: 'Marks Average', value: `${marksOverview.averagePercent}%`, meta: 'Student marks DB' },
+              { title: 'Mark Records', value: marksOverview.totalRecords.toString(), meta: 'Recorded in DB' },
             ].map((item) => (
               <div key={item.title} className="flex items-center justify-between p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors group">
                 <div className="flex items-center gap-3">

@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, BookOpen, CalendarDays, FileText, GraduationCap, Home, UserRound, UsersRound } from 'lucide-react';
+import { Award, BarChart3, BookOpen, CalendarDays, FileText, GraduationCap, Home, UserRound, UsersRound } from 'lucide-react';
 import { cn } from './Sidebar';
 
 const teacherTabs = [
@@ -21,7 +21,7 @@ const studentTabs = [
 const governingTabs = [
   { name: 'Dashboard', icon: Home, path: '/governing/dashboard?view=dashboard' },
   { name: 'Analytics', icon: BarChart3, path: '/governing/dashboard?view=analytics' },
-  { name: 'Students', icon: GraduationCap, path: '/governing/dashboard?view=students' },
+  { name: 'Marks', icon: Award, path: '/governing/dashboard?view=marks' },
   { name: 'Calendar', icon: CalendarDays, path: '/governing/calendar' },
   { name: 'Reports', icon: FileText, path: '/governing/reports' },
 ];
