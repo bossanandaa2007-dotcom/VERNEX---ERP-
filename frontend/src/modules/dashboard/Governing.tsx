@@ -84,14 +84,14 @@ const tabToView: Record<Tab, string> = {
 };
 
 const StatCard = ({ title, value, icon: Icon, bg, color, subtitle }: any) => (
-  <div className="rounded-[1.6rem] border border-white/80 bg-white/90 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur transition-transform duration-200 active:scale-[0.98] sm:p-5 lg:rounded-[2rem]">
+  <div className="border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
     <div className="flex items-center gap-3">
-      <div className={`${bg} ${color} flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl`}>
+      <div className={`${bg} ${color} flex h-11 w-11 shrink-0 items-center justify-center rounded`}>
         <Icon size={22} />
       </div>
       <div className="min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{title}</p>
-        <p className="text-2xl font-black leading-none text-slate-950 sm:text-3xl">{value}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+        <p className="text-2xl font-semibold leading-none text-slate-950 sm:text-3xl">{value}</p>
       </div>
     </div>
     {subtitle && <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">{subtitle}</p>}
@@ -100,13 +100,13 @@ const StatCard = ({ title, value, icon: Icon, bg, color, subtitle }: any) => (
 
 const SectionTitle = ({ label, action }: { label: string; action?: string }) => (
   <div className="mb-4 flex items-center gap-3">
-    <div className="h-9 w-1.5 rounded-full bg-teal-600" />
+    <div className="h-7 w-1 bg-teal-700" />
     <div className="min-w-0">
-      <h2 className="text-lg font-black text-slate-950">{label}</h2>
-      <p className="text-xs font-semibold text-slate-400">Read-only executive view</p>
+      <h2 className="text-lg font-semibold text-slate-950">{label}</h2>
+      <p className="text-xs font-semibold text-slate-500">Read-only institutional view</p>
     </div>
     {action && (
-      <span className="ml-auto rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+      <span className="ml-auto rounded border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
         {action}
       </span>
     )}
@@ -114,7 +114,7 @@ const SectionTitle = ({ label, action }: { label: string; action?: string }) => 
 );
 
 const ChartCard = ({ title, children }: { title: string; children: ReactNode }) => (
-  <section className="min-w-0 rounded-[1.6rem] border border-white/80 bg-white/90 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6 lg:rounded-[2rem]">
+  <section className="min-w-0 border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
     <SectionTitle label={title} />
     {children}
   </section>
@@ -138,8 +138,8 @@ const AttendanceFilter = ({ value, onChange }: { value: AttendanceOverviewRange;
       <button
         key={filter.id}
         onClick={() => onChange(filter.id)}
-        className={`shrink-0 rounded-full px-3 py-2 text-[11px] font-black transition-all ${
-          value === filter.id ? 'bg-teal-700 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+        className={`shrink-0 rounded border px-3 py-2 text-[11px] font-semibold transition-colors ${
+          value === filter.id ? 'border-teal-700 bg-teal-700 text-white' : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
         }`}
       >
         {filter.label}
@@ -160,8 +160,8 @@ const GradeFilter = ({
   <div className="mb-4 flex flex-wrap gap-2">
     <button
       onClick={() => onChange('ALL')}
-      className={`rounded-full px-3 py-2 text-[11px] font-black transition-all ${
-        value === 'ALL' ? 'bg-slate-950 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+      className={`rounded border px-3 py-2 text-[11px] font-semibold transition-colors ${
+        value === 'ALL' ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
       }`}
     >
       All classes
@@ -170,8 +170,8 @@ const GradeFilter = ({
       <button
         key={category.id}
         onClick={() => onChange(category.id)}
-        className={`rounded-full px-3 py-2 text-[11px] font-black transition-all ${
-          value === category.id ? 'bg-slate-950 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+        className={`rounded border px-3 py-2 text-[11px] font-semibold transition-colors ${
+          value === category.id ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
         }`}
       >
         {category.name}
@@ -372,12 +372,9 @@ export default function GoverningDashboard() {
   const hasClassAttendance = classAttendanceData.some((point) => point.total > 0);
 
   const renderStudentCard = (student: IStudent) => (
-    <article
-      key={student.id}
-      className="rounded-[1.35rem] border border-slate-100 bg-white p-4 shadow-sm transition-all duration-200 active:scale-[0.98] lg:hover:-translate-y-0.5 lg:hover:shadow-lg"
-    >
+    <article key={student.id} className="border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-base font-black text-white">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded bg-slate-800 text-base font-semibold text-white">
           {student.name.charAt(0)}
         </div>
         <div className="min-w-0 flex-1">
@@ -386,17 +383,17 @@ export default function GoverningDashboard() {
             Roll {student.rollNo} · {sectionLookup.get(student.sectionId)?.name || 'Section'}
           </p>
         </div>
-        <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-teal-700">
+        <span className="rounded bg-teal-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-700">
           {student.gender}
         </span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold text-slate-500">
-        <div className="rounded-2xl bg-slate-50 px-3 py-2">
-          <p className="text-[9px] uppercase tracking-widest text-slate-400">Grade</p>
+        <div className="rounded bg-slate-50 px-3 py-2">
+          <p className="text-[9px] uppercase tracking-wide text-slate-500">Grade</p>
           <p className="mt-1 truncate text-slate-800">{gradeLookup.get(student.categoryId)?.name || student.categoryId}</p>
         </div>
-        <div className="rounded-2xl bg-slate-50 px-3 py-2">
-          <p className="text-[9px] uppercase tracking-widest text-slate-400">Guardian</p>
+        <div className="rounded bg-slate-50 px-3 py-2">
+          <p className="text-[9px] uppercase tracking-wide text-slate-500">Guardian</p>
           <p className="mt-1 truncate text-slate-800">{student.parentName || 'Not listed'}</p>
         </div>
       </div>
@@ -405,16 +402,18 @@ export default function GoverningDashboard() {
 
   return (
     <div className="governing-mobile-app min-w-0 space-y-5 pb-2 lg:space-y-6">
-      <section className="relative overflow-hidden rounded-[1.75rem] bg-slate-950 px-5 py-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.22)] sm:px-8 sm:py-8 lg:rounded-[2.5rem] lg:px-10">
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.35),transparent_55%)]" />
-        <div className="relative z-10 max-w-3xl">
-          <span className="inline-flex rounded-full bg-teal-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white">
+      <section className="border border-slate-200 bg-white px-5 py-4 shadow-sm sm:px-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+          <span className="inline-flex rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-800">
             Governing Body Portal
           </span>
-          <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">Executive School Command</h1>
-          <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-300 sm:text-base">
-            Fast mobile insights for principals, headmasters, management, and senior administrative staff.
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Institutional Overview</h1>
+          <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+            Read-only summaries for attendance, academics, enrollment, staffing, and institutional reports.
           </p>
+          </div>
+          <div className="text-sm font-medium text-slate-500">Management access</div>
         </div>
       </section>
 
@@ -424,8 +423,8 @@ export default function GoverningDashboard() {
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all ${
-                tab === item.id ? 'bg-slate-950 text-white shadow-lg' : 'border border-slate-100 bg-white text-slate-500 hover:text-teal-700'
+              className={`flex items-center gap-2 rounded border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                tab === item.id ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:text-teal-700'
               }`}
             >
               <item.icon size={17} />
@@ -477,15 +476,15 @@ export default function GoverningDashboard() {
             <ChartCard title="Live Registry">
               <div className="space-y-3">
                 {liveRegistry.map((record, index) => (
-                  <div key={record.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-black text-slate-900 shadow-sm">
+                  <div key={record.id} className="flex items-center gap-3 rounded bg-slate-50 p-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-white text-sm font-semibold text-slate-900 shadow-sm">
                       {index + 1}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-black text-slate-900">{record.studentName}</p>
+                      <p className="truncate text-sm font-semibold text-slate-900">{record.studentName}</p>
                       <p className="text-xs font-bold text-slate-400">{sectionLookup.get(record.classId)?.name || record.classId} - {record.attendanceDate}</p>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${record.status === 'Present' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                    <span className={`rounded px-2 py-1 text-[10px] font-semibold uppercase ${record.status === 'Present' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
                       {record.status}
                     </span>
                   </div>
@@ -582,7 +581,7 @@ export default function GoverningDashboard() {
       )}
 
       {tab === 'STUDENTS' && (
-        <section className="space-y-4 rounded-[1.6rem] border border-white/80 bg-white/90 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6 lg:rounded-[2rem]">
+        <section className="space-y-4 border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <SectionTitle label="Students" action={`${filteredStudents.length} shown`} />
 
           <div className="relative">
@@ -635,25 +634,25 @@ export default function GoverningDashboard() {
                     setActiveGradeId(category.id);
                     setActiveSectionId(null);
                   }}
-                  className="group rounded-[1.35rem] border border-slate-100 bg-gradient-to-br from-white to-slate-50 p-4 text-left shadow-sm transition-all duration-200 active:scale-[0.98] lg:hover:-translate-y-0.5 lg:hover:border-teal-200 lg:hover:shadow-lg"
+                  className="group border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-teal-300 hover:bg-slate-50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-600">Grade Box</p>
-                      <h3 className="mt-2 truncate text-xl font-black text-slate-950">{category.name}</h3>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700">Grade</p>
+                      <h3 className="mt-2 truncate text-xl font-semibold text-slate-950">{category.name}</h3>
                     </div>
-                    <div className="rounded-2xl bg-teal-50 p-3 text-teal-700 transition-transform group-hover:translate-x-0.5">
+                    <div className="rounded bg-teal-50 p-3 text-teal-700">
                       <ChevronRight size={18} />
                     </div>
                   </div>
                   <div className="mt-5 grid grid-cols-2 gap-2">
-                    <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
-                      <p className="text-lg font-black text-slate-950">{sections.length}</p>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Classes</p>
+                    <div className="rounded border border-slate-100 bg-slate-50 px-3 py-2">
+                      <p className="text-lg font-semibold text-slate-950">{sections.length}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Classes</p>
                     </div>
-                    <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
-                      <p className="text-lg font-black text-slate-950">{students.length}</p>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Students</p>
+                    <div className="rounded border border-slate-100 bg-slate-50 px-3 py-2">
+                      <p className="text-lg font-semibold text-slate-950">{students.length}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Students</p>
                     </div>
                   </div>
                 </button>
@@ -669,15 +668,15 @@ export default function GoverningDashboard() {
                   <button
                     key={section.id}
                     onClick={() => setActiveSectionId(section.id)}
-                    className="rounded-[1.35rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition-all duration-200 active:scale-[0.98] lg:hover:-translate-y-0.5 lg:hover:border-sky-200 lg:hover:shadow-lg"
+                    className="border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-sky-300 hover:bg-slate-50"
                   >
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-600">Class Box</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-700">Class</p>
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <div>
-                        <h3 className="text-xl font-black text-slate-950">{section.name}</h3>
+                        <h3 className="text-xl font-semibold text-slate-950">{section.name}</h3>
                         <p className="mt-1 text-xs font-bold text-slate-400">Room {section.roomNumber || '-'} · {section.classTeacher || 'No teacher'}</p>
                       </div>
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-xl font-black text-sky-700">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-sky-50 text-xl font-semibold text-sky-700">
                         {count}
                       </div>
                     </div>
@@ -694,8 +693,8 @@ export default function GoverningDashboard() {
           )}
 
           {activeSectionId && !filteredStudents.length && (
-            <div className="rounded-[1.5rem] bg-slate-50 px-4 py-10 text-center">
-              <p className="text-sm font-black text-slate-700">No students found for this class.</p>
+            <div className="rounded bg-slate-50 px-4 py-10 text-center">
+              <p className="text-sm font-semibold text-slate-700">No students found for this class.</p>
               <p className="mt-1 text-xs font-semibold text-slate-400">Try clearing the search field or choosing another class.</p>
             </div>
           )}
@@ -703,7 +702,7 @@ export default function GoverningDashboard() {
       )}
 
       {tab === 'TEACHERS' && (
-        <section className="space-y-4 rounded-[1.6rem] border border-white/80 bg-white/90 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6 lg:rounded-[2rem]">
+        <section className="space-y-4 border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <SectionTitle label="Faculty Directory" action={`${filteredTeachers.length} shown`} />
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
@@ -730,13 +729,13 @@ export default function GoverningDashboard() {
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {filteredTeachers.slice(0, 60).map((teacher) => (
-              <article key={teacher.id} className="rounded-[1.35rem] border border-slate-100 bg-slate-50 p-4">
+              <article key={teacher.id} className="border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-base font-black text-teal-700 shadow-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded bg-white text-base font-semibold text-teal-700 shadow-sm">
                     {teacher.name.charAt(0)}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="truncate text-sm font-black text-slate-950">{teacher.name}</h3>
+                    <h3 className="truncate text-sm font-semibold text-slate-950">{teacher.name}</h3>
                     <p className="truncate text-xs font-bold text-slate-400">{teacher.subject}</p>
                   </div>
                 </div>
@@ -749,7 +748,7 @@ export default function GoverningDashboard() {
 
       {tab === 'MARKS' && (
         <div className="space-y-5">
-          <section className="rounded-[1.6rem] border border-white/80 bg-white/90 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur sm:p-5">
+          <section className="border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
               <select value={marksGroupId} onChange={(event) => { setMarksGroupId(event.target.value); setMarksSectionId('All'); }} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none">
                 <option value="All">All subject groups</option>
@@ -768,7 +767,7 @@ export default function GoverningDashboard() {
                 {MARK_EXAMS.map((exam) => <option key={exam} value={exam}>{exam}</option>)}
               </select>
             </div>
-            <p className="mt-3 text-xs font-black uppercase tracking-widest text-slate-400">
+            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
               {marksOverview.totalRecords} mark records - {marksOverview.averagePercent}% overall average
             </p>
           </section>
@@ -813,7 +812,7 @@ export default function GoverningDashboard() {
       )}
 
       <div className="pb-3 pt-1 text-center">
-        <span className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 shadow-sm">
+        <span className="inline-flex items-center justify-center gap-2 rounded border border-slate-200 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm">
           <Shield size={12} /> Governing Body · Read-Only Executive Access
         </span>
       </div>

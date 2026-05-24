@@ -171,7 +171,7 @@ const FinanceReportsPage = () => {
     [classRecords],
   );
 
-  const handleGenerateReport = () => {
+  const handlePrepareReport = () => {
     if (!selectedClassName) {
       return;
     }
@@ -277,38 +277,38 @@ const FinanceReportsPage = () => {
   };
 
   return (
-    <div className="space-y-6 p-3 lg:p-8">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.35)] lg:p-8">
+    <div className="space-y-5 p-3 lg:p-8">
+      <section className="border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Accountant Reports</p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-950">Class Fee Reports</h1>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Accountant Reports</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Class Fee Reports</h1>
             <p className="text-base text-slate-500">
-              Select a class, generate its fee collection report, and download a detailed PDF statement in table format.
+              Select a class, review its fee collection summary, and download a detailed PDF statement in table format.
             </p>
           </div>
 
-          <div className="grid gap-3 rounded-[24px] border border-violet-100 bg-violet-50/70 p-4 sm:grid-cols-2">
-            <div className="rounded-[20px] bg-white px-4 py-3 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Available Classes</p>
+          <div className="grid gap-3 border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+            <div className="rounded bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Available Classes</p>
               <p className="mt-2 text-2xl font-bold text-slate-950">{classOptions.length}</p>
             </div>
-            <div className="rounded-[20px] bg-white px-4 py-3 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Fee Records</p>
+            <div className="rounded bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Fee Records</p>
               <p className="mt-2 text-2xl font-bold text-slate-950">{feeRecords.length}</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.35)] lg:p-8">
+      <section className="border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-end">
           <label className="space-y-2">
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Select Class</span>
+            <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">Select Class</span>
             <select
               value={selectedClassName}
               onChange={(event) => setSelectedClassName(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold text-slate-900 outline-none transition focus:border-violet-300 focus:bg-white"
+              className="w-full rounded border border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:bg-white"
             >
               <option value="">Choose a class</option>
               {classOptions.map((className) => (
@@ -321,19 +321,19 @@ const FinanceReportsPage = () => {
 
           <button
             type="button"
-            onClick={handleGenerateReport}
+            onClick={handlePrepareReport}
             disabled={!selectedClassName}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex items-center justify-center gap-2 rounded bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             <FileText className="h-4 w-4" />
-            Generate Report
+            Prepare Report
           </button>
 
           <button
             type="button"
             onClick={handleDownloadPdf}
             disabled={!activeClassName}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+            className="inline-flex items-center justify-center gap-2 rounded border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
           >
             <Download className="h-4 w-4" />
             Download PDF
@@ -341,13 +341,13 @@ const FinanceReportsPage = () => {
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.35)] lg:p-8">
+      <section className="border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
         {!activeClassName ? (
-          <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 text-center">
-            <GraduationCap className="h-12 w-12 text-violet-500" />
-            <h2 className="mt-4 text-xl font-bold text-slate-950">Generate a Class Report</h2>
+          <div className="flex min-h-[220px] flex-col items-start justify-center rounded border border-dashed border-slate-200 bg-slate-50 px-6 text-left">
+            <GraduationCap className="h-10 w-10 text-blue-700" />
+            <h2 className="mt-4 text-xl font-bold text-slate-950">Prepare a Class Report</h2>
             <p className="mt-2 max-w-md text-sm text-slate-500">
-              Pick a class above and generate the report to view the fee collection summary and printable student list.
+              Pick a class above to view the fee collection summary and printable student list.
             </p>
           </div>
         ) : (

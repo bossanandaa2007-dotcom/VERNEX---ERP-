@@ -434,28 +434,27 @@ const ReportsPage = () => {
   };
 
   return (
-    <div className="min-w-0 space-y-6 pb-8 lg:pb-12">
-      <section className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-7 text-white shadow-[0_28px_70px_rgba(15,23,42,0.2)] lg:px-8">
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.35),transparent_55%)]" />
-        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="min-w-0 space-y-5 pb-8 lg:pb-12">
+      <section className="border border-slate-200 bg-white px-5 py-4 shadow-sm lg:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-100">
+            <span className="inline-flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
               <ShieldCheck size={12} /> Admin Reporting Center
             </span>
-            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Institutional reports with live academic data</h1>
-            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-300 sm:text-base">
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Reports & Analytics</h1>
+            <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-slate-600">
               Attendance, class performance, subject trends, and recent reporting activity are shown here from live records only.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Last Refresh</p>
+            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Last Refresh</p>
               <p className="mt-1 font-semibold">{lastUpdatedAt ? formatDateTime(lastUpdatedAt) : 'Waiting for live data'}</p>
             </div>
             <button
               onClick={handleExportAll}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 transition-all hover:translate-y-[-1px] hover:bg-slate-100 active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 rounded bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800"
             >
               <Download size={16} /> Export PDF
             </button>
@@ -698,6 +697,11 @@ const ReportsPage = () => {
           <MetricBlock label="Total mark records" value={String(marksOverview.totalRecords)} meta="Rows included in this report" />
           <MetricBlock label="Academic coverage" value={`${marksOverview.subjectPerformance.length} subjects`} meta={`${categories.length} grade levels configured`} />
         </div>
+        {marksError && (
+          <div className="mt-4 rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {marksError}
+          </div>
+        )}
       </section>
 
       {/* Subject and Class charts removed as requested */}

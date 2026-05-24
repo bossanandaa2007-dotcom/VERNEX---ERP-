@@ -41,7 +41,7 @@ const getNavItems = (role: string) => {
       { name: 'My Classes', icon: Users, path: '/teacher/classes' },
       { name: 'Timetable', icon: CalendarDays, path: '/teacher/timetable' },
       { name: 'Manual Attendance', icon: CheckCircle, path: '/teacher/attendance' },
-      { name: 'AI Attendance', icon: Shield, path: '/teacher/ai-attendance' },
+      { name: 'Smart Attendance', icon: Shield, path: '/teacher/ai-attendance' },
       { name: 'Marks Hub', icon: Award, path: '/teacher/marks-entry' },
       { name: 'Leave Requests', icon: ClipboardList, path: '/teacher/leave-requests' },
       { name: 'Complaints', icon: FileText, path: '/teacher/complaints' },
@@ -156,33 +156,33 @@ export const Sidebar = ({
 
   return (
     <aside className={cn(
-      "fixed left-0 top-0 z-50 h-screen transition-all duration-300 ease-in-out bg-indigo-950 text-slate-300 flex flex-col shadow-2xl lg:shadow-none max-lg:w-[84vw] max-lg:max-w-[330px] max-lg:rounded-r-[2rem] max-lg:border-r max-lg:border-white/10",
+      "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-slate-800 bg-[#10213a] text-slate-300 shadow-lg transition-all duration-200 ease-in-out lg:shadow-none max-lg:w-[84vw] max-lg:max-w-[300px]",
       collapsed
         ? "-translate-x-full lg:translate-x-0 lg:w-20"
-        : "translate-x-0 w-64 shadow-indigo-900/40"
+        : "translate-x-0 w-60 shadow-slate-900/30"
     )}>
       {/* Brand */}
-      <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b border-indigo-900/50">
+      <div className="flex h-[60px] shrink-0 items-center justify-between border-b border-slate-800 px-3.5 py-3">
         <div className={cn("flex items-center gap-3 overflow-hidden", collapsed && "opacity-0 hidden")}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold">
+          <div className="flex h-8 w-8 items-center justify-center rounded bg-[#4653a6] text-sm font-semibold text-white">
             E
           </div>
-          <span className="text-lg font-semibold text-white truncate">EduSync ERP</span>
+          <span className="truncate text-[15px] font-semibold text-white">EduSync ERP</span>
         </div>
         {!collapsed && (
-          <button onClick={() => setCollapsed(true)} className="p-1.5 rounded-lg hover:bg-indigo-900 text-indigo-300 transition-colors">
-            <ChevronLeft size={20} />
+          <button onClick={() => setCollapsed(true)} className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
+            <ChevronLeft size={19} strokeWidth={1.8} />
           </button>
         )}
         {collapsed && (
-          <button onClick={() => setCollapsed(false)} className="mx-auto p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors shadow-md">
-            <ChevronRight size={20} />
+          <button onClick={() => setCollapsed(false)} className="mx-auto rounded bg-[#4653a6] p-2 text-white transition-colors hover:bg-[#5260b4]">
+            <ChevronRight size={19} strokeWidth={1.8} />
           </button>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-1">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden p-2.5">
         {navItems.map((item) => (
           <NavLink
             key={item.name}
@@ -196,35 +196,35 @@ export const Sidebar = ({
               const active = isNavItemActive(item.path, item.name, isActive);
 
               return cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 group max-lg:rounded-2xl max-lg:py-3.5",
+                "group flex items-center gap-2.5 rounded px-2.5 py-2 text-[13px] transition-colors duration-150 max-lg:py-2.5",
                 role === 'Teacher' && teacherMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
                 role === 'Student' && studentMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
                 role === 'Governing Body' && governingMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
                 active
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                  : "hover:bg-indigo-900 hover:text-white"
+                  ? "bg-[#4653a6] text-white"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
               );
             }}
             title={collapsed ? item.name : undefined}
           >
-            <item.icon size={20} className={cn("shrink-0", collapsed && "mx-auto")} />
-            {!collapsed && <span className="font-medium text-sm whitespace-nowrap">{item.name}</span>}
+            <item.icon size={18} strokeWidth={1.8} className={cn("shrink-0", collapsed && "mx-auto")} />
+            {!collapsed && <span className="whitespace-nowrap font-medium">{item.name}</span>}
           </NavLink>
         ))}
       </nav>
 
       {/* Footer / User */}
-      <div className="p-4 border-t border-indigo-900/50 mt-auto">
+      <div className="mt-auto border-t border-slate-800 p-2.5">
         <button
           onClick={handleLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-indigo-300 hover:bg-rose-500/10 hover:text-rose-400 transition-colors group",
+            "group flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-[13px] text-slate-300 transition-colors hover:bg-slate-800 hover:text-white",
             collapsed && "justify-center"
           )}
           title={collapsed ? "Logout" : undefined}
         >
-          <LogOut size={20} className="shrink-0" />
-          {!collapsed && <span className="font-medium text-sm whitespace-nowrap">Logout</span>}
+          <LogOut size={18} strokeWidth={1.8} className="shrink-0" />
+          {!collapsed && <span className="whitespace-nowrap font-medium">Logout</span>}
         </button>
       </div>
     </aside>

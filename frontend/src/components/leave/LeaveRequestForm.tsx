@@ -95,32 +95,32 @@ const LeaveRequestForm = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[calc(100vw-1.5rem)] space-y-5 px-0.5 lg:max-w-6xl lg:space-y-6 lg:px-0">
-      <section className="rounded-[1.5rem] bg-indigo-600 p-5 text-white shadow-xl shadow-indigo-100 lg:rounded-3xl lg:p-6">
+    <div className="erp-page mx-auto w-full max-w-[calc(100vw-1.5rem)] px-0.5 lg:max-w-6xl lg:px-0">
+      <section className="erp-page-header">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-100">Leave Request</p>
-            <h1 className="mt-2 text-2xl font-black">Request leave from your class teacher</h1>
-            <p className="mt-1 text-sm font-medium text-indigo-100">
+            <p className="erp-kicker">Leave Request</p>
+            <h1 className="erp-title">Request leave from your class teacher</h1>
+            <p className="erp-subtitle">
               Requests are routed only to the teacher assigned to {studentContext?.className || user?.class || 'your class'}.
             </p>
           </div>
-          <div className="rounded-2xl bg-white/12 px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-100">Class Teacher</p>
-            <p className="mt-1 text-base font-black">{classTeacher?.name || 'Not assigned'}</p>
+          <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="erp-section-label">Class Teacher</p>
+            <p className="mt-1 text-base font-bold text-blue-700">{classTeacher?.name || 'Not assigned'}</p>
           </div>
         </div>
       </section>
 
-      <form onSubmit={handleSubmit} className="space-y-5 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm lg:rounded-3xl lg:p-6">
+      <form onSubmit={handleSubmit} className="erp-card space-y-5 p-4 lg:p-6">
         {errorMessage && (
-          <div className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm font-bold text-rose-700">
+          <div className="flex items-center gap-3 rounded border border-rose-100 bg-rose-50 p-4 text-sm font-bold text-rose-700">
             <AlertCircle size={18} />
             {errorMessage}
           </div>
         )}
         {successMessage && (
-          <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+          <div className="flex items-center gap-3 rounded border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
             <CheckCircle2 size={18} />
             {successMessage}
           </div>
@@ -131,7 +131,7 @@ const LeaveRequestForm = () => {
             <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
               <UserRound size={14} /> Student
             </label>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
               {studentContext?.name || user?.name || 'Student'}
             </div>
           </div>
@@ -139,7 +139,7 @@ const LeaveRequestForm = () => {
             <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
               <ClipboardList size={14} /> Class / Roll No
             </label>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
               {studentContext?.className || user?.class || '-'} / {studentContext?.rollNo || '-'}
             </div>
           </div>
@@ -153,7 +153,7 @@ const LeaveRequestForm = () => {
               required
               value={formData.startDate}
               onChange={(event) => setFormData((current) => ({ ...current, startDate: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="erp-input w-full px-4 py-3 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
           <div className="space-y-2">
@@ -166,7 +166,7 @@ const LeaveRequestForm = () => {
               required
               value={formData.endDate}
               onChange={(event) => setFormData((current) => ({ ...current, endDate: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="erp-input w-full px-4 py-3 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
         </div>
@@ -182,14 +182,14 @@ const LeaveRequestForm = () => {
             value={formData.reason}
             onChange={(event) => setFormData((current) => ({ ...current, reason: event.target.value }))}
             placeholder="Write the reason for leave..."
-            className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            className="erp-input w-full resize-none px-4 py-3 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
         <button
           type="submit"
           disabled={isSubmitting || !classTeacher}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-4 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="erp-primary-button flex w-full items-center justify-center gap-2 px-6 py-3 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Send size={18} />
           {isSubmitting ? 'Sending Request...' : 'Send Leave Request'}
@@ -197,28 +197,28 @@ const LeaveRequestForm = () => {
       </form>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-black text-slate-900">My Leave History</h2>
-        <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm lg:rounded-3xl">
+        <h2 className="text-lg font-bold text-slate-900">My Leave History</h2>
+        <div className="erp-table-wrap">
           <div className="space-y-3 bg-slate-50 p-3 md:hidden">
             {sortedRequests.map((request) => (
-              <div key={request.id} className="rounded-[1.25rem] border border-slate-100 bg-white p-4 shadow-sm">
+              <div key={request.id} className="rounded border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-black text-slate-900">{request.startDate} to {request.endDate}</p>
+                    <p className="text-sm font-semibold text-slate-900">{request.startDate} to {request.endDate}</p>
                     <p className="mt-1 text-xs font-bold text-slate-400">{request.teacherName}</p>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${statusClass(request.status)}`}>
+                  <span className={`rounded px-2.5 py-1 text-[10px] font-bold uppercase ${statusClass(request.status)}`}>
                     {request.status}
                   </span>
                 </div>
                 <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{request.reason}</p>
-                {request.teacherRemarks && <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">{request.teacherRemarks}</p>}
+                {request.teacherRemarks && <p className="mt-3 rounded bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">{request.teacherRemarks}</p>}
               </div>
             ))}
           </div>
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="border-b border-slate-100 px-6 py-4">Dates</th>
                   <th className="border-b border-slate-100 px-6 py-4">Reason</th>
@@ -234,7 +234,7 @@ const LeaveRequestForm = () => {
                     <td className="max-w-xs px-6 py-4 font-medium text-slate-600">{request.reason}</td>
                     <td className="px-6 py-4 font-medium text-slate-600">{request.teacherName}</td>
                     <td className="px-6 py-4">
-                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${statusClass(request.status)}`}>
+                      <span className={`rounded px-2.5 py-1 text-[10px] font-bold uppercase ${statusClass(request.status)}`}>
                         {request.status}
                       </span>
                     </td>
@@ -245,7 +245,7 @@ const LeaveRequestForm = () => {
             </table>
           </div>
           {sortedRequests.length === 0 && (
-            <div className="border-t border-slate-100 bg-slate-50 py-12 text-center text-sm font-bold uppercase tracking-widest text-slate-400">
+            <div className="border-t border-slate-100 bg-slate-50 py-10 text-center text-sm font-bold uppercase tracking-wide text-slate-400">
               No leave requests yet
             </div>
           )}

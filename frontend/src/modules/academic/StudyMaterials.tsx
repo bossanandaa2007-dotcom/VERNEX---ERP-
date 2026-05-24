@@ -159,16 +159,17 @@ const StudyMaterials = () => {
   };
 
   return (
-    <div className="space-y-6 lg:pb-12 h-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="erp-page h-full lg:pb-12">
+      <div className="erp-page-header flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Study Materials</h1>
-          <p className="text-slate-500 mt-1">One Google Drive folder per class subject, visible only to the right class.</p>
+          <p className="erp-kicker">7. Study Materials</p>
+          <h1 className="erp-title">Study Materials</h1>
+          <p className="erp-subtitle">One Google Drive folder per class subject, visible only to the right class.</p>
         </div>
         {user?.role === 'Teacher' && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm text-sm"
+            className="erp-primary-button flex items-center gap-2 px-4 py-2 text-sm transition-colors"
           >
             <Plus size={16} /> Link Subject Folder
           </button>
@@ -176,37 +177,37 @@ const StudyMaterials = () => {
       </div>
 
       {notification && (
-        <div className="fixed top-20 right-6 z-50 animate-in slide-in-from-right fade-in duration-300">
-          <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-800">
-            <CheckCircle size={20} className="text-indigo-400" />
+        <div className="fixed right-6 top-20 z-50">
+          <div className="flex items-center gap-3 rounded border border-slate-800 bg-slate-900 px-5 py-3 text-white shadow-lg">
+            <CheckCircle size={18} className="text-blue-300" />
             <p className="font-semibold text-sm">{notification}</p>
           </div>
         </div>
       )}
 
       {isLoading ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-8 text-sm text-slate-500 shadow-sm">
+        <div className="erp-card p-6 text-sm text-slate-500">
           Loading study materials...
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredMaterials.map((item) => (
-            <div key={item.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
+            <div key={item.id} className="erp-card group p-5 transition-shadow hover:shadow-md">
               <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                  <FileText size={24} />
+                <div className="rounded border border-blue-100 bg-blue-50 p-3 text-blue-700">
+                  <FileText size={22} />
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.uploadDate}</span>
+                <span className="erp-section-label">{item.uploadDate}</span>
               </div>
-              <h3 className="text-lg font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">{item.subject} Folder</h3>
+              <h3 className="text-base font-bold leading-tight text-slate-900">{item.subject} Folder</h3>
               <div className="flex items-center gap-2 mt-2">
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase">{item.subject}</span>
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">{item.subject}</span>
                 <span className="text-xs text-slate-500 font-medium">Class {item.class}</span>
               </div>
               <div className="mt-6 pt-4 border-t border-slate-100">
                 <button
                   onClick={() => handleOpenMaterial(item)}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-slate-50 hover:bg-indigo-600 text-slate-600 hover:text-white rounded-xl text-xs font-bold transition-all active:scale-95 border border-slate-100"
+                  className="flex w-full items-center justify-center gap-2 rounded border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100"
                 >
                   <ExternalLink size={14} /> Open Drive Material
                 </button>
@@ -217,7 +218,7 @@ const StudyMaterials = () => {
       )}
 
       {!isLoading && filteredMaterials.length === 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-8 text-sm text-slate-500 shadow-sm">
+        <div className="erp-card p-6 text-sm text-slate-500">
           No study materials are available for this profile yet.
         </div>
       )}
@@ -231,14 +232,14 @@ const StudyMaterials = () => {
                 name="class"
                 value={selectedClass}
                 onChange={(event) => setSelectedClass(event.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
+                className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
                 {visibleClasses.map((className) => <option key={className} value={className}>Class {className}</option>)}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">Subject</label>
-              <select name="subject" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm">
+              <select name="subject" className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                 {subjectOptions.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
               </select>
             </div>
@@ -250,13 +251,13 @@ const StudyMaterials = () => {
               type="url"
               required
               placeholder="https://drive.google.com/..."
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
+              className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
             <p className="text-xs text-slate-400">Paste the shareable folder link. Put as many files as you want inside that folder.</p>
           </div>
           <div className="pt-4 flex gap-3">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors">Cancel</button>
-            <button type="submit" className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20">Publish to Classroom</button>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 rounded border border-slate-200 px-4 py-2.5 font-medium text-slate-700 transition-colors hover:bg-slate-50">Cancel</button>
+            <button type="submit" className="erp-primary-button flex-1 px-4 py-2.5 transition-colors">Publish Material</button>
           </div>
         </form>
       </Modal>

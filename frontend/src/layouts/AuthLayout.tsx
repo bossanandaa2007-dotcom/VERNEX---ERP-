@@ -2,14 +2,14 @@ import { Outlet } from 'react-router-dom';
 
 const AuthLayout = () => {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 mb-4">
-            <span className="text-2xl font-bold">ERP</span>
+        <div className="mb-5 border-l-4 border-blue-700 pl-4 text-left">
+          <div className="mb-3 inline-flex items-center justify-center rounded bg-blue-700 px-3 py-2 text-sm font-bold text-white">
+            ERP
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Welcome Back</h1>
-          <p className="text-slate-500 mt-2">Sign in to your account</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">School Operating Platform</h1>
+          <p className="mt-1 text-sm text-slate-500">Sign in to continue to your assigned workspace.</p>
         </div>
         
         <Outlet />

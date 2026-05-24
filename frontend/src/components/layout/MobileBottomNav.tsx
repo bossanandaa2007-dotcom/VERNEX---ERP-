@@ -45,7 +45,7 @@ export const MobileBottomNav = ({ role }: { role?: string }) => {
     const current = `${location.pathname}${location.search}`;
 
     return (
-      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/70 bg-white/95 px-2.5 pb-[calc(env(safe-area-inset-bottom)+0.6rem)] pt-2.5 shadow-[0_-16px_36px_rgba(15,23,42,0.12)] backdrop-blur-2xl lg:hidden">
+      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-2.5 pb-[calc(env(safe-area-inset-bottom)+0.6rem)] pt-2.5 shadow-sm lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
           {tabs.map((item) => {
             const isActive =
@@ -60,14 +60,14 @@ export const MobileBottomNav = ({ role }: { role?: string }) => {
                 key={item.name}
                 to={item.path}
                 className={cn(
-                  'group flex min-h-[60px] flex-col items-center justify-center rounded-[1.15rem] px-0.5 text-[10px] font-black text-slate-400 transition-all duration-200 active:scale-95 min-[360px]:px-1 min-[380px]:text-[11px]',
-                  isActive && 'bg-teal-50 text-teal-800 shadow-sm ring-1 ring-teal-100'
+                  'group flex min-h-[60px] flex-col items-center justify-center rounded px-0.5 text-[10px] font-semibold text-slate-500 transition-colors min-[360px]:px-1 min-[380px]:text-[11px]',
+                  isActive && 'bg-teal-50 text-teal-800 ring-1 ring-teal-100'
                 )}
               >
                 <item.icon
                   size={22}
                   strokeWidth={isActive ? 2.7 : 2.2}
-                  className={cn('mb-1 transition-transform duration-200', isActive && '-translate-y-0.5')}
+                  className="mb-1"
                 />
                 <span className="leading-none">{item.name}</span>
               </Link>
@@ -79,7 +79,7 @@ export const MobileBottomNav = ({ role }: { role?: string }) => {
   }
 
   return (
-    <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/70 bg-white/94 px-2.5 pb-[calc(env(safe-area-inset-bottom)+0.6rem)] pt-2.5 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur-2xl lg:hidden">
+    <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-2.5 pb-[calc(env(safe-area-inset-bottom)+0.6rem)] pt-2.5 shadow-sm lg:hidden">
       <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
         {tabs.map((item) => (
           <NavLink
@@ -87,8 +87,8 @@ export const MobileBottomNav = ({ role }: { role?: string }) => {
             to={item.path}
             className={({ isActive }) =>
               cn(
-                'group flex min-h-[60px] flex-col items-center justify-center rounded-[1.15rem] px-0.5 text-[10px] font-black text-slate-400 transition-all duration-200 active:scale-95 min-[360px]:px-1 min-[380px]:text-[11px]',
-                isActive && 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-100'
+                'group flex min-h-[60px] flex-col items-center justify-center rounded px-0.5 text-[10px] font-semibold text-slate-500 transition-colors min-[360px]:px-1 min-[380px]:text-[11px]',
+                isActive && 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
               )
             }
           >
@@ -97,7 +97,7 @@ export const MobileBottomNav = ({ role }: { role?: string }) => {
                 <item.icon
                   size={22}
                   strokeWidth={isActive ? 2.7 : 2.2}
-                  className={cn('mb-1 transition-transform duration-200', isActive && '-translate-y-0.5')}
+                  className="mb-1"
                 />
                 <span className="leading-none">{item.name}</span>
               </>
