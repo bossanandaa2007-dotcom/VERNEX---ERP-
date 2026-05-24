@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useClassStore } from '../../store/useClassStore';
 import { fetchStudentMarksByProfile, fetchTeacherMarkScopes, type StudentMarkRecord, type TeacherMarkScope } from '../../services/marks';
 import { fetchStudentAttendanceSummary } from '../../services/attendance';
-import type { IStudent } from '../../types/school';
+import type { IStudent } from '../../types/school'; 
 import { getTodayInputDate } from '../../utils/dateLimits';
 
 const parseBulkStudentLine = (line: string) => {
@@ -38,6 +38,10 @@ const normalizeBulkGender = (value: string): IStudent['gender'] => {
   if (gender === 'female' || gender === 'f') return 'Female';
   if (gender === 'other' || gender === 'o') return 'Other';
   return 'Male';
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
 };
 
 const parseBulkStudents = (
@@ -326,8 +330,8 @@ const TeacherClasses = () => {
       });
       event.currentTarget.reset();
       setShowForm(false);
-    } catch (saveError: any) {
-      setError(saveError?.message || 'Failed to add student.');
+    } catch (saveError: unknown) {
+      setError(getErrorMessage(saveError, 'Failed to add student.'));
     } finally {
       setIsSaving(false);
     }
@@ -350,8 +354,8 @@ const TeacherClasses = () => {
       await addStudents(parsedStudents);
       event.currentTarget.reset();
       setShowBulkForm(false);
-    } catch (saveError: any) {
-      setError(saveError?.message || 'Failed to import students.');
+    } catch (saveError: unknown) {
+      setError(getErrorMessage(saveError, 'Failed to import students.'));
     } finally {
       setIsSaving(false);
     }
@@ -402,23 +406,23 @@ const TeacherClasses = () => {
   return (
     <div className="w-full min-w-0 max-w-full overflow-x-hidden max-lg:px-0 max-lg:pb-1 lg:space-y-8">
       <div className="space-y-5 lg:space-y-7">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-slate-500 sm:text-sm">
             <span className="text-[#3f5f9f]">Home</span>
             <span>/</span>
             <span className="text-[#3f5f9f]">My Classes</span>
             <span>/</span>
             <span className="text-slate-700">My Class Roster</span>
           </div>
-          <h1 className="mt-6 text-3xl font-semibold tracking-tight text-slate-950 lg:text-[32px]">My Class Roster</h1>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl lg:mt-6 lg:text-[32px]">My Class Roster</h1>
           <p className="mt-3 max-w-3xl text-[15px] leading-6 text-slate-500">
             You can view assigned subject sections, but student edits are limited to your own class.
           </p>
         </div>
-        <div className="w-full rounded border border-slate-200 bg-white px-5 py-5 shadow-sm lg:w-32">
+        <div className="w-full rounded border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5 sm:py-5 lg:w-32">
           <p className="text-sm font-semibold text-slate-500">Owned Class</p>
-          <p className="mt-4 text-xl font-semibold text-[#2f6fb4]">
+          <p className="mt-2 break-words text-xl font-semibold text-[#2f6fb4] sm:mt-4">
             {ownedClass || 'No owned class assigned yet'}
           </p>
         </div>
@@ -448,7 +452,7 @@ const TeacherClasses = () => {
 
       {!!visibleSections.length && (
         <>
-          <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
             {visibleSections.map((section, sectionIndex) => {
               const sectionStudents = students.filter((student) => student.sectionId === section.id);
               const isActive = section.id === activeSectionId;
@@ -465,23 +469,23 @@ const TeacherClasses = () => {
                       setIsMobileRosterOpen(true);
                     }
                   }}
-                  className={`min-h-[235px] w-full min-w-0 overflow-hidden rounded border border-slate-200 border-t-4 bg-white p-6 text-left shadow-sm transition-shadow hover:shadow-md ${tone.line} ${
+                  className={`w-full min-w-0 overflow-hidden rounded border border-slate-200 border-t-4 bg-white p-4 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5 lg:min-h-[235px] lg:p-6 ${tone.line} ${
                     isActive ? `ring-4 ${tone.focus}` : ''
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h2 className={`break-words text-3xl font-semibold tracking-tight ${tone.title}`}>{section.name}</h2>
-                      <p className={`mt-10 w-fit rounded px-3 py-1 text-sm font-semibold ${isOwned ? 'bg-blue-50 text-[#2f6fb4]' : tone.badge}`}>
+                      <h2 className={`break-words text-2xl font-semibold tracking-tight sm:text-3xl ${tone.title}`}>{section.name}</h2>
+                      <p className={`mt-6 w-fit rounded px-3 py-1 text-xs font-semibold sm:text-sm lg:mt-10 ${isOwned ? 'bg-blue-50 text-[#2f6fb4]' : tone.badge}`}>
                         {isOwned ? 'Own Class' : 'Subject Class'}
                       </p>
                     </div>
-                    <div className="shrink-0 rounded bg-slate-50 px-4 py-3 text-center">
-                      <p className="text-xl font-semibold leading-none text-slate-500">{sectionStudents.length}</p>
-                      <p className="mt-2 text-sm font-normal text-slate-500">Students</p>
+                    <div className="shrink-0 rounded bg-slate-50 px-3 py-2 text-center sm:px-4 sm:py-3">
+                      <p className="text-lg font-semibold leading-none text-slate-500 sm:text-xl">{sectionStudents.length}</p>
+                      <p className="mt-1 text-xs font-normal text-slate-500 sm:mt-2 sm:text-sm">Students</p>
                     </div>
                   </div>
-                  <div className="mt-7 space-y-3 text-[15px] leading-6 text-slate-600">
+                  <div className="mt-5 space-y-2 text-sm leading-6 text-slate-600 sm:text-[15px] lg:mt-7 lg:space-y-3">
                     <p className="break-words">Class Teacher: <span className="font-semibold text-slate-900">{section.classTeacher}</span></p>
                     <p className="break-words">Subject: <span className="font-semibold text-slate-900">{handledSubjects.length ? handledSubjects.join(', ') : 'Class oversight'}</span></p>
                     <p className="break-words">Room: <span className="font-semibold text-slate-900">{section.roomNumber || 'TBD'}</span></p>

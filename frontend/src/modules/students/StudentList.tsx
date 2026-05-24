@@ -9,7 +9,7 @@ import {
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { Search, ChevronDown, Filter, Mail, Phone, UserPlus, Plus, Upload, ArrowLeft } from 'lucide-react';
+import { Search, ChevronDown, Filter, Mail, Phone, Plus, Upload, ArrowLeft } from 'lucide-react';
 import { useClassStore } from '../../store/useClassStore';
 import { getTodayInputDate } from '../../utils/dateLimits';
 import type { IStudent } from '../../types/school';
@@ -20,6 +20,17 @@ type StudentRow = IStudent & {
 };
 
 const columnHelper = createColumnHelper<StudentRow>();
+
+const normalizeStudentGender = (value: string): IStudent['gender'] => {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'female' || normalized === 'f') return 'Female';
+  if (normalized === 'other' || normalized === 'o') return 'Other';
+  return 'Male';
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
 
 const columns = [
   columnHelper.accessor('name', {
@@ -231,14 +242,14 @@ const StudentList = () => {
                     const parts = l.split(/,|\t/).map((c) => c.trim());
                     const [name, email, rollNo, gender = 'Male', dob = '', contact = '', parentName = '', parentContact = '', address = ''] = parts;
                     if (!name || !email || !rollNo) throw new Error(`Line ${idx + 1} missing required fields`);
-                    return { name, email: email.toLowerCase(), rollNo, gender, dob, contact, parentName, parentContact, address };
+                    return { name, email: email.toLowerCase(), rollNo, gender: normalizeStudentGender(gender), dob, contact, parentName, parentContact, address };
                   });
 
                 await addStudents(lines.map((s) => ({ ...s, categoryId: categories[0]?.id || '', sectionId: sections[0]?.id || '' })));
                 setBulkInput('');
                 setShowBulkForm(false);
-              } catch (err: any) {
-                setError(err?.message || 'Failed to import students');
+              } catch (err: unknown) {
+                setError(getErrorMessage(err, 'Failed to import students'));
               } finally {
                 setIsSaving(false);
               }
@@ -272,7 +283,7 @@ const StudentList = () => {
                 name: String(form.get('name') || '').trim(),
                 email: String(form.get('email') || '').trim().toLowerCase(),
                 rollNo: String(form.get('rollNo') || '').trim(),
-                gender: String(form.get('gender') || 'Male'),
+                gender: normalizeStudentGender(String(form.get('gender') || 'Male')),
                 dob: String(form.get('dob') || ''),
                 contact: String(form.get('contact') || ''),
                 parentName: String(form.get('parentName') || ''),
@@ -291,8 +302,8 @@ const StudentList = () => {
                 setIsSaving(true);
                 await addStudent(payload);
                 setShowForm(false);
-              } catch (err: any) {
-                setError(err?.message || 'Failed to add student');
+              } catch (err: unknown) {
+                setError(getErrorMessage(err, 'Failed to add student'));
               } finally {
                 setIsSaving(false);
               }
