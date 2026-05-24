@@ -40,6 +40,17 @@ interface TeacherAssignmentRow {
   subject: string;
 }
 
+interface TeacherAssignmentWithSectionRow {
+  section_id: string;
+  subject?: string;
+  sections?: { name: string | null } | Array<{ name: string | null }> | null;
+}
+
+interface TeacherProfileSlotRow {
+  profile_id: string | null;
+  home_section_id?: string | null;
+}
+
 export interface FacultyAssignmentOption {
   type: 'class_teacher' | 'subject_teacher';
   sectionId: string;
@@ -445,7 +456,7 @@ export const fetchTeacherManagementDetails = async (teacherId: string): Promise<
   const teacherRow = teacherRes.data;
   const teacher = mapTeacher(
     teacherRow,
-    (currentAssignmentsRes.data || []).map((assignment: any) => {
+    ((currentAssignmentsRes.data || []) as TeacherAssignmentWithSectionRow[]).map((assignment) => {
       const section = Array.isArray(assignment.sections) ? assignment.sections[0] : assignment.sections;
       return section?.name || '';
     }).filter(Boolean),
@@ -484,12 +495,12 @@ export const fetchTeacherManagementDetails = async (teacherId: string): Promise<
     return acc;
   }, {});
 
-  const currentSubjectAssignments = (currentAssignmentsRes.data || []).map((assignment: any) => {
+  const currentSubjectAssignments = ((currentAssignmentsRes.data || []) as TeacherAssignmentWithSectionRow[]).map((assignment) => {
     const section = Array.isArray(assignment.sections) ? assignment.sections[0] : assignment.sections;
     return {
-      sectionId: assignment.section_id as string,
+      sectionId: assignment.section_id,
       className: section?.name || '',
-      subject: assignment.subject as string,
+      subject: assignment.subject || '',
     };
   });
 
@@ -564,7 +575,7 @@ export const updateTeacherRecord = async (teacherId: string, updates: {
       .eq('section_id', updates.classTeacherSectionId);
 
     if (sectionSubjectsError) throw sectionSubjectsError;
-    const validSubjects = new Set((sectionSubjects || []).map((row: any) => String(row.subject_name).toLowerCase()));
+    const validSubjects = new Set(((sectionSubjects || []) as Array<{ subject_name: string }>).map((row) => String(row.subject_name).toLowerCase()));
     if (!validSubjects.has(updates.classTeacherSubject.toLowerCase())) {
       throw new Error('That subject does not belong to the selected class.');
     }
@@ -632,7 +643,7 @@ export const addTeacherSubjectAssignment = async (teacherId: string, assignment:
     .insert({
       section_id: assignment.sectionId,
       teacher_id: teacherId,
-      teacher_profile_id: (teacher as any).profile_id,
+      teacher_profile_id: (teacher as TeacherProfileSlotRow).profile_id,
       role: 'Subject Teacher',
       subject: assignment.subject,
     });
@@ -649,6 +660,93 @@ export const removeTeacherSubjectAssignment = async (teacherId: string, sectionI
     .eq('section_id', sectionId)
     .eq('role', 'Subject Teacher')
     .eq('subject', subject);
+
+  if (error) throw error;
+};
+
+const buildSubjectCode = (subject: string) => subject
+  .trim()
+  .split(/\s+/)
+  .map((part) => part[0])
+  .join('')
+  .slice(0, 6)
+  .toUpperCase() || 'SUB';
+
+export const createClassSubjectGroupRecord = async (
+  groupId: string,
+  categoryId: string,
+  name: string,
+  description: string,
+  sectionIds: string[]
+) => {
+  const client = assertSupabase();
+
+  const { error: groupError } = await client
+    .from('class_subject_groups')
+    .upsert({
+      id: groupId,
+      category_id: categoryId,
+      name,
+      description,
+    });
+
+  if (groupError) throw groupError;
+
+  if (sectionIds.length) {
+    const { error: mappingError } = await client
+      .from('class_subject_group_sections')
+      .upsert(
+        sectionIds.map((sectionId) => ({
+          group_id: groupId,
+          section_id: sectionId,
+        })),
+        { onConflict: 'group_id,section_id' }
+      );
+
+    if (mappingError) throw mappingError;
+  }
+};
+
+export const addGradeSubjectRecord = async (
+  groupId: string,
+  categoryId: string,
+  subject: string,
+  sortOrder: number
+) => {
+  const client = assertSupabase();
+  const subjectName = subject.trim();
+  if (!subjectName) {
+    throw new Error('Subject is required.');
+  }
+
+  const { error } = await client
+    .from('class_subject_group_subjects')
+    .upsert(
+      {
+        group_id: groupId,
+        category_id: categoryId,
+        subject_name: subjectName,
+        code: buildSubjectCode(subjectName),
+        sort_order: sortOrder,
+      },
+      { onConflict: 'group_id,subject_name' }
+    );
+
+  if (error) throw error;
+};
+
+export const deleteGradeSubjectRecord = async (groupIds: string[], subject: string) => {
+  const client = assertSupabase();
+  const subjectName = subject.trim();
+  if (!groupIds.length || !subjectName) {
+    return;
+  }
+
+  const { error } = await client
+    .from('class_subject_group_subjects')
+    .delete()
+    .in('group_id', groupIds)
+    .eq('subject_name', subjectName);
 
   if (error) throw error;
 };
@@ -750,7 +848,7 @@ export const assignTeacherToFacultySlot = async (
   if (!teacher) throw new Error('Teacher not found.');
 
   if (assignment.type === 'class_teacher') {
-    if ((teacher as any).home_section_id) {
+    if ((teacher as TeacherProfileSlotRow).home_section_id) {
       throw new Error('This faculty member already owns a class.');
     }
 
@@ -797,7 +895,7 @@ export const assignTeacherToFacultySlot = async (
     .insert({
       section_id: assignment.sectionId,
       teacher_id: teacherId,
-      teacher_profile_id: (teacher as any).profile_id,
+      teacher_profile_id: (teacher as TeacherProfileSlotRow).profile_id,
       role: 'Subject Teacher',
       subject: assignment.subject,
     });
@@ -901,23 +999,7 @@ export const fetchStudentsByClass = async (className: string) => {
 
   if (error) throw error;
 
-  return (data || []).map((row) =>
-    mapStudent({
-      id: (row as any).id,
-      profile_id: (row as any).profile_id,
-      name: (row as any).name,
-      email: (row as any).email,
-      roll_no: (row as any).roll_no,
-      category_id: (row as any).category_id,
-      section_id: (row as any).section_id,
-      gender: (row as any).gender,
-      dob: (row as any).dob,
-      contact: (row as any).contact,
-      parent_name: (row as any).parent_name,
-      parent_contact: (row as any).parent_contact,
-      address: (row as any).address,
-    })
-  );
+  return (data || []).map((row) => mapStudent(row as unknown as StudentRow));
 };
 
 export const fetchTeacherByProfile = async (profileId: string) => {
@@ -943,7 +1025,7 @@ export const fetchTeacherByProfile = async (profileId: string) => {
 
   const assignedSections: string[] = [];
 
-  (assignments || []).forEach((assignment: any) => {
+  ((assignments || []) as TeacherAssignmentWithSectionRow[]).forEach((assignment) => {
     const sectionName = Array.isArray(assignment.sections) ? assignment.sections[0]?.name : assignment.sections?.name;
     if (!sectionName) {
       return;

@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useClassStore } from '../../store/useClassStore';
 import { fetchStudentMarksByProfile, fetchTeacherMarkScopes, type StudentMarkRecord, type TeacherMarkScope } from '../../services/marks';
 import { fetchStudentAttendanceSummary } from '../../services/attendance';
-import type { IStudent } from '../../types/school';
+import type { IStudent } from '../../types/school'; 
 import { getTodayInputDate } from '../../utils/dateLimits';
 
 const parseBulkStudentLine = (line: string) => {
@@ -38,6 +38,10 @@ const normalizeBulkGender = (value: string): IStudent['gender'] => {
   if (gender === 'female' || gender === 'f') return 'Female';
   if (gender === 'other' || gender === 'o') return 'Other';
   return 'Male';
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
 };
 
 const parseBulkStudents = (
@@ -326,8 +330,8 @@ const TeacherClasses = () => {
       });
       event.currentTarget.reset();
       setShowForm(false);
-    } catch (saveError: any) {
-      setError(saveError?.message || 'Failed to add student.');
+    } catch (saveError: unknown) {
+      setError(getErrorMessage(saveError, 'Failed to add student.'));
     } finally {
       setIsSaving(false);
     }
@@ -350,8 +354,8 @@ const TeacherClasses = () => {
       await addStudents(parsedStudents);
       event.currentTarget.reset();
       setShowBulkForm(false);
-    } catch (saveError: any) {
-      setError(saveError?.message || 'Failed to import students.');
+    } catch (saveError: unknown) {
+      setError(getErrorMessage(saveError, 'Failed to import students.'));
     } finally {
       setIsSaving(false);
     }
@@ -366,21 +370,59 @@ const TeacherClasses = () => {
   }, [studentDetail.marks]);
 
   const subjectSummary = activeSection?.subjectTeachers?.map((teacher) => teacher.subject) || [];
+  const classCardTones = [
+    {
+      line: 'border-t-[#2f6fb4]',
+      title: 'text-[#2f6fb4]',
+      badge: 'bg-blue-50 text-[#2f6fb4]',
+      focus: 'ring-[#2f6fb4]/15',
+    },
+    {
+      line: 'border-t-emerald-600',
+      title: 'text-emerald-700',
+      badge: 'bg-emerald-50 text-emerald-700',
+      focus: 'ring-emerald-600/15',
+    },
+    {
+      line: 'border-t-violet-600',
+      title: 'text-violet-700',
+      badge: 'bg-violet-50 text-violet-700',
+      focus: 'ring-violet-600/15',
+    },
+    {
+      line: 'border-t-orange-500',
+      title: 'text-orange-600',
+      badge: 'bg-orange-50 text-orange-700',
+      focus: 'ring-orange-500/15',
+    },
+    {
+      line: 'border-t-rose-600',
+      title: 'text-rose-700',
+      badge: 'bg-rose-50 text-rose-700',
+      focus: 'ring-rose-600/15',
+    },
+  ];
 
   return (
     <div className="w-full min-w-0 max-w-full overflow-x-hidden max-lg:px-0 max-lg:pb-1 lg:space-y-8">
-      <div className="space-y-5 lg:space-y-8">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div className="space-y-5 lg:space-y-7">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">Teacher Access</p>
-          <h1 className="mt-2 text-2xl font-black text-slate-900 lg:text-3xl">My Class Roster</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-slate-500 sm:text-sm">
+            <span className="text-[#3f5f9f]">Home</span>
+            <span>/</span>
+            <span className="text-[#3f5f9f]">My Classes</span>
+            <span>/</span>
+            <span className="text-slate-700">My Class Roster</span>
+          </div>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl lg:mt-6 lg:text-[32px]">My Class Roster</h1>
+          <p className="mt-3 max-w-3xl text-[15px] leading-6 text-slate-500">
             You can view assigned subject sections, but student edits are limited to your own class.
           </p>
         </div>
-        <div className="w-full rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4 shadow-sm lg:w-auto lg:rounded-3xl lg:px-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Owned Class</p>
-          <p className="mt-2 text-sm font-bold text-emerald-700">
+        <div className="w-full rounded border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5 sm:py-5 lg:w-32">
+          <p className="text-sm font-semibold text-slate-500">Owned Class</p>
+          <p className="mt-2 break-words text-xl font-semibold text-[#2f6fb4] sm:mt-4">
             {ownedClass || 'No owned class assigned yet'}
           </p>
         </div>
@@ -410,12 +452,13 @@ const TeacherClasses = () => {
 
       {!!visibleSections.length && (
         <>
-          <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 xl:grid-cols-3">
-            {visibleSections.map((section) => {
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
+            {visibleSections.map((section, sectionIndex) => {
               const sectionStudents = students.filter((student) => student.sectionId === section.id);
               const isActive = section.id === activeSectionId;
               const isOwned = section.name === ownedClass;
               const handledSubjects = subjectsByClassName[section.name] || [];
+              const tone = isOwned ? classCardTones[0] : classCardTones[(sectionIndex % (classCardTones.length - 1)) + 1];
 
               return (
                 <button
@@ -426,33 +469,28 @@ const TeacherClasses = () => {
                       setIsMobileRosterOpen(true);
                     }
                   }}
-                  className={`w-full min-w-0 overflow-hidden rounded-[1.4rem] border p-3.5 text-left shadow-sm transition-all lg:rounded-[2rem] lg:p-6 ${
-                    isOwned
-                      ? 'border-emerald-300 bg-emerald-50/80 shadow-emerald-100'
-                      : isActive
-                        ? 'border-indigo-200 bg-indigo-50/60 shadow-indigo-100'
-                      : 'border-slate-100 bg-white hover:-translate-y-1 hover:shadow-lg'
+                  className={`w-full min-w-0 overflow-hidden rounded border border-slate-200 border-t-4 bg-white p-4 text-left shadow-sm transition-shadow hover:shadow-md sm:p-5 lg:min-h-[235px] lg:p-6 ${tone.line} ${
+                    isActive ? `ring-4 ${tone.focus}` : ''
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Section</p>
-                      <h2 className="mt-2 break-words text-2xl font-black text-slate-900">{section.name}</h2>
-                      <p className={`mt-2 w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${isOwned ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                      <h2 className={`break-words text-2xl font-semibold tracking-tight sm:text-3xl ${tone.title}`}>{section.name}</h2>
+                      <p className={`mt-6 w-fit rounded px-3 py-1 text-xs font-semibold sm:text-sm lg:mt-10 ${isOwned ? 'bg-blue-50 text-[#2f6fb4]' : tone.badge}`}>
                         {isOwned ? 'Own Class' : 'Subject Class'}
                       </p>
                     </div>
-                    <div className="shrink-0 rounded-2xl bg-white px-3 py-3 text-center shadow-sm lg:px-4">
-                      <p className="text-lg font-black text-slate-900">{sectionStudents.length}</p>
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Students</p>
+                    <div className="shrink-0 rounded bg-slate-50 px-3 py-2 text-center sm:px-4 sm:py-3">
+                      <p className="text-lg font-semibold leading-none text-slate-500 sm:text-xl">{sectionStudents.length}</p>
+                      <p className="mt-1 text-xs font-normal text-slate-500 sm:mt-2 sm:text-sm">Students</p>
                     </div>
                   </div>
-                  <div className="mt-5 hidden space-y-2 text-sm leading-6 text-slate-600 lg:mt-6 lg:block">
+                  <div className="mt-5 space-y-2 text-sm leading-6 text-slate-600 sm:text-[15px] lg:mt-7 lg:space-y-3">
                     <p className="break-words">Class Teacher: <span className="font-semibold text-slate-900">{section.classTeacher}</span></p>
-                    <p className="break-words">My Subject: <span className="font-semibold text-slate-900">{handledSubjects.length ? handledSubjects.join(', ') : 'Class oversight'}</span></p>
+                    <p className="break-words">Subject: <span className="font-semibold text-slate-900">{handledSubjects.length ? handledSubjects.join(', ') : 'Class oversight'}</span></p>
                     <p className="break-words">Room: <span className="font-semibold text-slate-900">{section.roomNumber || 'TBD'}</span></p>
                   </div>
-                  <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2 text-xs font-black text-slate-500 lg:hidden">
+                  <div className="mt-5 flex items-center justify-between rounded bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 lg:hidden">
                     <span>Open roster</span>
                     <span>{isActive ? 'Selected' : 'Tap'}</span>
                   </div>

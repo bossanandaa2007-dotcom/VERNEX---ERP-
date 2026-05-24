@@ -80,43 +80,43 @@ const LeaveRequestInbox = () => {
   };
 
   return (
-    <div className="space-y-5 lg:space-y-6">
-      <section className="rounded-[1.5rem] bg-slate-950 p-5 text-white shadow-xl shadow-slate-200 lg:rounded-3xl lg:p-6">
+    <div className="erp-page">
+      <section className="erp-page-header">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-200">Class Leave Requests</p>
-            <h1 className="mt-2 text-2xl font-black">Review student leave requests</h1>
-            <p className="mt-1 text-sm font-medium text-slate-300">Approve or reject requests from students assigned to your class.</p>
+            <p className="erp-kicker">4. Leave Requests</p>
+            <h1 className="erp-title">Review student leave requests</h1>
+            <p className="erp-subtitle">Approve or reject requests from students assigned to your class.</p>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-2xl bg-white/10 px-4 py-3 text-center">
-              <p className="text-xl font-black">{counts.pending}</p>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Pending</p>
+            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-center">
+              <p className="text-xl font-bold text-slate-900">{counts.pending}</p>
+              <p className="erp-section-label">Pending</p>
             </div>
-            <div className="rounded-2xl bg-white/10 px-4 py-3 text-center">
-              <p className="text-xl font-black">{counts.approved}</p>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Approved</p>
+            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-center">
+              <p className="text-xl font-bold text-slate-900">{counts.approved}</p>
+              <p className="erp-section-label">Approved</p>
             </div>
-            <div className="rounded-2xl bg-white/10 px-4 py-3 text-center">
-              <p className="text-xl font-black">{counts.rejected}</p>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Rejected</p>
+            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-center">
+              <p className="text-xl font-bold text-slate-900">{counts.rejected}</p>
+              <p className="erp-section-label">Rejected</p>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm lg:flex-row lg:gap-4 lg:rounded-3xl lg:p-5">
+      <div className="erp-card flex flex-col gap-3 p-4 lg:flex-row lg:gap-4 lg:p-5">
         <div className="relative flex-1">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search leave history..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            className="erp-input w-full py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
         <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-3">
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <div className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
             <Filter size={16} className="text-slate-400" />
             <select
               value={statusFilter}
@@ -133,52 +133,52 @@ const LeaveRequestInbox = () => {
             type="date"
             value={dateFrom}
             onChange={(event) => setDateFrom(event.target.value)}
-            className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 outline-none"
+            className="erp-input min-w-0 px-3 py-2 text-sm text-slate-600 outline-none"
           />
           <input
             type="date"
             value={dateTo}
             onChange={(event) => setDateTo(event.target.value)}
-            className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 outline-none"
+            className="erp-input min-w-0 px-3 py-2 text-sm text-slate-600 outline-none"
           />
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm lg:rounded-3xl">
+      <div className="erp-table-wrap">
         <div className="space-y-3 bg-slate-50 p-3 md:hidden">
           {filteredRequests.map((request) => (
-            <div key={request.id} className="rounded-[1.25rem] border border-slate-100 bg-white p-4 shadow-sm">
+            <div key={request.id} className="rounded border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-black text-slate-900">{request.studentName}</p>
+                  <p className="text-sm font-semibold text-slate-900">{request.studentName}</p>
                   <p className="mt-1 text-xs font-bold text-slate-400">{request.className} / Roll {request.rollNumber}</p>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${statusClass(request.status)}`}>
+                <span className={`rounded px-2.5 py-1 text-[10px] font-bold uppercase ${statusClass(request.status)}`}>
                   {request.status}
                 </span>
               </div>
-              <p className="mt-3 text-xs font-black uppercase tracking-widest text-slate-400">{request.startDate} to {request.endDate}</p>
+              <p className="erp-section-label mt-3">{request.startDate} to {request.endDate}</p>
               <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{request.reason}</p>
               <textarea
                 id={`leave-response-${request.id}`}
                 rows={2}
                 defaultValue={request.teacherRemarks || ''}
                 placeholder="Add note"
-                className="mt-3 w-full resize-none rounded-2xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100"
+                className="erp-input mt-3 w-full resize-none px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-100"
               />
               {request.status === 'Pending' ? (
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button
                     onClick={() => void handleResolve(request.id, 'Approved')}
                     disabled={isUpdatingId === request.id}
-                    className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 px-3 py-3 text-xs font-black text-white active:scale-[0.98] disabled:opacity-60"
+                    className="flex items-center justify-center gap-1.5 rounded bg-emerald-600 px-3 py-3 text-xs font-bold text-white disabled:opacity-60"
                   >
                     <CheckCircle2 size={16} /> Accept
                   </button>
                   <button
                     onClick={() => void handleResolve(request.id, 'Rejected')}
                     disabled={isUpdatingId === request.id}
-                    className="flex items-center justify-center gap-1.5 rounded-2xl bg-rose-600 px-3 py-3 text-xs font-black text-white active:scale-[0.98] disabled:opacity-60"
+                    className="flex items-center justify-center gap-1.5 rounded bg-rose-600 px-3 py-3 text-xs font-bold text-white disabled:opacity-60"
                   >
                     <XCircle size={16} /> Reject
                   </button>
@@ -194,7 +194,7 @@ const LeaveRequestInbox = () => {
 
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="border-b border-slate-100 px-6 py-4">Student</th>
                 <th className="border-b border-slate-100 px-6 py-4">Dates</th>
@@ -214,7 +214,7 @@ const LeaveRequestInbox = () => {
                   <td className="px-6 py-4 font-bold text-slate-700">{request.startDate} to {request.endDate}</td>
                   <td className="max-w-xs px-6 py-4 font-medium text-slate-600">{request.reason}</td>
                   <td className="px-6 py-4">
-                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${statusClass(request.status)}`}>
+                    <span className={`rounded px-2.5 py-1 text-[10px] font-bold uppercase ${statusClass(request.status)}`}>
                       {request.status}
                     </span>
                   </td>
@@ -224,7 +224,7 @@ const LeaveRequestInbox = () => {
                       rows={2}
                       defaultValue={request.teacherRemarks || ''}
                       placeholder="Add note"
-                      className="w-full min-w-[220px] resize-none rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-100"
+                      className="erp-input w-full min-w-[220px] resize-none px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-100"
                     />
                   </td>
                   <td className="space-y-2 px-6 py-4">
@@ -233,14 +233,14 @@ const LeaveRequestInbox = () => {
                         <button
                           onClick={() => void handleResolve(request.id, 'Approved')}
                           disabled={isUpdatingId === request.id}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+                          className="flex w-full items-center justify-center gap-1.5 rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
                         >
                           <CheckCircle2 size={15} /> Accept
                         </button>
                         <button
                           onClick={() => void handleResolve(request.id, 'Rejected')}
                           disabled={isUpdatingId === request.id}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-60"
+                          className="flex w-full items-center justify-center gap-1.5 rounded bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-60"
                         >
                           <XCircle size={15} /> Reject
                         </button>
@@ -256,7 +256,7 @@ const LeaveRequestInbox = () => {
         </div>
 
         {filteredRequests.length === 0 && (
-          <div className="border-t border-slate-100 py-16 text-center text-sm font-bold uppercase tracking-widest text-slate-400">
+          <div className="border-t border-slate-100 py-12 text-center text-sm font-bold uppercase tracking-wide text-slate-400">
             No leave requests match the current filters
           </div>
         )}

@@ -18,24 +18,24 @@ const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[999]"
+            className="fixed inset-0 z-[999] bg-slate-900/40"
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-2xl shadow-2xl z-[1000] overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            className="fixed left-1/2 top-1/2 z-[1000] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded border border-slate-200 bg-white shadow-lg"
           >
-            <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h3>
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/60 p-5">
+              <h3 className="text-lg font-bold tracking-tight text-slate-900">{title}</h3>
               <button 
                 onClick={onClose}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 max-h-[80vh] overflow-y-auto">
+            <div className="max-h-[80vh] overflow-y-auto p-5">
               {children}
             </div>
           </motion.div>

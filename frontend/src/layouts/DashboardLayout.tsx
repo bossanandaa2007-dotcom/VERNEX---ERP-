@@ -45,29 +45,29 @@ const DashboardLayout = () => {
   }, [location.pathname]);
 
   return (
-    <div className={cn("min-h-screen bg-slate-50 flex", isMobileAppRole && "max-lg:bg-[#f7f8fb]")}>
+    <div className={cn("min-h-screen bg-slate-50 flex", isMobileAppRole && "max-lg:bg-slate-50")}>
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       
       {/* Mobile Sidebar Overlay */}
       {!collapsed && (
         <div 
-          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 z-30 bg-slate-900/45 lg:hidden transition-opacity duration-200"
           onClick={() => setCollapsed(true)}
         />
       )}
 
       <div className={cn(
-        "flex-1 flex min-w-0 flex-col min-h-screen transition-all duration-300 ease-in-out",
+          "flex-1 flex min-w-0 flex-col min-h-screen transition-all duration-200 ease-in-out",
         isMobileAppRole && "max-lg:w-full max-lg:max-w-full max-lg:overflow-x-hidden",
         collapsed ? "lg:ml-20" : "lg:ml-64"
       )}>
         <Header collapsed={collapsed} setCollapsed={setCollapsed} />
         
         <main ref={mainRef} className={cn(
-          "flex-1 overflow-x-hidden overflow-y-auto bg-slate-50/50 p-4 sm:p-6 lg:p-8",
-          isMobileAppRole && "mobile-dashboard-main max-lg:px-2.5 max-lg:pb-[calc(6rem+env(safe-area-inset-bottom))] max-lg:pt-2.5 max-lg:bg-[#f7f8fb]"
+          "flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6",
+          isMobileAppRole && "mobile-dashboard-main max-lg:px-2.5 max-lg:pb-[calc(6rem+env(safe-area-inset-bottom))] max-lg:pt-2.5 max-lg:bg-slate-50"
         )}>
-          <div className={cn("mx-auto max-w-7xl", isMobileAppRole && "max-lg:w-full max-lg:max-w-full max-lg:min-w-0")}>
+          <div className={cn("mx-auto max-w-[1280px]", isMobileAppRole && "max-lg:w-full max-lg:max-w-full max-lg:min-w-0")}>
             <Outlet />
           </div>
         </main>

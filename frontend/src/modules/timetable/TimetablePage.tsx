@@ -166,9 +166,9 @@ const TimetablePage = () => {
   };
 
   const renderReadOnlyGrid = () => (
-    <div className="hidden overflow-x-auto rounded-[2rem] border border-slate-100 bg-white shadow-sm md:block">
+    <div className="erp-table-wrap hidden overflow-x-auto md:block">
       <table className="w-full min-w-[920px] text-left text-sm">
-        <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+        <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
           <tr>
             <th className="w-28 px-5 py-4">Day</th>
             {TIMETABLE_PERIODS.map((period) => (
@@ -181,12 +181,12 @@ const TimetablePage = () => {
             const isToday = day.value === today;
 
             return (
-              <tr key={day.value} className={`border-t border-slate-100 ${isToday ? 'bg-indigo-50/70' : ''}`}>
-                <td className={`px-5 py-4 font-black ${isToday ? 'bg-indigo-100/80 text-indigo-700' : 'bg-slate-50/60 text-slate-700'}`}>
+              <tr key={day.value} className={`border-t border-slate-100 ${isToday ? 'bg-blue-50/70' : ''}`}>
+                <td className={`px-5 py-4 font-bold ${isToday ? 'bg-blue-100/80 text-blue-700' : 'bg-slate-50/60 text-slate-700'}`}>
                   <div className="flex items-center gap-2">
                     <span>{day.label}</span>
                     {isToday && (
-                      <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+                      <span className="rounded bg-blue-700 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
                         Today
                       </span>
                     )}
@@ -197,9 +197,9 @@ const TimetablePage = () => {
                   return (
                     <td key={period} className="min-w-36 px-4 py-4 align-top">
                       {entry ? (
-                        <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-                          <p className="text-sm font-black text-slate-900">{entry.subject}</p>
-                          <p className="mt-1 text-xs font-medium text-indigo-700">{entry.sectionName}</p>
+                        <div className="rounded border border-blue-100 bg-blue-50 px-4 py-3">
+                          <p className="text-sm font-bold text-slate-900">{entry.subject}</p>
+                          <p className="mt-1 text-xs font-medium text-blue-700">{entry.sectionName}</p>
                           <p className="mt-1 text-xs text-slate-500">{entry.teacherName}</p>
                         </div>
                       ) : (
@@ -218,12 +218,12 @@ const TimetablePage = () => {
 
   const renderReadOnlyCards = () => (
     <div className="space-y-3 pb-2 md:hidden">
-      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
-        <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Choose Day</label>
+      <div className="erp-card p-4">
+        <label className="erp-section-label mb-2 block">Choose Day</label>
         <select
           value={selectedDay}
           onChange={(event) => setSelectedDay(Number(event.target.value))}
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-900 outline-none transition-colors focus:border-indigo-400"
+          className="w-full rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-colors focus:border-blue-400"
         >
           {TIMETABLE_DAYS.map((day) => (
             <option key={day.value} value={day.value}>{day.label}</option>
@@ -237,29 +237,29 @@ const TimetablePage = () => {
           .sort((left, right) => left.periodNumber - right.periodNumber);
 
         return (
-          <section key={day.value} className={`rounded-[1.5rem] border p-4 shadow-sm ${day.value === today ? 'border-indigo-200 bg-indigo-50/70' : 'border-slate-100 bg-white'}`}>
+          <section key={day.value} className={`border p-4 shadow-sm ${day.value === today ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-black text-slate-900">{day.label}</h2>
+                <h2 className="text-base font-bold text-slate-900">{day.label}</h2>
                 {day.value === today && (
-                  <span className="rounded-full bg-indigo-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+                  <span className="rounded bg-blue-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
                     Today
                   </span>
                 )}
               </div>
-              <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${day.value === today ? 'bg-white text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`rounded px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${day.value === today ? 'bg-white text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
                 {dayEntries.length} periods
               </span>
             </div>
             <div className="mt-3 space-y-2">
               {dayEntries.length ? dayEntries.map((entry) => (
-                <div key={entry.id} className="rounded-2xl bg-indigo-50 px-4 py-3">
+                <div key={entry.id} className="rounded border border-blue-100 bg-blue-50 px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="break-words text-sm font-black text-slate-900">{entry.subject}</p>
-                      <p className="mt-1 text-xs font-bold text-indigo-700">{entry.sectionName}</p>
+                      <p className="break-words text-sm font-bold text-slate-900">{entry.subject}</p>
+                      <p className="mt-1 text-xs font-bold text-blue-700">{entry.sectionName}</p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-indigo-600">
+                    <span className="shrink-0 rounded bg-white px-2.5 py-1 text-[10px] font-bold text-blue-700">
                       P{entry.periodNumber}
                     </span>
                   </div>
@@ -276,14 +276,14 @@ const TimetablePage = () => {
   );
 
   return (
-    <div className="space-y-5 lg:space-y-6">
-      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm lg:flex-row lg:items-end lg:justify-between lg:rounded-3xl lg:p-6">
+    <div className="erp-page">
+      <div className="erp-page-header flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-indigo-500">Academic Timetable</p>
-          <h1 className="mt-2 text-2xl font-black text-slate-900 lg:text-3xl">
+          <p className="erp-kicker">{isAdmin ? 'Class Timetable Builder' : isTeacher ? '2. My Teaching Timetable' : 'Timetable'}</p>
+          <h1 className="erp-title">
             {isAdmin ? 'Class Timetable Builder' : isTeacher ? 'My Teaching Timetable' : 'My Class Timetable'}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-500">
+          <p className="erp-subtitle max-w-2xl">
             {isAdmin
               ? 'Each period accepts only subjects configured for the selected section. The matching teacher is resolved from the section staffing map.'
               : 'This view is scoped by your login and reflects the timetable published by admin.'}
@@ -292,11 +292,11 @@ const TimetablePage = () => {
 
         {isAdmin && (
           <div className="w-full max-w-xs">
-            <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Section</label>
+            <label className="erp-section-label mb-2 block">Select Section</label>
             <select
               value={selectedSectionId}
               onChange={(event) => setSelectedSectionId(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400"
+              className="w-full rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-400"
             >
               {sortedSections.map((section) => (
                 <option key={section.id} value={section.id}>{section.name}</option>
@@ -307,37 +307,37 @@ const TimetablePage = () => {
       </div>
 
       {message && (
-        <div className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 px-5 py-4 text-sm font-bold text-indigo-800">
+        <div className="flex items-center gap-3 rounded border border-blue-100 bg-blue-50 px-5 py-4 text-sm font-bold text-blue-800">
           <CheckCircle2 size={18} />
           {message}
         </div>
       )}
 
       {(isLoading || isClassDataLoading) && (
-        <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 text-sm font-medium text-slate-500 shadow-sm">
+        <div className="erp-card px-5 py-4 text-sm font-medium text-slate-500">
           Loading timetable...
         </div>
       )}
 
       {isAdmin && activeSection && (
-        <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="erp-card p-5">
           <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Editing Section</p>
-              <h2 className="mt-1 text-2xl font-black text-slate-900">{activeSection.name}</h2>
+              <p className="erp-section-label">Editing Section</p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">{activeSection.name}</h2>
             </div>
             <div className="flex flex-wrap gap-2">
               {subjectOptions.map((subject) => (
-                <span key={subject} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">
+                <span key={subject} className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
                   {subject}
                 </span>
               ))}
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-[2rem] border border-slate-100">
+          <div className="overflow-x-auto border border-slate-200">
             <table className="w-full min-w-[980px] text-left text-sm">
-              <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+              <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="w-28 px-5 py-4">Day</th>
                   {TIMETABLE_PERIODS.map((period) => (
@@ -350,12 +350,12 @@ const TimetablePage = () => {
                   const isToday = day.value === today;
 
                   return (
-                    <tr key={day.value} className={`border-t border-slate-100 ${isToday ? 'bg-indigo-50/70' : ''}`}>
-                      <td className={`px-5 py-4 font-black ${isToday ? 'bg-indigo-100/80 text-indigo-700' : 'bg-slate-50/60 text-slate-700'}`}>
+                    <tr key={day.value} className={`border-t border-slate-100 ${isToday ? 'bg-blue-50/70' : ''}`}>
+                      <td className={`px-5 py-4 font-bold ${isToday ? 'bg-blue-100/80 text-blue-700' : 'bg-slate-50/60 text-slate-700'}`}>
                         <div className="flex items-center gap-2">
                           <span>{day.label}</span>
                           {isToday && (
-                            <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+                              <span className="rounded bg-blue-700 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
                               Today
                             </span>
                           )}
@@ -371,20 +371,20 @@ const TimetablePage = () => {
                               <select
                                 value={entry?.subject || ''}
                                 onChange={(event) => void handleSubjectChange(day.value, period, event.target.value)}
-                                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-400"
+                                className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-blue-400"
                               >
                                 <option value="">Free</option>
                                 {subjectOptions.map((subject) => (
                                   <option key={subject} value={subject}>{subject}</option>
                                 ))}
                               </select>
-                              <div className="min-h-10 rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-medium text-slate-500">
+                              <div className="min-h-10 rounded bg-slate-50 px-3 py-2 text-[11px] font-medium text-slate-500">
                                 {entry ? teacher?.name || entry.teacherName : 'No teacher assigned'}
                               </div>
                               {entry && (
                                 <button
                                   onClick={() => void handleSubjectChange(day.value, period, '')}
-                                  className="inline-flex items-center gap-1 rounded-xl bg-rose-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-rose-500 hover:bg-rose-100"
+                                  className="inline-flex items-center gap-1 rounded bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-rose-500 hover:bg-rose-100"
                                 >
                                   <Trash2 size={12} /> Clear
                                 </button>
@@ -405,15 +405,15 @@ const TimetablePage = () => {
       {!isAdmin && (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm lg:rounded-2xl lg:p-5">
-              <CalendarDays className="text-indigo-500" size={24} />
-              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Scheduled Periods</p>
-              <p className="mt-1 text-3xl font-black text-slate-900">{entries.length}</p>
+            <div className="erp-card p-4 lg:p-5">
+              <CalendarDays className="text-blue-600" size={24} />
+              <p className="erp-section-label mt-3">Scheduled Periods</p>
+              <p className="mt-1 text-3xl font-bold text-slate-900">{entries.length}</p>
             </div>
-            <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm md:col-span-2 lg:rounded-2xl lg:p-5">
+            <div className="erp-card p-4 md:col-span-2 lg:p-5">
               <Clock className="text-emerald-500" size={24} />
-              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Scope</p>
-              <p className="mt-1 text-lg font-black text-slate-900">
+              <p className="erp-section-label mt-3">Scope</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">
                 {isTeacher ? 'Periods assigned to your teacher profile' : activeSection?.name || user?.class || 'Student section'}
               </p>
             </div>

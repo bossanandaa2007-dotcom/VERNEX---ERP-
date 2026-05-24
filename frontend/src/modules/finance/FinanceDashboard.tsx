@@ -49,6 +49,10 @@ type TermFeeForm = {
   dueDate: string;
   message: string;
 };
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
 type PaymentDraft = {
   paidAmount: string;
 };
@@ -783,25 +787,11 @@ const FinanceDashboard = () => {
       pushRecentAction(`${recordIds.length} payment update${recordIds.length === 1 ? '' : 's'} saved.`);
       showToast('Payment details saved in Supabase.');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save payment details:', error);
-      showToast(error?.message || 'Could not save payment details.');
+      showToast(getErrorMessage(error, 'Could not save payment details.'));
       return false;
     }
-  };
-
-  const openPartialPaymentDialog = (recordIds: string[]) => {
-    if (!recordIds.length) {
-      showToast('Select at least one student fee record first.');
-      return;
-    }
-
-    const firstRecord = recordsWithLocalStatus.find((fee) => fee.id === recordIds[0]);
-    const suggestedAmount = firstRecord?.paidAmount && Number(firstRecord.paidAmount) > 0
-      ? String(firstRecord.paidAmount)
-      : '';
-
-    setPartialPaymentDialog({ recordIds, amount: suggestedAmount });
   };
 
   const handleConfirmPartialPayment = async () => {

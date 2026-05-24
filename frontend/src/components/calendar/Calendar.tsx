@@ -119,20 +119,21 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
         : 'bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-100 hover:bg-blue-100';
 
   const renderHeader = () => (
-    <div className="mb-5 flex flex-col gap-4 lg:mb-8 lg:flex-row lg:items-center lg:justify-between">
+    <div className="erp-page-header mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
-        <h2 className="text-2xl font-black text-slate-900 lg:font-bold">{format(currentMonth, 'MMMM yyyy')}</h2>
-        <p className="mt-1 text-sm leading-5 text-slate-500">Calendar events for holidays, festivals, and activities.</p>
+        <p className="erp-kicker">6. Calendar</p>
+        <h2 className="erp-title">{format(currentMonth, 'MMMM yyyy')}</h2>
+        <p className="erp-subtitle">Calendar events for holidays, festivals, and activities.</p>
       </div>
       <div className="flex items-center justify-between gap-3 lg:justify-end lg:gap-4">
-        <div className="grid flex-1 grid-cols-[44px_1fr_44px] items-center rounded-2xl border border-slate-100 bg-white p-1 shadow-sm lg:flex-none lg:flex lg:rounded-xl">
-          <button onClick={prevMonth} className="flex h-10 items-center justify-center rounded-xl transition-colors hover:bg-slate-50">
+        <div className="grid flex-1 grid-cols-[44px_1fr_44px] items-center rounded border border-slate-200 bg-slate-50 p-1 lg:flex-none lg:flex">
+          <button onClick={prevMonth} className="flex h-10 items-center justify-center rounded transition-colors hover:bg-white">
             <ChevronLeft size={20} className="text-slate-600" />
           </button>
-          <button onClick={() => setCurrentMonth(new Date())} className="h-10 min-w-28 rounded-xl px-4 text-sm font-black text-slate-700 transition-colors hover:bg-slate-50 lg:font-semibold">
+          <button onClick={() => setCurrentMonth(new Date())} className="h-10 min-w-28 rounded px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-white lg:font-semibold">
             {format(currentMonth, 'MMM yyyy')}
           </button>
-          <button onClick={nextMonth} className="flex h-10 items-center justify-center rounded-xl transition-colors hover:bg-slate-50">
+          <button onClick={nextMonth} className="flex h-10 items-center justify-center rounded transition-colors hover:bg-white">
             <ChevronRight size={20} className="text-slate-600" />
           </button>
         </div>
@@ -143,7 +144,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
               setFormData({ title: '', date: format(new Date(), 'yyyy-MM-dd'), time: '', type: 'Event', scope: 'All', description: '' });
               setIsModalOpen(true);
             }}
-            className="flex h-12 items-center gap-2 rounded-2xl bg-indigo-600 px-4 text-white shadow-md shadow-indigo-600/20 transition-all active:scale-95 hover:bg-indigo-700 lg:h-auto lg:rounded-xl lg:py-2.5"
+            className="erp-primary-button flex h-12 items-center gap-2 px-4 transition-colors lg:h-auto lg:py-2.5"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">Add Event</span>
@@ -158,7 +159,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
     return (
       <div className="mb-2 grid grid-cols-7">
         {days.map((day) => (
-          <div key={day} className="py-2 text-center text-[10px] font-black uppercase tracking-wider text-slate-400 lg:text-xs lg:font-bold">
+          <div key={day} className="py-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-500 lg:text-xs">
             {day}
           </div>
         ))}
@@ -174,7 +175,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
     const daysInterval = eachDayOfInterval({ start: startDate, end: endDate });
 
     return (
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 shadow-sm">
+      <div className="grid grid-cols-7 gap-px overflow-hidden border border-slate-200 bg-slate-200 shadow-sm">
         {daysInterval.map((day, index) => {
           const isSelected = isSameDay(day, new Date());
           const isCurrentMonth = isSameMonth(day, monthStart);
@@ -199,7 +200,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
             >
               <div className="flex items-start justify-between gap-2">
                 <span className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-all lg:text-sm lg:font-semibold',
+                  'flex h-7 w-7 items-center justify-center rounded text-xs font-bold transition-all lg:text-sm lg:font-semibold',
                   isSelected
                     ? 'bg-slate-900 text-white shadow-md'
                     : primaryEvent
@@ -215,7 +216,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                       event.stopPropagation();
                       setSelectedEvent(dayEvents[1]);
                     }}
-                    className="rounded-full bg-white/80 px-2 py-0.5 text-[9px] font-black text-current shadow-sm"
+                    className="rounded bg-white/80 px-2 py-0.5 text-[9px] font-bold text-current shadow-sm"
                   >
                     +{dayEvents.length - 1}
                   </button>
@@ -229,7 +230,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                       event.stopPropagation();
                       setSelectedEvent(primaryEvent);
                     }}
-                    className="max-w-full rounded-xl bg-white/75 px-3 py-2 text-left text-[11px] font-black leading-tight text-current shadow-sm"
+                    className="max-w-full rounded bg-white/80 px-3 py-2 text-left text-[11px] font-bold leading-tight text-current shadow-sm"
                   >
                     <span className="block truncate">{primaryEvent.title}</span>
                     <span className="mt-1 block text-[9px] uppercase tracking-wider opacity-70">{primaryEvent.type}</span>
@@ -276,7 +277,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[calc(100vw-1.5rem)] lg:max-w-6xl">
+    <div className="erp-page mx-auto w-full max-w-[calc(100vw-1.5rem)] lg:max-w-6xl">
       {renderHeader()}
 
       <div className="mb-4 flex flex-col gap-3 lg:mb-6 lg:flex-row lg:flex-wrap lg:items-center lg:gap-4">
@@ -290,9 +291,9 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
               key={type}
               onClick={() => setFilterType(type)}
               className={cn(
-                'rounded-xl border px-2 py-2 text-xs font-bold transition-all lg:rounded-lg lg:px-3 lg:py-1.5',
+                'rounded border px-2 py-2 text-xs font-bold transition-colors lg:px-3 lg:py-1.5',
                 filterType === type
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                  ? 'bg-slate-800 text-white border-slate-800'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
               )}
             >
@@ -303,31 +304,31 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
 
         <div className="ml-auto hidden sm:flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-rose-500 shadow-sm shadow-rose-200" />
+            <div className="w-3 h-3 rounded-full bg-rose-500" />
             <span className="text-xs font-bold text-slate-600 uppercase tracking-tighter">Holiday</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
+            <div className="w-3 h-3 rounded-full bg-emerald-500" />
             <span className="text-xs font-bold text-slate-600 uppercase tracking-tighter">Festival</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-200" />
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
             <span className="text-xs font-bold text-slate-600 uppercase tracking-tighter">Event</span>
           </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white p-2.5 shadow-xl shadow-slate-200/50 lg:rounded-3xl lg:p-4">
+      <div className="erp-card overflow-hidden p-2.5 lg:p-4">
         {renderDays()}
         {renderCells()}
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/55 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded border border-slate-200 bg-white shadow-lg">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h3 className="text-xl font-bold text-slate-900">{editingEvent ? 'Edit Event' : 'Add New Event'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="rounded p-2 transition-colors hover:bg-slate-200">
                 <X size={20} />
               </button>
             </div>
@@ -340,7 +341,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 bg-slate-50/50 transition-all outline-none"
+                  className="w-full rounded border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   placeholder="e.g. Science Exhibition"
                 />
               </div>
@@ -353,7 +354,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 bg-slate-50/50 transition-all outline-none"
+                    className="w-full rounded border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
                 <div className="space-y-2">
@@ -361,7 +362,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value as EventType })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 bg-slate-50/50 transition-all outline-none"
+                    className="w-full rounded border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="Holiday">Holiday</option>
                     <option value="Festival">Festival</option>
@@ -376,7 +377,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                   type="time"
                   value={formData.time || ''}
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 bg-slate-50/50 transition-all outline-none"
+                  className="w-full rounded border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
@@ -385,7 +386,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                 <select
                   value={formData.scope}
                   onChange={(e) => setFormData({ ...formData, scope: e.target.value as EventScope })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 bg-slate-50/50 transition-all outline-none"
+                  className="w-full rounded border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="All">All Institution</option>
                   <option value="Department">Department Specific</option>
@@ -398,7 +399,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 bg-slate-50/50 transition-all outline-none"
+                  className="w-full rounded border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   placeholder="Additional details..."
                   rows={3}
                 />
@@ -409,7 +410,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                   <button
                     type="button"
                     onClick={() => void handleDelete()}
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors font-bold"
+                    className="flex items-center gap-2 rounded border border-rose-200 px-4 py-3 font-bold text-rose-600 transition-colors hover:bg-rose-50"
                   >
                     <Trash2 size={18} />
                     Delete
@@ -419,13 +420,13 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-6 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                    className="rounded border border-slate-200 px-6 py-3 font-bold text-slate-600 transition-colors hover:bg-slate-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-8 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all"
+                    className="erp-primary-button px-8 py-3 transition-colors"
                   >
                     {editingEvent ? 'Save Changes' : 'Create Event'}
                   </button>
@@ -456,18 +457,18 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
             </div>
 
             <div className="grid grid-cols-1 gap-3 text-sm min-[380px]:grid-cols-2 lg:gap-4">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Date</p>
+              <div className="rounded border border-slate-200 bg-slate-50 p-4">
+                <p className="erp-section-label">Date</p>
                 <p className="mt-1 font-semibold text-slate-900">{format(parseISO(selectedEvent.date), 'dd MMM yyyy')}</p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Scope</p>
+              <div className="rounded border border-slate-200 bg-slate-50 p-4">
+                <p className="erp-section-label">Scope</p>
                 <p className="mt-1 font-semibold text-slate-900">{selectedEvent.scope}</p>
               </div>
             </div>
 
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Description</p>
+            <div className="rounded border border-slate-200 bg-slate-50 p-4">
+              <p className="erp-section-label">Description</p>
               <p className="mt-2 text-sm text-slate-700">
                 {selectedEvent.description || 'No additional details provided.'}
               </p>
@@ -482,7 +483,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
                     setSelectedEvent(null);
                     setIsModalOpen(true);
                   }}
-                  className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition-colors"
+                  className="erp-primary-button px-4 py-2.5 text-sm transition-colors"
                 >
                   Edit Event
                 </button>

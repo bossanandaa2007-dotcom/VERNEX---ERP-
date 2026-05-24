@@ -166,16 +166,17 @@ const Assignments = () => {
   };
 
   return (
-    <div className="space-y-6 lg:pb-12 h-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="erp-page h-full lg:pb-12">
+      <div className="erp-page-header flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Academic Assignments</h1>
-          <p className="text-slate-500 mt-1">Track deadlines and manage coursework through Google Drive links.</p>
+          <p className="erp-kicker">8. Academic Assignments</p>
+          <h1 className="erp-title">Academic Assignments</h1>
+          <p className="erp-subtitle">Track deadlines and manage coursework through Google Drive links.</p>
         </div>
         {user?.role === 'Teacher' && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm text-sm"
+            className="erp-primary-button flex items-center gap-2 px-4 py-2 text-sm transition-colors"
           >
             <Plus size={16} /> Create Assignment
           </button>
@@ -183,54 +184,54 @@ const Assignments = () => {
       </div>
 
       {notification && (
-        <div className="fixed top-20 right-6 z-50 animate-in slide-in-from-right fade-in duration-300">
-          <div className="bg-indigo-600 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3">
-            <CheckCircle size={20} />
+        <div className="fixed right-6 top-20 z-50">
+          <div className="flex items-center gap-3 rounded border border-slate-800 bg-slate-900 px-5 py-3 text-white shadow-lg">
+            <CheckCircle size={18} />
             <p className="font-semibold text-sm">{notification}</p>
           </div>
         </div>
       )}
 
       {isLoading ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-8 text-sm text-slate-500 shadow-sm">
+        <div className="erp-card p-6 text-sm text-slate-500">
           Loading assignments...
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {assignments.map((asgn) => {
             const hasSubmitted = asgn.submissions.some((submission) => submission.student_email === user?.email);
             return (
-              <div key={asgn.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100/80 hover:shadow-md transition-all group overflow-hidden relative">
+              <div key={asgn.id} className="erp-card group relative overflow-hidden p-5 transition-shadow hover:shadow-md">
                 {hasSubmitted && (
-                  <div className="absolute top-0 right-0 bg-emerald-500 text-white px-8 py-1 text-[10px] font-bold uppercase rotate-45 translate-x-6 translate-y-3 z-10">
+                  <div className="absolute right-3 top-3 rounded bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700 ring-1 ring-emerald-100">
                     Submitted
                   </div>
                 )}
-                <div className="flex items-start justify-between mb-6">
+                <div className="mb-5 flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
-                      <BookMarked size={24} />
+                    <div className="rounded border border-blue-100 bg-blue-50 p-3 text-blue-700">
+                      <BookMarked size={22} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">{asgn.title}</h3>
+                      <h3 className="text-base font-bold text-slate-900">{asgn.title}</h3>
                       <p className="text-xs text-slate-500 font-medium">Published in {asgn.subject} · {asgn.class}</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end shrink-0">
-                    <span className="flex items-center gap-1 text-rose-600 text-xs font-bold uppercase tracking-widest bg-rose-50 px-2 py-1 rounded-md border border-rose-100">
+                    <span className="flex items-center gap-1 rounded border border-rose-100 bg-rose-50 px-2 py-1 text-xs font-bold uppercase text-rose-600">
                       <Clock size={12} /> {asgn.deadline}
                     </span>
                   </div>
                 </div>
 
-                <p className="text-slate-600 text-sm leading-relaxed mb-6 bg-slate-50 p-3 rounded-xl min-h-[60px]">
+                <p className="mb-5 min-h-[60px] rounded border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
                   {asgn.description}
                 </p>
 
                 <div className="mb-6">
                   <button
                     onClick={() => handleOpenAssignment(asgn)}
-                    className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                    className="flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
                   >
                     <ExternalLink size={14} /> Open assignment link
                   </button>
@@ -241,7 +242,7 @@ const Assignments = () => {
                     {user?.role === 'Teacher' ? (
                       <button
                         onClick={() => { setSelectedAsgn(asgn); setIsSubmissionsOpen(true); }}
-                        className="text-indigo-600 text-sm font-bold hover:underline"
+                        className="text-sm font-bold text-blue-700 hover:underline"
                       >
                         View {asgn.submissions.length} Submissions
                       </button>
@@ -253,7 +254,7 @@ const Assignments = () => {
                     {user?.role === 'Teacher' ? (
                       <button
                         onClick={() => handleDownloadSubmissionsReport(asgn)}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-colors shadow-sm"
+                        className="flex items-center gap-2 rounded bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-800"
                       >
                         <Download size={14} /> Export Submissions
                       </button>
@@ -264,7 +265,7 @@ const Assignments = () => {
                           setSubmissionTarget(asgn);
                           setIsSubmitModalOpen(true);
                         }}
-                        className={`px-6 py-2 ${hasSubmitted ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-600/20'} rounded-xl font-bold text-xs transition-all active:scale-95`}
+                        className={`rounded px-6 py-2 text-xs font-bold transition-colors ${hasSubmitted ? 'cursor-not-allowed bg-slate-100 text-slate-400' : 'bg-blue-700 text-white hover:bg-blue-800'}`}
                       >
                         {hasSubmitted ? 'Submission Linked' : 'Submit Drive Link'}
                       </button>
@@ -278,7 +279,7 @@ const Assignments = () => {
       )}
 
       {!isLoading && assignments.length === 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-8 text-sm text-slate-500 shadow-sm">
+        <div className="erp-card p-6 text-sm text-slate-500">
           No assignments are available for this profile yet.
         </div>
       )}
@@ -287,18 +288,18 @@ const Assignments = () => {
         <form onSubmit={handleAddAssignment} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Assignment Title</label>
-            <input name="title" required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all" />
+            <input name="title" required className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">Select Class</label>
-              <select name="class" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm">
+              <select name="class" className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                 {visibleClasses.map((className) => <option key={className} value={className}>{className}</option>)}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">Subject</label>
-              <select name="subject" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm">
+              <select name="subject" className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                 {teacherSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
               </select>
             </div>
@@ -306,12 +307,12 @@ const Assignments = () => {
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">Submission Deadline</label>
-              <input name="deadline" type="date" required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all" />
+              <input name="deadline" type="date" required className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
             </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Instructions / Guidelines</label>
-            <textarea name="description" rows={4} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all resize-none" />
+            <textarea name="description" rows={4} required className="erp-input w-full resize-none px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Google Drive Link</label>
@@ -320,13 +321,13 @@ const Assignments = () => {
               type="url"
               required
               placeholder="https://drive.google.com/..."
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all"
+              className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
             <p className="text-xs text-slate-400">Paste the shareable assignment brief or worksheet link.</p>
           </div>
           <div className="pt-4 flex gap-3">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors">Discard</button>
-            <button type="submit" className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors">Launch Assignment</button>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 rounded border border-slate-200 px-4 py-2.5 font-medium text-slate-700 transition-colors hover:bg-slate-50">Discard</button>
+            <button type="submit" className="erp-primary-button flex-1 px-4 py-2.5 transition-colors">Create Assignment</button>
           </div>
         </form>
       </Modal>
@@ -337,14 +338,14 @@ const Assignments = () => {
             <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-2">{selectedAsgn.title}</h4>
             <div className="space-y-2">
               {selectedAsgn.submissions.length > 0 ? selectedAsgn.submissions.map((submission) => (
-                <div key={submission.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                <div key={submission.id} className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 p-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{submission.student_email}</p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">{submission.submitted_at}</p>
+                    <p className="erp-section-label">{submission.submitted_at}</p>
                   </div>
                   <button
                     onClick={() => window.open(submission.submissionUrl, '_blank', 'noopener,noreferrer')}
-                    className="p-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200"
+                    className="rounded bg-blue-50 p-2 text-blue-700 hover:bg-blue-100"
                   >
                     <ExternalLink size={14} />
                   </button>
@@ -356,7 +357,7 @@ const Assignments = () => {
             <div className="pt-4 border-t border-slate-100">
               <button
                 onClick={() => handleDownloadSubmissionsReport(selectedAsgn)}
-                className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm"
+                className="erp-primary-button w-full py-2.5 text-sm transition-colors"
               >
                 Download Full PDF Report
               </button>
@@ -369,7 +370,7 @@ const Assignments = () => {
         <form onSubmit={handleSubmitAssignment} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Assignment</label>
-            <div className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700">
+            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700">
               {submissionTarget?.title || 'No assignment selected'}
             </div>
           </div>
@@ -380,13 +381,13 @@ const Assignments = () => {
               type="url"
               required
               placeholder="https://drive.google.com/..."
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all"
+              className="erp-input w-full px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
             <p className="text-xs text-slate-400">Paste the shareable Google Drive link to your completed work.</p>
           </div>
           <div className="pt-4 flex gap-3">
-            <button type="button" onClick={() => { setIsSubmitModalOpen(false); setSubmissionTarget(null); }} className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors">Cancel</button>
-            <button type="submit" className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors">Submit Link</button>
+            <button type="button" onClick={() => { setIsSubmitModalOpen(false); setSubmissionTarget(null); }} className="flex-1 rounded border border-slate-200 px-4 py-2.5 font-medium text-slate-700 transition-colors hover:bg-slate-50">Cancel</button>
+            <button type="submit" className="erp-primary-button flex-1 px-4 py-2.5 transition-colors">Submit Link</button>
           </div>
         </form>
       </Modal>

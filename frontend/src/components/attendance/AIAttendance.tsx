@@ -1,54 +1,97 @@
-import { BellRing, CalendarCheck, Sparkles } from 'lucide-react';
+import { BellRing, CalendarCheck, ClipboardCheck, FileCheck2 } from 'lucide-react';
 
 const AIAttendance = () => {
   return (
-    <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center px-3 py-6 sm:px-6 lg:py-10">
-      <section className="w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-        <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="bg-slate-950 p-6 text-white sm:p-8 lg:p-10">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-emerald-300">
-              <Sparkles size={28} />
+    <div className="space-y-4">
+      <section className="border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Attendance Monitoring</h1>
+              <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                AI assisted
+              </span>
             </div>
-            <p className="mt-8 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-300">
-              AI Attendance
-            </p>
-            <h1 className="mt-3 text-3xl font-black leading-tight tracking-tight sm:text-4xl">
-              Coming Soon
-            </h1>
-            <p className="mt-4 max-w-md text-sm font-medium leading-6 text-slate-300">
-              We are preparing a cleaner AI-assisted attendance workflow for teachers. This page will return with a focused review experience once the update is ready.
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              The upload-assisted review flow is being revised. Manual attendance and class attendance workflows remain available for daily operations.
             </p>
           </div>
+          <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+            Update in progress
+          </div>
+        </div>
+      </section>
 
-          <div className="p-6 sm:p-8 lg:p-10">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
-                  <CalendarCheck size={22} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-slate-950">Attendance tools stay available</h2>
-                  <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
-                    Manual attendance and class attendance pages are still active. Only the AI upload flow is paused for this update.
-                  </p>
-                </div>
-              </div>
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-blue-50 text-blue-700">
+              <CalendarCheck size={20} />
             </div>
-
-            <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-amber-600 shadow-sm">
-                  <BellRing size={22} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-slate-950">Update in progress</h2>
-                  <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
-                    The next version will be designed around accuracy, simple corrections, and a faster teacher review path.
-                  </p>
-                </div>
-              </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-950">Daily Attendance</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Class attendance pages remain active for regular teacher entry and correction.</p>
             </div>
           </div>
+        </div>
+
+        <div className="border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-emerald-50 text-emerald-700">
+              <ClipboardCheck size={20} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-950">Teacher Review</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">The next review path will emphasize verification, correction, and audit-friendly records.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-700">
+              <BellRing size={20} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-950">Operational Notice</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Only the upload-assisted page is paused. Existing attendance data and reports are unaffected.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <FileCheck2 size={18} className="text-slate-500" />
+          <h2 className="text-sm font-semibold text-slate-950">Available Workflows</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Workflow</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Use Case</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr>
+                <td className="px-3 py-3 font-medium text-slate-900">Manual Attendance</td>
+                <td className="px-3 py-3 text-emerald-700">Available</td>
+                <td className="px-3 py-3 text-slate-600">Daily attendance entry for assigned classes.</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 font-medium text-slate-900">Class Attendance Review</td>
+                <td className="px-3 py-3 text-emerald-700">Available</td>
+                <td className="px-3 py-3 text-slate-600">Check attendance records and update recent entries.</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 font-medium text-slate-900">Upload-Assisted Attendance</td>
+                <td className="px-3 py-3 text-amber-700">Paused</td>
+                <td className="px-3 py-3 text-slate-600">Photo-assisted review flow under revision.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
     </div>

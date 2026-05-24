@@ -10,7 +10,6 @@ import {
   School,
   Send,
   Shield,
-  Sparkles,
   User,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -238,22 +237,22 @@ const ComplaintForm = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[calc(100vw-1.5rem)] space-y-5 px-0.5 lg:max-w-6xl lg:space-y-8 lg:px-0">
+    <div className="erp-page mx-auto w-full max-w-[calc(100vw-1.5rem)] px-0.5 lg:max-w-6xl lg:px-0">
       {successTrackingId && (
-        <div className="fixed inset-x-3 top-20 z-50 animate-in fade-in slide-in-from-top-2 duration-300 lg:inset-x-auto lg:right-6 lg:slide-in-from-right">
-          <div className="rounded-3xl border border-emerald-100 bg-white p-4 shadow-2xl lg:min-w-[290px] lg:p-5">
+        <div className="fixed inset-x-3 top-20 z-50 lg:inset-x-auto lg:right-6">
+          <div className="rounded border border-emerald-100 bg-white p-4 shadow-lg lg:min-w-[290px] lg:p-5">
             <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-emerald-50 text-emerald-600">
                 <CheckCircle2 size={22} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-black text-slate-900">Complaint Submitted Successfully</p>
+                <p className="text-sm font-semibold text-slate-900">Complaint Submitted Successfully</p>
                 <p className="text-sm text-slate-500 mt-1">Tracking ID: <span className="font-bold text-emerald-600">{successTrackingId}</span></p>
               </div>
               <button
                 type="button"
                 onClick={() => setSuccessTrackingId(null)}
-                className="text-slate-300 hover:text-slate-500 transition-colors"
+                className="text-slate-300 transition-colors hover:text-slate-500"
               >
                 ×
               </button>
@@ -262,7 +261,7 @@ const ComplaintForm = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {divisionCards.map((card) => {
           const isActive = formData.division === card.title;
 
@@ -272,19 +271,19 @@ const ComplaintForm = () => {
               type="button"
               onClick={() => handleDivisionSelect(card.title)}
               disabled={!!allowedDivision && allowedDivision !== card.title}
-              className={`overflow-hidden rounded-[1.5rem] border bg-white text-left shadow-xl shadow-slate-200/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl lg:rounded-3xl ${
-                isActive ? 'border-indigo-300 ring-2 ring-indigo-100' : 'border-slate-100'
-              } ${allowedDivision && allowedDivision !== card.title ? 'cursor-not-allowed opacity-50 hover:translate-y-0 hover:shadow-xl' : ''}`}
+              className={`erp-card overflow-hidden text-left transition-shadow hover:shadow-md ${
+                isActive ? 'border-blue-300 ring-2 ring-blue-100' : ''
+              } ${allowedDivision && allowedDivision !== card.title ? 'cursor-not-allowed opacity-50' : ''}`}
             >
-              <div className="bg-indigo-600 px-5 py-4 text-white lg:px-6 lg:py-5">
-                <h2 className="text-xl font-bold">{card.title} Division</h2>
-                <p className="text-indigo-100 text-sm mt-1">{card.description}</p>
+              <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 lg:px-6 lg:py-5">
+                <h2 className="text-lg font-bold text-slate-900">{card.title} Division</h2>
+                <p className="mt-1 text-sm text-slate-500">{card.description}</p>
               </div>
               <div className="flex flex-col gap-4 p-4 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between lg:p-6">
                 <p className="text-sm leading-relaxed text-slate-500">
                   Tap once to auto-fill the division and jump to the complaint form.
                 </p>
-                <span className="shrink-0 rounded-2xl bg-indigo-600 px-4 py-3 text-center font-bold text-white shadow-lg shadow-indigo-600/20 lg:px-5">
+                <span className="erp-primary-button shrink-0 px-4 py-2.5 text-center text-sm lg:px-5">
                   Lodge Complaint
                 </span>
               </div>
@@ -295,21 +294,22 @@ const ComplaintForm = () => {
 
       <div
         ref={formRef}
-        className={`overflow-hidden rounded-[1.5rem] border bg-white shadow-xl shadow-slate-200/50 transition-all duration-500 lg:rounded-3xl ${
-          isFormHighlighted ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-100'
+        className={`erp-card overflow-hidden transition-shadow ${
+          isFormHighlighted ? 'border-blue-300 ring-2 ring-blue-100' : ''
         }`}
       >
-        <div className="bg-indigo-600 p-5 text-white lg:p-6">
-          <h2 className="text-xl font-bold flex items-center gap-2">
+        <div className="border-b border-slate-200 bg-slate-50 p-5 lg:p-6">
+          <p className="erp-kicker">Submit Complaint</p>
+          <h2 className="mt-1 flex items-center gap-2 text-lg font-bold text-slate-900">
             <FileText size={24} />
             Submit Complaint
           </h2>
-          <p className="text-indigo-100 text-sm mt-1">Simple, guided complaint flow for quick student reporting.</p>
+          <p className="erp-subtitle">Structured complaint flow for student reporting.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 p-4 lg:space-y-8 lg:p-8">
           {errorMessage && (
-            <div className="p-4 bg-rose-50 text-rose-700 rounded-2xl flex items-center gap-3 border border-rose-100">
+            <div className="flex items-center gap-3 rounded border border-rose-100 bg-rose-50 p-4 text-rose-700">
               <AlertCircle size={20} />
               <p className="text-sm font-bold">{errorMessage}</p>
             </div>
@@ -317,7 +317,7 @@ const ComplaintForm = () => {
 
           <section className="space-y-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded border border-blue-100 bg-blue-50 text-blue-700">
                 <User size={18} />
               </div>
               <div>
@@ -345,12 +345,12 @@ const ComplaintForm = () => {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles size={14} /> Division
+                  <Shield size={14} /> Division
                 </label>
                 <select
                   value={formData.division}
                   onChange={(event) => setFormData((current) => ({ ...current, division: event.target.value as ComplaintDivision }))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 hover:border-indigo-300 bg-slate-50/50 transition-all outline-none"
+                  className="erp-input w-full px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   disabled={!!allowedDivision}
                 >
                   <option value="Boys">Boys</option>
@@ -375,7 +375,7 @@ const ComplaintForm = () => {
 
           <section className="space-y-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded border border-blue-100 bg-blue-50 text-blue-700">
                 <School size={18} />
               </div>
               <div>
@@ -394,7 +394,7 @@ const ComplaintForm = () => {
                   value={formData.title}
                   onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))}
                   placeholder="Short complaint title"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 hover:border-indigo-300 bg-slate-50/50 transition-all outline-none"
+                  className="erp-input w-full px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
               </div>
               <div className="space-y-2">
@@ -404,7 +404,7 @@ const ComplaintForm = () => {
                 <select
                   value={formData.sendTo}
                   onChange={(event) => setFormData((current) => ({ ...current, sendTo: event.target.value as RecipientRouteType }))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 hover:border-indigo-300 bg-slate-50/50 transition-all outline-none"
+                  className="erp-input w-full px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="Class Teacher">Class Teacher</option>
                   <option value="Subject Teacher">Subject Teacher</option>
@@ -420,7 +420,7 @@ const ComplaintForm = () => {
               <select
                 value={formData.recipientId}
                 onChange={(event) => setFormData((current) => ({ ...current, recipientId: event.target.value }))}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 hover:border-indigo-300 bg-slate-50/50 transition-all outline-none"
+                className="erp-input w-full px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 disabled={!recipientOptions.length}
               >
                 {!recipientOptions.length && <option value="">No recipients available</option>}
@@ -448,10 +448,10 @@ const ComplaintForm = () => {
                     key={type}
                     type="button"
                     onClick={() => setFormData((current) => ({ ...current, type }))}
-                    className={`rounded-2xl border px-3 py-2.5 text-sm font-bold transition-all lg:rounded-full lg:px-4 ${
+                    className={`rounded border px-3 py-2.5 text-sm font-bold transition-colors lg:px-4 ${
                       formData.type === type
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+                        ? 'border-blue-700 bg-blue-700 text-white'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
                     }`}
                   >
                     {type}
@@ -477,7 +477,7 @@ const ComplaintForm = () => {
                   value={formData.description}
                   onChange={(event) => setFormData((current) => ({ ...current, description: event.target.value }))}
                   placeholder="Describe the issue in simple words..."
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 hover:border-indigo-300 bg-slate-50/50 transition-all outline-none resize-none"
+                  className="erp-input w-full resize-none px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
@@ -488,7 +488,7 @@ const ComplaintForm = () => {
                 <select
                   value={formData.priority}
                   onChange={(event) => setFormData((current) => ({ ...current, priority: event.target.value as ComplaintPriority }))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 hover:border-indigo-300 bg-slate-50/50 transition-all outline-none"
+                  className="erp-input w-full px-4 py-3 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   {priorities.map((priority) => (
                     <option key={priority} value={priority}>
@@ -500,9 +500,9 @@ const ComplaintForm = () => {
             </div>
           </section>
 
-          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 px-5 py-4">
+          <div className="rounded border border-blue-100 bg-blue-50/70 px-5 py-4">
             <div className="flex items-start gap-3">
-              <Info size={18} className="text-indigo-500 shrink-0 mt-0.5" />
+              <Info size={18} className="mt-0.5 shrink-0 text-blue-600" />
               <div className="space-y-1 text-sm text-slate-600">
                 <p>Complaint will be sent to the selected authority automatically.</p>
                 <p>Status can be tracked in <span className="font-bold text-slate-800">My Complaints</span>.</p>
@@ -514,7 +514,7 @@ const ComplaintForm = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all active:scale-[0.98] disabled:opacity-60"
+            className="erp-primary-button flex w-full items-center justify-center gap-2 px-6 py-3 transition-colors disabled:opacity-60"
           >
             <Send size={18} />
             {isSubmitting ? 'Submitting Complaint...' : 'Submit Complaint'}
@@ -527,28 +527,28 @@ const ComplaintForm = () => {
           <h2 className="text-xl font-bold text-slate-900">My Complaints</h2>
         </div>
 
-        <div className="overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-sm lg:rounded-3xl">
+        <div className="erp-table-wrap">
           <div className="space-y-3 bg-slate-50 p-3 md:hidden">
             {studentComplaints.map((complaint) => (
-              <div key={complaint.id} className="rounded-[1.35rem] border border-slate-100 bg-white p-4 shadow-sm">
+              <div key={complaint.id} className="rounded border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="break-words text-sm font-black text-slate-900">{complaint.title}</p>
+                    <p className="break-words text-sm font-semibold text-slate-900">{complaint.title}</p>
                     <p className="mt-1 text-xs font-bold text-slate-400">{complaint.type} - {new Date(complaint.createdAt).toLocaleDateString()}</p>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                  <span className={`shrink-0 rounded px-2.5 py-1 text-[10px] font-bold uppercase ${
                     complaint.status === 'OPEN' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
                   }`}>
                     {complaint.status === 'OPEN' ? 'Pending' : 'Resolved'}
                   </span>
                 </div>
-                {complaint.response && <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">{complaint.response}</p>}
+                {complaint.response && <p className="mt-3 rounded bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">{complaint.response}</p>}
               </div>
             ))}
           </div>
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[680px] text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold tracking-widest">
+              <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-6 py-4 border-b border-slate-100">Title</th>
                   <th className="px-6 py-4 border-b border-slate-100">Type</th>
@@ -567,7 +567,7 @@ const ComplaintForm = () => {
                     </td>
                     <td className="px-6 py-4 text-slate-700 font-medium">{complaint.type}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${
+                      <span className={`rounded px-2.5 py-1 text-[10px] font-bold uppercase ${
                         complaint.status === 'OPEN' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
                       }`}>
                         {complaint.status === 'OPEN' ? 'Pending' : 'Resolved'}
@@ -584,7 +584,7 @@ const ComplaintForm = () => {
 
           {studentComplaints.length === 0 && (
             <div className="py-12 text-center bg-slate-50 border-t border-slate-100">
-              <p className="text-slate-400 font-medium uppercase tracking-widest">No complaints submitted yet</p>
+              <p className="font-medium uppercase tracking-wide text-slate-400">No complaints submitted yet</p>
             </div>
           )}
         </div>

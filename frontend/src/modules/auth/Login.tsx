@@ -85,7 +85,7 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
   };
 
   return (
-    <div className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
+    <div className="border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-slate-900">{isStudentLogin ? 'Student Login' : 'Staff Login'}</h2>
         <p className="mt-1 text-sm text-slate-500">
@@ -96,7 +96,7 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         
         {error && (
-          <div className="p-4 bg-rose-50 text-rose-600 rounded-xl flex items-start gap-3 border border-rose-100">
+          <div className="flex items-start gap-3 rounded border border-rose-100 bg-rose-50 p-4 text-rose-600">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <p className="text-sm font-medium">{error}</p>
           </div>
@@ -111,8 +111,8 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
             <input
               {...register('email')}
               type="email"
-              className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all ${
-                errors.email ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500'
+              className={`block w-full rounded border py-2.5 pl-10 pr-3 transition-all focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                errors.email ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50 focus:border-blue-500 focus:bg-white'
               }`}
               placeholder="admin@school.edu"
             />
@@ -129,8 +129,8 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
             <input
               {...register('password')}
               type="password"
-              className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all ${
-                errors.password ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500'
+              className={`block w-full rounded border py-2.5 pl-10 pr-3 transition-all focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                errors.password ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50 focus:border-blue-500 focus:bg-white'
               }`}
               placeholder="••••••••"
             />
@@ -144,7 +144,7 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
               id="remember-me"
               name="remember-me"
               type="checkbox"
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
+              className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-500"
             />
             <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700">
               Remember me
@@ -152,7 +152,7 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
           </div>
 
           <div className="text-sm">
-            <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+            <a href="#" className="font-medium text-blue-700 transition-colors hover:text-blue-800">
               Forgot password?
             </a>
           </div>
@@ -161,7 +161,7 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-md shadow-indigo-500/30 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+          className="flex w-full items-center justify-center rounded border border-transparent bg-blue-700 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isLoading ? (
             <Loader2 className="animate-spin h-5 w-5" />
@@ -175,14 +175,14 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
         {isStudentLogin ? (
           <>
             Staff member?{' '}
-            <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">
+            <Link to="/login" className="font-semibold text-blue-700 hover:text-blue-800">
               Use staff login
             </Link>
           </>
         ) : (
           <>
             Student?{' '}
-            <Link to="/student-login" className="font-semibold text-indigo-600 hover:text-indigo-500">
+            <Link to="/student-login" className="font-semibold text-blue-700 hover:text-blue-800">
               Use student login
             </Link>
           </>

@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import {
     addTeacherSubjectAssignment,
+    addGradeSubjectRecord,
+    createClassSubjectGroupRecord,
     createSectionRecord,
     createStudentRecord,
     createStudentRecords,
+    deleteGradeSubjectRecord,
     createTeacherRecord,
     deleteSectionRecord,
     deleteStudentRecord,
@@ -23,7 +26,7 @@ export interface IClassState {
     sections: ISection[];
     teachers: ITeacher[];
     students: IStudent[];
-    inCharges: Record<string, any[]>;
+    inCharges: Record<string, unknown[]>;
     isLoading: boolean;
     initialized: boolean;
     initialize: () => Promise<void>;
@@ -55,7 +58,25 @@ export interface IClassState {
     addStudent: (student: Omit<IStudent, 'id'>) => Promise<void>;
     addStudents: (students: Array<Omit<IStudent, 'id'>>) => Promise<void>;
     deleteStudent: (id: string) => Promise<void>;
+    addGradeSubject: (gradeKey: string, subject: string) => Promise<void>;
+    deleteGradeSubject: (gradeKey: string, subject: string) => Promise<void>;
 }
+
+const getSectionGradeKey = (sectionName: string) => {
+    const normalized = sectionName.trim().replace(/^(class|std|standard)\s+/i, '');
+    const match = normalized.match(/^(lkg|ukg|\d{1,2})/i);
+    return match?.[1].toUpperCase() || '';
+};
+
+const getGradeLabel = (gradeKey: string) => (['LKG', 'UKG'].includes(gradeKey) ? gradeKey : `Class ${gradeKey}`);
+
+const getGradeSections = (sections: ISection[], gradeKey: string) =>
+    sections.filter((section) => getSectionGradeKey(section.name) === gradeKey);
+
+const getGroupsForGrade = (groups: IClassSubjectGroup[], gradeSections: ISection[]) => {
+    const gradeSectionNames = new Set(gradeSections.map((section) => section.name));
+    return groups.filter((group) => group.sectionNames.some((sectionName) => gradeSectionNames.has(sectionName)));
+};
 
 export const useClassStore = create<IClassState>()(
     (set, get) => ({
@@ -171,6 +192,46 @@ export const useClassStore = create<IClassState>()(
         deleteStudent: async (id) => {
             await deleteStudentRecord(id);
             set((state) => ({ students: state.students.filter((student) => student.id !== id) }));
+        },
+        addGradeSubject: async (gradeKey, subject) => {
+            const trimmedSubject = subject.trim();
+            if (!trimmedSubject) {
+                throw new Error('Subject is required.');
+            }
+
+            const state = get();
+            const gradeSections = getGradeSections(state.sections, gradeKey);
+            if (!gradeSections.length) {
+                throw new Error('No sections found for this class group.');
+            }
+
+            let targetGroups = getGroupsForGrade(state.curriculumGroups, gradeSections);
+            if (!targetGroups.length) {
+                const categoryId = gradeSections[0].categoryId;
+                const groupId = `grade-${gradeKey.toLowerCase()}-subjects`;
+                await createClassSubjectGroupRecord(
+                    groupId,
+                    categoryId,
+                    `${getGradeLabel(gradeKey)} Subjects`,
+                    `Subjects assigned to ${getGradeLabel(gradeKey)} sections.`,
+                    gradeSections.map((section) => section.id)
+                );
+                await get().refresh();
+                targetGroups = getGroupsForGrade(get().curriculumGroups, gradeSections);
+            }
+
+            await Promise.all(targetGroups.map((group) => {
+                const maxSortOrder = group.subjects.reduce((max, item) => Math.max(max, item.sortOrder), -1);
+                return addGradeSubjectRecord(group.id, group.categoryId, trimmedSubject, maxSortOrder + 1);
+            }));
+            await get().refresh();
+        },
+        deleteGradeSubject: async (gradeKey, subject) => {
+            const state = get();
+            const gradeSections = getGradeSections(state.sections, gradeKey);
+            const targetGroups = getGroupsForGrade(state.curriculumGroups, gradeSections);
+            await deleteGradeSubjectRecord(targetGroups.map((group) => group.id), subject);
+            await get().refresh();
         },
     })
 );
