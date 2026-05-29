@@ -46,6 +46,13 @@ const IssuedBooksPage = () => {
           <h1 className="text-2xl font-bold">Issued Books</h1>
           <p className="text-slate-500">Track active issues, mark returns and send reminders.</p>
         </div>
+        <button
+          onClick={() => void sendReminders()}
+          className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:bg-slate-200 disabled:text-slate-500"
+          disabled={!Object.values(selected).some(Boolean)}
+        >
+          Send Reminders
+        </button>
       </div>
 
       <div className="space-y-3">

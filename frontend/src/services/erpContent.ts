@@ -17,6 +17,7 @@ export interface AssignmentSubmission {
   assignment_id: string;
   student_id?: string | null;
   student_email: string;
+  student_name?: string | null;
   submitted_at: string;
   submissionUrl: string;
 }
@@ -92,11 +93,14 @@ const assertSupabase = () => {
 
 const LIBRARIAN_BOOKS_TABLE = 'librarian_books';
 
+const singleRelation = <T>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? value[0] || null : value || null;
+
 export const fetchAssignments = async (classNames?: string[]) => {
   const client = assertSupabase();
   let query = client
     .from('assignments')
-    .select('id, title, subject, class_name, deadline, description, drive_url, teacher_id, assignment_submissions(id, assignment_id, student_id, student_email, submitted_at, submission_url)')
+    .select('id, title, subject, class_name, deadline, description, drive_url, teacher_id, assignment_submissions(id, assignment_id, student_id, submitted_at, submission_url, student:profiles(email, name))')
     .order('deadline', { ascending: true });
 
   if (classNames?.length) {
@@ -115,14 +119,18 @@ export const fetchAssignments = async (classNames?: string[]) => {
     description: row.description,
     driveUrl: row.drive_url,
     teacher_id: row.teacher_id,
-    submissions: (row.assignment_submissions || []).map((submission: any) => ({
-      id: submission.id,
-      assignment_id: submission.assignment_id,
-      student_id: submission.student_id,
-      student_email: submission.student_email,
-      submitted_at: submission.submitted_at,
-      submissionUrl: submission.submission_url,
-    })),
+    submissions: (row.assignment_submissions || []).map((submission: any) => {
+      const student = singleRelation(submission.student);
+      return {
+        id: submission.id,
+        assignment_id: submission.assignment_id,
+        student_id: submission.student_id,
+        student_email: student?.email || '',
+        student_name: student?.name || null,
+        submitted_at: submission.submitted_at,
+        submissionUrl: submission.submission_url,
+      };
+    }),
   })) as Assignment[];
 };
 
@@ -164,19 +172,20 @@ export const submitAssignment = async (assignmentId: string, studentId: string, 
     .insert({
       assignment_id: assignmentId,
       student_id: studentId,
-      student_email: studentEmail,
       submitted_at: new Date().toISOString().split('T')[0],
       submission_url: submissionUrl,
     })
-    .select('id, assignment_id, student_id, student_email, submitted_at, submission_url')
+    .select('id, assignment_id, student_id, submitted_at, submission_url, student:profiles(email, name)')
     .single();
 
   if (error) throw error;
+  const student = singleRelation(data.student);
   return {
     id: data.id,
     assignment_id: data.assignment_id,
     student_id: data.student_id,
-    student_email: data.student_email,
+    student_email: student?.email || studentEmail,
+    student_name: student?.name || null,
     submitted_at: data.submitted_at,
     submissionUrl: data.submission_url,
   } as AssignmentSubmission;
@@ -599,83 +608,31 @@ export const fetchFeeRecords = async (studentEmail?: string) => {
   }
 
   const { data, error } = await query;
-  if (!error) {
-    return (data || []).map((row: any) => {
-      const notes = [...(row.accountant_notes || [])].sort((left: any, right: any) =>
-        String(right.updated_at || '').localeCompare(String(left.updated_at || ''))
-      );
+  if (error) throw error;
 
-      return {
-        id: row.id,
-        studentId: row.student_id,
-        studentEmail: row.students?.email,
-        studentName: row.students?.name,
-        rollNo: row.students?.roll_no,
-        categoryId: row.students?.category_id,
-        sectionId: row.students?.section_id,
-        sectionName: row.students?.sections?.name,
-        totalAmount: row.total_amount ?? row.amount,
-        paidAmount: row.paid_amount,
-        pendingAmount: row.remaining_amount,
-        dueDate: row.due_date,
-        type: row.fee_categories?.name,
-        status: row.status,
-        latestNote: notes[0]?.note,
-      };
-    }) as FeeRecord[];
-  }
+  return (data || []).map((row: any) => {
+    const notes = [...(row.accountant_notes || [])].sort((left: any, right: any) =>
+      String(right.updated_at || '').localeCompare(String(left.updated_at || ''))
+    );
 
-  if (!String(error.message || '').includes('student_fee_records')) {
-    throw error;
-  }
-
-  let legacyQuery = client
-    .from('fee_records')
-    .select(`
-      id,
-      student_id,
-      student_email,
-      total_amount,
-      paid_amount,
-      pending_amount,
-      due_date,
-      type,
-      status,
-      students (
-        name,
-        roll_no,
-        category_id,
-        section_id,
-        sections (
-          name
-        )
-      )
-    `)
-    .order('due_date', { ascending: true });
-
-  if (studentEmail) {
-    legacyQuery = legacyQuery.eq('student_email', studentEmail);
-  }
-
-  const { data: legacyData, error: legacyError } = await legacyQuery;
-  if (legacyError) throw legacyError;
-
-  return (legacyData || []).map((row: any) => ({
-    id: row.id,
-    studentId: row.student_id,
-    studentEmail: row.student_email,
-    studentName: row.students?.name,
-    rollNo: row.students?.roll_no,
-    categoryId: row.students?.category_id,
-    sectionId: row.students?.section_id,
-    sectionName: row.students?.sections?.name,
-    totalAmount: row.total_amount,
-    paidAmount: row.paid_amount,
-    pendingAmount: row.pending_amount,
-    dueDate: row.due_date,
-    type: row.type,
-    status: row.status,
-  })) as FeeRecord[];
+    return {
+      id: row.id,
+      studentId: row.student_id,
+      studentEmail: row.students?.email,
+      studentName: row.students?.name,
+      rollNo: row.students?.roll_no,
+      categoryId: row.students?.category_id,
+      sectionId: row.students?.section_id,
+      sectionName: row.students?.sections?.name,
+      totalAmount: row.total_amount ?? row.amount,
+      paidAmount: row.paid_amount,
+      pendingAmount: row.remaining_amount,
+      dueDate: row.due_date,
+      type: row.fee_categories?.name,
+      status: row.status,
+      latestNote: notes[0]?.note,
+    };
+  }) as FeeRecord[];
 };
 
 export const updateFeeStatuses = async (recordIds: string[], status: 'Paid' | 'Pending' | 'Partial') => {

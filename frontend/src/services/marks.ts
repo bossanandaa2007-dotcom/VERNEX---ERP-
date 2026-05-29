@@ -190,10 +190,15 @@ export const fetchTeacherMarkSheet = async (className: string, subject: string, 
     throw studentsError;
   }
 
+  const sectionIds = Array.from(new Set((students || []).map((student: any) => student.section_id).filter(Boolean)));
+  if (!sectionIds.length) {
+    return [];
+  }
+
   const { data: marks, error: marksError } = await client
     .from('student_marks')
     .select('id, student_id, marks, max_marks')
-    .eq('class_name', className)
+    .in('section_id', sectionIds)
     .eq('subject_name', subject)
     .eq('exam_type', examType);
 
@@ -231,9 +236,7 @@ export const upsertStudentMark = async (row: {
     .from('student_marks')
     .upsert({
       student_id: row.studentId,
-      student_name: row.studentName,
       section_id: row.sectionId,
-      class_name: row.className,
       subject_name: row.subject,
       exam_type: row.examType,
       marks: row.marks,
@@ -355,7 +358,7 @@ export const fetchTeacherStudentPerformance = async (
       .order('sort_order', { ascending: true }),
     client
       .from('student_marks')
-      .select('id, student_id, student_name, class_name, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id')
+      .select('id, student_id, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id')
       .in('section_id', sectionIds)
       .eq('exam_type', examType),
     client
@@ -443,7 +446,12 @@ export const fetchStudentMarksByProfile = async (profileId: string, examType?: E
   }
 
   const client = assertSupabase();
-  const [{ data: sectionSubjects, error: sectionSubjectsError }, marksRes] = await Promise.all([
+  const [{ data: section, error: sectionError }, { data: sectionSubjects, error: sectionSubjectsError }, marksRes] = await Promise.all([
+    client
+      .from('sections')
+      .select('name')
+      .eq('id', student.sectionId)
+      .maybeSingle(),
     client
       .from('section_subjects')
       .select('subject_name')
@@ -451,7 +459,7 @@ export const fetchStudentMarksByProfile = async (profileId: string, examType?: E
     (() => {
       let query = client
         .from('student_marks')
-        .select('id, student_id, student_name, class_name, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id')
+        .select('id, student_id, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id')
         .eq('student_id', student.id)
         .order('subject_name', { ascending: true });
 
@@ -467,6 +475,10 @@ export const fetchStudentMarksByProfile = async (profileId: string, examType?: E
     throw sectionSubjectsError;
   }
 
+  if (sectionError) {
+    throw sectionError;
+  }
+
   const { data, error } = marksRes;
   if (error) {
     throw error;
@@ -477,8 +489,8 @@ export const fetchStudentMarksByProfile = async (profileId: string, examType?: E
   return (data || []).filter((row: any) => allowedSubjects.has(String(row.subject_name).toLowerCase())).map((row: any) => ({
     id: row.id,
     studentId: row.student_id,
-    studentName: row.student_name,
-    className: row.class_name,
+    studentName: student.name,
+    className: (section as any)?.name || '',
     sectionId: row.section_id,
     subject: row.subject_name,
     marks: row.marks,
@@ -608,11 +620,11 @@ export const fetchInstitutionMarks = async (filters?: { className?: string; exam
   const client = assertSupabase();
   let query = client
     .from('student_marks')
-    .select('id, student_id, student_name, class_name, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id')
-    .order('class_name', { ascending: true });
+    .select('id, student_id, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id, students!inner(name), sections!inner(name)')
+    .order('subject_name', { ascending: true });
 
   if (filters?.className && filters.className !== 'All') {
-    query = query.eq('class_name', filters.className);
+    query = query.eq('sections.name', filters.className);
   }
 
   if (filters?.examType && filters.examType !== 'All') {
@@ -627,8 +639,8 @@ export const fetchInstitutionMarks = async (filters?: { className?: string; exam
   const records = (data || []).map((row: any) => ({
     id: row.id,
     studentId: row.student_id,
-    studentName: row.student_name,
-    className: row.class_name,
+    studentName: row.students?.name || '',
+    className: row.sections?.name || '',
     sectionId: row.section_id,
     subject: row.subject_name,
     marks: row.marks,
