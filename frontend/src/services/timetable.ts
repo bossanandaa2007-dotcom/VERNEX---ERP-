@@ -40,7 +40,6 @@ interface TimetableEntryRow {
   id: string;
   section_id: string;
   teacher_id: string;
-  teacher_profile_id: string | null;
   subject_name: string;
   day_of_week: number;
   period_number: number;
@@ -49,7 +48,7 @@ interface TimetableEntryRow {
   room_number: string | null;
   notes: string | null;
   sections?: { name: string | null } | Array<{ name: string | null }> | null;
-  teachers?: { name: string | null } | Array<{ name: string | null }> | null;
+  teachers?: { name: string | null; profile_id: string | null } | Array<{ name: string | null; profile_id: string | null }> | null;
 }
 
 const assertSupabase = () => {
@@ -74,7 +73,7 @@ const mapTimetableEntry = (row: TimetableEntryRow): TimetableEntry => ({
   sectionName: singleRelation(row.sections)?.name || '',
   teacherId: row.teacher_id,
   teacherName: singleRelation(row.teachers)?.name || '',
-  teacherProfileId: row.teacher_profile_id,
+  teacherProfileId: singleRelation(row.teachers)?.profile_id || null,
   subject: row.subject_name,
   dayOfWeek: row.day_of_week,
   periodNumber: row.period_number,
@@ -88,7 +87,7 @@ export const fetchTimetableEntries = async (filters?: { sectionId?: string; teac
   const client = assertSupabase();
   let query = client
     .from('timetable_entries')
-    .select('id, section_id, teacher_id, teacher_profile_id, subject_name, day_of_week, period_number, start_time, end_time, room_number, notes, sections!inner(name), teachers!inner(name)')
+    .select('id, section_id, teacher_id, subject_name, day_of_week, period_number, start_time, end_time, room_number, notes, sections!inner(name), teachers!inner(name, profile_id)')
     .order('day_of_week', { ascending: true })
     .order('period_number', { ascending: true });
 
@@ -97,7 +96,7 @@ export const fetchTimetableEntries = async (filters?: { sectionId?: string; teac
   }
 
   if (filters?.teacherProfileId) {
-    query = query.eq('teacher_profile_id', filters.teacherProfileId);
+    query = query.eq('teachers.profile_id', filters.teacherProfileId);
   }
 
   const { data, error } = await query;
@@ -126,7 +125,7 @@ export const saveTimetableEntry = async (entry: TimetableWrite) => {
       day_of_week: entry.dayOfWeek,
       period_number: entry.periodNumber,
     }, { onConflict: 'section_id,day_of_week,period_number' })
-    .select('id, section_id, teacher_id, teacher_profile_id, subject_name, day_of_week, period_number, start_time, end_time, room_number, notes, sections!inner(name), teachers!inner(name)')
+    .select('id, section_id, teacher_id, subject_name, day_of_week, period_number, start_time, end_time, room_number, notes, sections!inner(name), teachers!inner(name, profile_id)')
     .single<TimetableEntryRow>();
 
   if (error) throw error;

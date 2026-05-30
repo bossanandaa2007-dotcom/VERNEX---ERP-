@@ -116,6 +116,26 @@ const assertSupabase = () => {
   return supabase;
 };
 
+const STUDENT_MARKS_WITH_DETAILS_SELECT = 'id, student_id, section_id, subject_name, marks, max_marks, exam_type, students!inner(name), sections!inner(name)';
+
+const mapStudentMarkRecord = (row: any): StudentMarkRecord => {
+  const student = Array.isArray(row.students) ? row.students[0] : row.students;
+  const section = Array.isArray(row.sections) ? row.sections[0] : row.sections;
+
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    studentName: student?.name || 'Student',
+    className: section?.name || '',
+    sectionId: row.section_id,
+    subject: row.subject_name,
+    marks: row.marks,
+    maxMarks: row.max_marks,
+    examType: row.exam_type,
+    teacherProfileId: null,
+  };
+};
+
 export const fetchSubjectsForClass = async (className: string) => {
   const client = assertSupabase();
   const { data: section, error: sectionError } = await client
@@ -207,10 +227,14 @@ export const fetchTeacherMarkSheet = async (className: string, subject: string, 
     throw studentsError;
   }
 
+  if (!students?.length) {
+    return [];
+  }
+
   const { data: marks, error: marksError } = await client
     .from('student_marks')
     .select('id, student_id, marks, max_marks')
-    .eq('class_name', className)
+    .eq('section_id', (students[0] as any).section_id)
     .eq('subject_name', subject)
     .eq('exam_type', examType);
 
@@ -248,14 +272,11 @@ export const upsertStudentMark = async (row: {
     .from('student_marks')
     .upsert({
       student_id: row.studentId,
-      student_name: row.studentName,
       section_id: row.sectionId,
-      class_name: row.className,
       subject_name: row.subject,
       exam_type: row.examType,
       marks: row.marks,
       max_marks: row.maxMarks,
-      teacher_profile_id: row.teacherProfileId || null,
     }, { onConflict: 'student_id,subject_name,exam_type' });
 
   if (error) {
@@ -372,7 +393,7 @@ export const fetchTeacherStudentPerformance = async (
       .order('sort_order', { ascending: true }),
     client
       .from('student_marks')
-      .select('id, student_id, student_name, class_name, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id')
+      .select('id, student_id, section_id, subject_name, marks, max_marks, exam_type')
       .in('section_id', sectionIds)
       .eq('exam_type', examType),
     client
@@ -468,7 +489,7 @@ export const fetchStudentMarksByProfile = async (profileId: string, examType?: E
     (() => {
       let query = client
         .from('student_marks')
-        .select('id, student_id, student_name, class_name, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id')
+        .select(STUDENT_MARKS_WITH_DETAILS_SELECT)
         .eq('student_id', student.id)
         .order('subject_name', { ascending: true });
 
@@ -491,18 +512,9 @@ export const fetchStudentMarksByProfile = async (profileId: string, examType?: E
 
   const allowedSubjects = new Set((sectionSubjects || []).map((row: any) => String(row.subject_name).toLowerCase()));
 
-  return (data || []).filter((row: any) => allowedSubjects.has(String(row.subject_name).toLowerCase())).map((row: any) => ({
-    id: row.id,
-    studentId: row.student_id,
-    studentName: row.student_name,
-    className: row.class_name,
-    sectionId: row.section_id,
-    subject: row.subject_name,
-    marks: row.marks,
-    maxMarks: row.max_marks,
-    examType: row.exam_type,
-    teacherProfileId: row.teacher_profile_id,
-  })) as StudentMarkRecord[];
+  return (data || [])
+    .filter((row: any) => allowedSubjects.has(String(row.subject_name).toLowerCase()))
+    .map(mapStudentMarkRecord) as StudentMarkRecord[];
 };
 
 const createEmptyExamRecord = (): Record<ExamType, StudentExamMarkCell> => ({
@@ -625,11 +637,11 @@ export const fetchInstitutionMarks = async (filters?: { className?: string; exam
   const client = assertSupabase();
   let query = client
     .from('student_marks')
-    .select('id, student_id, student_name, class_name, section_id, subject_name, marks, max_marks, exam_type, teacher_profile_id')
-    .order('class_name', { ascending: true });
+    .select(STUDENT_MARKS_WITH_DETAILS_SELECT)
+    .order('subject_name', { ascending: true });
 
   if (filters?.className && filters.className !== 'All') {
-    query = query.eq('class_name', filters.className);
+    query = query.eq('sections.name', filters.className);
   }
 
   if (filters?.examType && filters.examType !== 'All') {
@@ -641,18 +653,9 @@ export const fetchInstitutionMarks = async (filters?: { className?: string; exam
     throw error;
   }
 
-  const records = (data || []).map((row: any) => ({
-    id: row.id,
-    studentId: row.student_id,
-    studentName: row.student_name,
-    className: row.class_name,
-    sectionId: row.section_id,
-    subject: row.subject_name,
-    marks: row.marks,
-    maxMarks: row.max_marks,
-    examType: row.exam_type,
-    teacherProfileId: row.teacher_profile_id,
-  })) as StudentMarkRecord[];
+  const records = (data || [])
+    .map(mapStudentMarkRecord)
+    .sort((left, right) => left.className.localeCompare(right.className, undefined, { numeric: true }));
 
   if (!filters?.search) {
     return records;
@@ -676,8 +679,8 @@ export const fetchGoverningMarksOverview = async (
     client.from('subjects').select('name').order('sort_order', { ascending: true }),
     client
       .from('student_marks')
-      .select('id, section_id, class_name, subject_name, marks, max_marks, exam_type')
-      .order('class_name', { ascending: true }),
+      .select('id, section_id, subject_name, marks, max_marks, exam_type, sections!inner(name)')
+      .order('subject_name', { ascending: true }),
   ]);
 
   if (groupsRes.error) throw groupsRes.error;
@@ -752,7 +755,10 @@ export const fetchGoverningMarksOverview = async (
     avg: row.avg,
     records: row.records,
   }));
-  const classAverage = summarize((row) => row.class_name || row.section_id).map((row) => ({
+  const classAverage = summarize((row) => {
+    const section = Array.isArray(row.sections) ? row.sections[0] : row.sections;
+    return section?.name || row.section_id;
+  }).map((row) => ({
     class: row.key,
     avg: row.avg,
     records: row.records,

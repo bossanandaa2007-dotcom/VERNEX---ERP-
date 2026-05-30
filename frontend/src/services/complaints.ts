@@ -62,11 +62,28 @@ const mapComplaintRow = (row: ComplaintRow): Complaint => ({
   resolvedAt: row.resolved_at || undefined,
 });
 
+const COMPLAINT_DETAILS_SELECT = 'id, student_id, student_name, class_name, section, division, title, description, type, target_id, target_role, target_type, priority, status, created_at, response, resolved_at';
+
+const fetchComplaintDetailsById = async (complaintId: string) => {
+  const client = assertSupabase();
+  const { data, error } = await client
+    .from('complaint_details')
+    .select(COMPLAINT_DETAILS_SELECT)
+    .eq('id', complaintId)
+    .single<ComplaintRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapComplaintRow(data);
+};
+
 export const fetchComplaints = async (filters: ComplaintFilters = {}) => {
   const client = assertSupabase();
   let query = client
-    .from('complaints')
-    .select('id, student_id, student_name, class_name, section, division, title, description, type, target_id, target_role, target_type, priority, status, created_at, response, resolved_at')
+    .from('complaint_details')
+    .select(COMPLAINT_DETAILS_SELECT)
     .order('created_at', { ascending: false });
 
   if (filters.studentId) {
@@ -106,7 +123,7 @@ export const createComplaint = async (complaint: CreateComplaintInput) => {
     throw error;
   }
 
-  return mapComplaintRow(data);
+  return fetchComplaintDetailsById(data.id);
 };
 
 export const resolveComplaint = async (complaintId: string, response?: string) => {
@@ -119,12 +136,12 @@ export const resolveComplaint = async (complaintId: string, response?: string) =
       resolved_at: new Date().toISOString(),
     })
     .eq('id', complaintId)
-    .select('id, student_id, student_name, class_name, section, division, title, description, type, target_id, target_role, target_type, priority, status, created_at, response, resolved_at')
-    .single<ComplaintRow>();
+    .select('id')
+    .single<{ id: string }>();
 
   if (error) {
     throw error;
   }
 
-  return mapComplaintRow(data);
+  return fetchComplaintDetailsById(data.id);
 };
