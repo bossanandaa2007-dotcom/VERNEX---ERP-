@@ -1,0 +1,210 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #3b82f6;
+  --color-primary-dark: #2563eb;
+  --color-secondary: #f3f4f6;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+/* Mobile-first global reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  min-height: 100dvh;
+}
+
+/* Touch-friendly tap highlight removal */
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Minimum touch target sizes (accessibility) */
+button:not(.no-min-h),
+[role="button"]:not(.no-min-h) {
+  min-height: 44px;
+}
+
+/* Scrollbar styling for desktop */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Smooth chart overflow handling */
+.recharts-wrapper,
+.recharts-surface {
+  overflow: visible !important;
+}
+
+/* Horizontal scroll containers (tables on mobile) */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Card hover animation — disabled on touch devices */
+.card-hover {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+}
+
+@media (hover: none) {
+  .card-hover:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    background: #f7f8fb;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  select {
+    min-height: 46px;
+    appearance: auto;
+  }
+
+  .mobile-bottom-nav {
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+  }
+
+  .mobile-card-scroll {
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-card-scroll > * {
+    scroll-snap-align: start;
+  }
+
+  .mobile-dashboard-main,
+  .mobile-dashboard-main > *,
+  .mobile-dashboard-main * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mobile-dashboard-main .p-8 {
+    padding: 0.5rem;
+  }
+
+  .mobile-dashboard-main .px-8 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .mobile-dashboard-main .p-12 {
+    padding: 1.25rem;
+  }
+
+  .mobile-dashboard-main .rounded-\[2rem\],
+  .mobile-dashboard-main .rounded-\[40px\],
+  .mobile-dashboard-main .rounded-\[56px\] {
+    border-radius: 1.5rem;
+  }
+
+  .mobile-dashboard-main .shadow-2xl {
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+  }
+
+  .mobile-dashboard-main table {
+    width: 100%;
+  }
+
+  .mobile-dashboard-main textarea,
+  .mobile-dashboard-main input,
+  .mobile-dashboard-main select,
+  .mobile-dashboard-main button {
+    max-width: 100%;
+  }
+
+  .mobile-dashboard-main select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mobile-dashboard-main form {
+    max-width: 100%;
+  }
+
+  .mobile-dashboard-main .mobile-safe-card {
+    border-radius: 1.5rem;
+    padding: 1rem;
+  }
+
+  .mobile-dashboard-main .mobile-sticky-filter {
+    position: sticky;
+    top: 3.75rem;
+    z-index: 20;
+  }
+
+  .mobile-dashboard-main .recharts-wrapper {
+    max-width: 100% !important;
+  }
+
+  .governing-mobile-app {
+    animation: mobile-fade-up 220ms ease-out both;
+  }
+
+  .governing-mobile-app .recharts-responsive-container {
+    min-width: 0;
+  }
+}
+
+@keyframes mobile-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
