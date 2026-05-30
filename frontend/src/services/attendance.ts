@@ -69,7 +69,6 @@ interface AttendanceRecordRow {
   status: 'Present' | 'Absent';
   class_id: string;
   student_id: string;
-  student_name?: string;
   created_at?: string;
   metadata?: {
     seeded?: boolean;
@@ -229,7 +228,6 @@ export const saveAttendanceConfirmation = async ({ sectionId, attendanceDate, st
       class_id: sectionId,
       attendance_date: attendanceDate,
       student_id: matchedStudent.id,
-      student_name: matchedStudent.name,
       status: student.attendance[student.attendance.length - 1] === 'P' ? 'Present' : 'Absent',
       source: 'AI',
       confidence_score: 0.95,
@@ -313,7 +311,6 @@ export const upsertManualAttendance = async (classId: string, attendanceDate: st
     section_id: student.sectionId,
     attendance_date: attendanceDate,
     student_id: student.id,
-    student_name: student.name,
     status: student.attendanceStatus,
     source: 'Manual',
     confidence_score: 1,
@@ -367,7 +364,7 @@ export const fetchAttendanceOverview = async (
 
   const { data, error } = await client
     .from('attendance_records')
-    .select('id, attendance_date, status, class_id, student_id, student_name, created_at, metadata')
+    .select('id, attendance_date, status, class_id, student_id, created_at, metadata')
     .gte('attendance_date', toIsoDate(startDate))
     .lte('attendance_date', toIsoDate(endDate))
     .order('attendance_date', { ascending: true });
@@ -377,6 +374,24 @@ export const fetchAttendanceOverview = async (
   }
 
   const records = getRealRecords((data || []) as AttendanceRecordRow[]);
+  const studentIds = Array.from(new Set(records.map((record) => record.student_id).filter(Boolean)));
+  const studentNameMap = new Map<string, string>();
+
+  if (studentIds.length) {
+    const { data: students, error: studentsError } = await client
+      .from('students')
+      .select('id, name')
+      .in('id', studentIds);
+
+    if (studentsError) {
+      throw studentsError;
+    }
+
+    (students || []).forEach((student: any) => {
+      studentNameMap.set(student.id, student.name);
+    });
+  }
+
   const presentCount = records.filter((record) => record.status === 'Present').length;
   const absentCount = records.filter((record) => record.status === 'Absent').length;
   const totalRecords = records.length;
@@ -392,7 +407,7 @@ export const fetchAttendanceOverview = async (
       .map((record) => ({
         id: record.id || `${record.attendance_date}-${record.class_id}-${record.student_id}`,
         studentId: record.student_id,
-        studentName: record.student_name || 'Student',
+        studentName: studentNameMap.get(record.student_id) || 'Student',
         classId: record.class_id,
         attendanceDate: record.attendance_date,
         status: record.status,

@@ -115,7 +115,7 @@ export const fetchAssignments = async (classNames?: string[]) => {
   const client = assertSupabase();
   let query = client
     .from('assignments')
-    .select('id, title, subject, class_name, deadline, description, drive_url, teacher_id, assignment_submissions(id, assignment_id, student_id, student_email, submitted_at, submission_url)')
+    .select('id, title, subject, class_name, deadline, description, drive_url, teacher_id, assignment_submissions(id, assignment_id, student_id, submitted_at, submission_url)')
     .order('deadline', { ascending: true });
 
   if (classNames?.length) {
@@ -124,6 +124,26 @@ export const fetchAssignments = async (classNames?: string[]) => {
 
   const { data, error } = await query;
   if (error) throw error;
+
+  const studentProfileIds = Array.from(new Set(
+    (data || []).flatMap((row: any) =>
+      (row.assignment_submissions || []).map((submission: any) => submission.student_id).filter(Boolean)
+    )
+  ));
+  const profileEmailMap = new Map<string, string>();
+
+  if (studentProfileIds.length) {
+    const { data: profiles, error: profilesError } = await client
+      .from('profiles')
+      .select('id, email')
+      .in('id', studentProfileIds);
+
+    if (profilesError) throw profilesError;
+
+    (profiles || []).forEach((profile: any) => {
+      profileEmailMap.set(profile.id, profile.email);
+    });
+  }
 
   return (data || []).map((row: any) => ({
     id: row.id,
@@ -138,7 +158,7 @@ export const fetchAssignments = async (classNames?: string[]) => {
       id: submission.id,
       assignment_id: submission.assignment_id,
       student_id: submission.student_id,
-      student_email: submission.student_email,
+      student_email: profileEmailMap.get(submission.student_id) || 'Student',
       submitted_at: submission.submitted_at,
       submissionUrl: submission.submission_url,
     })),
@@ -183,11 +203,10 @@ export const submitAssignment = async (assignmentId: string, studentId: string, 
     .insert({
       assignment_id: assignmentId,
       student_id: studentId,
-      student_email: studentEmail,
       submitted_at: new Date().toISOString().split('T')[0],
       submission_url: submissionUrl,
     })
-    .select('id, assignment_id, student_id, student_email, submitted_at, submission_url')
+    .select('id, assignment_id, student_id, submitted_at, submission_url')
     .single();
 
   if (error) throw error;
@@ -195,7 +214,7 @@ export const submitAssignment = async (assignmentId: string, studentId: string, 
     id: data.id,
     assignment_id: data.assignment_id,
     student_id: data.student_id,
-    student_email: data.student_email,
+    student_email: studentEmail,
     submitted_at: data.submitted_at,
     submissionUrl: data.submission_url,
   } as AssignmentSubmission;
