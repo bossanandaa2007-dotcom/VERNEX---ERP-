@@ -7,6 +7,26 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
 import { getDashboardPath, isStaffRole } from '../../utils/roles';
 
+const getLoginErrorMessage = (err: unknown) => {
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+
+  if (typeof err === 'object' && err !== null) {
+    const message = 'message' in err ? err.message : undefined;
+    const errorDescription = 'error_description' in err ? err.error_description : undefined;
+    const error = 'error' in err ? err.error : undefined;
+
+    for (const value of [message, errorDescription, error]) {
+      if (typeof value === 'string' && value.trim()) {
+        return value;
+      }
+    }
+  }
+
+  return 'An error occurred. Please try again later.';
+};
+
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
@@ -64,7 +84,7 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
         setError('Invalid credentials. Please try again.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred. Please try again later.');
+      setError(getLoginErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
