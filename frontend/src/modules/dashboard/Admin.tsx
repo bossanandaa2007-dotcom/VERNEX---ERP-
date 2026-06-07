@@ -40,8 +40,10 @@ const AdminDashboard = () => {
                 .map((section) => section.name)
             );
             const matchingPoints = overview.classBreakdown.filter((point) => matchingSections.has(point.classId));
-            const avg = matchingPoints.length
-              ? Math.round(matchingPoints.reduce((sum, point) => sum + point.pct, 0) / matchingPoints.length)
+            const totalRecords = matchingPoints.reduce((sum, point) => sum + point.total, 0);
+            const totalPresent = matchingPoints.reduce((sum, point) => sum + point.presentCount, 0);
+            const avg = totalRecords
+              ? Math.round((totalPresent / totalRecords) * 100)
               : 0;
 
             return {

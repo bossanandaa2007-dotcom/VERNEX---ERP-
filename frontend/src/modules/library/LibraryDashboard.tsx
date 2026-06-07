@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, BookCheck, AlertCircle, Search, Plus, Filter, CheckCircle } from 'lucide-react';
 import Modal from '../../components/common/Modal';
-import { createBook, createIssueRecord, fetchBooks, fetchLibraryIssues, fetchStudents, type LibraryBook, type LibraryIssue } from '../../services/erpContent';
+import { createBook, createIssueRecord, fetchBooks, fetchLibraryIssues, fetchStudents, type LibraryBook, type LibraryIssue, type LibraryStudent } from '../../services/erpContent';
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message || '').trim();
+    if (message) {
+      return message;
+    }
+  }
+
+  return fallback;
+};
 
 const LibraryDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,7 +24,7 @@ const LibraryDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<LibraryStudent[]>([]);
   const [issueBookTarget, setIssueBookTarget] = useState<LibraryBook | null>(null);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -87,7 +102,7 @@ const LibraryDashboard = () => {
       showToast(`Successfully issued "${issueBookTarget.title}"!`);
     } catch (error) {
       console.error('Failed to issue book:', error);
-      showToast('Could not issue the selected book.');
+      showToast(getErrorMessage(error, 'Could not issue the selected book.'));
     }
   };
 
@@ -114,12 +129,12 @@ const LibraryDashboard = () => {
     }
   };
 
-  const issuedCount = books.reduce((sum, book) => sum + Math.max(book.totalCopies - book.availableCopies, 0), 0);
-  const unavailableCount = books.filter((book) => book.availableCopies === 0).length;
   const activeIssuedBooks = useMemo(
     () => issuedBooks.filter((issue) => issue.status !== 'returned' && !issue.returned_at && !issue.returned_date),
     [issuedBooks]
   );
+  const issuedCount = activeIssuedBooks.length;
+  const unavailableCount = books.filter((book) => book.availableCopies === 0).length;
 
   return (
     <div className="space-y-6 lg:pb-12 h-full">

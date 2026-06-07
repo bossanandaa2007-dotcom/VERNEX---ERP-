@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { fetchStudents } from '../../../services/erpContent';
+import { fetchStudents, type LibraryStudent } from '../../../services/erpContent';
+
+type StudentsByClass = Record<string, LibraryStudent[]>;
+type StudentsByGrade = Record<string, StudentsByClass>;
 
 const StudentsPage = () => {
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<LibraryStudent[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -14,14 +17,14 @@ const StudentsPage = () => {
     return () => { mounted = false; };
   }, []);
 
-  const grouped = students.reduce((acc: any, s) => {
+  const grouped = students.reduce<StudentsByGrade>((acc, s) => {
     const grade = s.grade || 'Ungraded';
     acc[grade] = acc[grade] || {};
     const cls = s.sectionName || 'Unassigned';
     acc[grade][cls] = acc[grade][cls] || [];
     acc[grade][cls].push(s);
     return acc;
-  }, {} as any);
+  }, {});
 
   return (
     <div className="space-y-6 lg:pb-12">
@@ -35,11 +38,11 @@ const StudentsPage = () => {
           <details key={grade} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
             <summary className="cursor-pointer font-semibold text-slate-900">{grade}</summary>
             <div className="mt-3 space-y-3">
-              {Object.keys(grouped[grade]).map((cls:any) => (
+              {Object.keys(grouped[grade]).map((cls) => (
                 <details key={cls} className="bg-slate-50 rounded-xl p-3">
                   <summary className="font-medium">{cls} — {grouped[grade][cls].length} students</summary>
                   <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {grouped[grade][cls].map((s:any) => (
+                    {grouped[grade][cls].map((s) => (
                       <div key={s.id} className="bg-white p-3 rounded-lg border border-slate-100 flex items-center justify-between">
                         <div>
                           <div className="font-semibold">{s.name}</div>

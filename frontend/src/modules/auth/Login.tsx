@@ -15,13 +15,12 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 type LoginMode = 'staff' | 'student';
 
-const STAFF_ROLES = ['Admin', 'Principal', 'Teacher', 'Accountant', 'Governing Body', 'Librarian'];
+const STAFF_ROLES = ['Admin', 'Teacher', 'Accountant', 'Governing Body', 'Librarian'];
 
 const getDashboardPath = (role?: string) => {
   switch (role) {
     case 'Admin':
       return '/admin/dashboard';
-    case 'Principal':
     case 'Teacher':
       return '/teacher/dashboard';
     case 'Student':
@@ -152,9 +151,9 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
           </div>
 
           <div className="text-sm">
-            <a href="#" className="font-medium text-blue-700 transition-colors hover:text-blue-800">
+            <span className="font-medium text-blue-700 transition-colors">
               Forgot password?
-            </a>
+            </span>
           </div>
         </div>
 

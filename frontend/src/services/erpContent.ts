@@ -82,6 +82,125 @@ export interface FeeRecord {
   latestNote?: string;
 }
 
+interface LibraryBookRow {
+  id: string;
+  title: string;
+  author: string;
+  category: string;
+  isbn: string;
+  total_copies: number;
+  available_copies: number;
+  status: string;
+}
+
+interface AssignmentSubmissionRow {
+  id: string;
+  assignment_id: string;
+  student_id?: string | null;
+  submitted_at: string;
+  submission_url: string;
+}
+
+interface AssignmentRow {
+  id: string;
+  title: string;
+  subject: string;
+  class_name: string;
+  deadline: string;
+  description: string;
+  drive_url: string | null;
+  teacher_id?: string | null;
+  assignment_submissions?: AssignmentSubmissionRow[];
+}
+
+interface ProfileEmailRow {
+  id: string;
+  email: string;
+}
+
+interface SectionIdRow {
+  id: string;
+}
+
+interface StudyMaterialRow {
+  id: string;
+  title: string;
+  subject: string;
+  class_name: string;
+  section_id?: string;
+  teacher_profile_id?: string | null;
+  upload_date: string;
+  drive_url: string | null;
+}
+
+interface EventRow {
+  id: string;
+  name: string;
+  date: string;
+  description: string;
+  type: string;
+  target_audience: string;
+  status: string;
+}
+
+interface LibraryStudentRow {
+  id: string;
+  name: string;
+  email: string;
+  roll_no: string;
+  category_id?: string | null;
+  section_id?: string | null;
+  sections?: { name?: string } | Array<{ name?: string }> | null;
+}
+
+interface LibraryIssueRow {
+  id: string;
+  student_id: string;
+  book_id: string;
+  issue_date: string;
+  due_date: string;
+  returned_at?: string | null;
+  status?: string | null;
+  book?: LibraryBookRow | LibraryBookRow[] | null;
+  student?: LibraryStudentRow | LibraryStudentRow[] | null;
+}
+
+interface LibraryReminderHistoryRow {
+  id: string;
+  issue_id: string;
+  student_id: string;
+  book_id: string;
+  reminder_message: string;
+  created_at: string;
+  book?: Pick<LibraryBookRow, 'id' | 'title'> | Array<Pick<LibraryBookRow, 'id' | 'title'>> | null;
+  student?: LibraryStudentRow | LibraryStudentRow[] | null;
+}
+
+interface AccountantNoteRow {
+  note: string;
+  updated_at: string;
+}
+
+interface FeeRecordRow {
+  id: string;
+  student_id: string;
+  total_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  due_date: string;
+  status: string;
+  students?: {
+    email?: string;
+    name?: string;
+    roll_no?: string;
+    category_id?: string;
+    section_id?: string;
+    sections?: { name?: string } | null;
+  } | null;
+  fee_categories?: { name?: string } | null;
+  accountant_notes?: AccountantNoteRow[];
+}
+
 const assertSupabase = () => {
   if (!supabase) {
     throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
@@ -89,6 +208,9 @@ const assertSupabase = () => {
 
   return supabase;
 };
+
+const firstRelation = <T>(value: T | T[] | null | undefined) =>
+  Array.isArray(value) ? value[0] : value;
 
 const LIBRARIAN_BOOKS_TABLE = 'librarian_books';
 
@@ -100,7 +222,7 @@ const defaultLibraryDueDate = () => {
   return dueDate.toISOString().slice(0, 10);
 };
 
-const mapLibraryBook = (row: any): LibraryBook => ({
+const mapLibraryBook = (row: LibraryBookRow): LibraryBook => ({
   id: row.id,
   title: row.title,
   author: row.author,
@@ -126,8 +248,8 @@ export const fetchAssignments = async (classNames?: string[]) => {
   if (error) throw error;
 
   const studentProfileIds = Array.from(new Set(
-    (data || []).flatMap((row: any) =>
-      (row.assignment_submissions || []).map((submission: any) => submission.student_id).filter(Boolean)
+    ((data || []) as AssignmentRow[]).flatMap((row) =>
+      (row.assignment_submissions || []).map((submission) => submission.student_id).filter(Boolean)
     )
   ));
   const profileEmailMap = new Map<string, string>();
@@ -140,12 +262,12 @@ export const fetchAssignments = async (classNames?: string[]) => {
 
     if (profilesError) throw profilesError;
 
-    (profiles || []).forEach((profile: any) => {
+    ((profiles || []) as ProfileEmailRow[]).forEach((profile) => {
       profileEmailMap.set(profile.id, profile.email);
     });
   }
 
-  return (data || []).map((row: any) => ({
+  return ((data || []) as AssignmentRow[]).map((row) => ({
     id: row.id,
     title: row.title,
     subject: row.subject,
@@ -154,11 +276,11 @@ export const fetchAssignments = async (classNames?: string[]) => {
     description: row.description,
     driveUrl: row.drive_url,
     teacher_id: row.teacher_id,
-    submissions: (row.assignment_submissions || []).map((submission: any) => ({
+    submissions: (row.assignment_submissions || []).map((submission) => ({
       id: submission.id,
       assignment_id: submission.assignment_id,
       student_id: submission.student_id,
-      student_email: profileEmailMap.get(submission.student_id) || 'Student',
+      student_email: submission.student_id ? profileEmailMap.get(submission.student_id) || 'Student' : 'Student',
       submitted_at: submission.submitted_at,
       submissionUrl: submission.submission_url,
     })),
@@ -234,7 +356,7 @@ export const fetchStudyMaterials = async (classNames?: string[]) => {
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data || []).map((row: any) => ({
+  return ((data || []) as StudyMaterialRow[]).map((row) => ({
     id: row.id,
     title: row.title,
     subject: row.subject,
@@ -260,7 +382,7 @@ export const createStudyMaterial = async (material: Omit<StudyMaterial, 'id' | '
     title: material.title,
     subject: material.subject,
     class_name: material.class,
-    section_id: (section as any).id,
+    section_id: (section as SectionIdRow).id,
     teacher_profile_id: material.teacherProfileId || null,
     upload_date: new Date().toISOString().split('T')[0],
     drive_url: material.driveUrl,
@@ -275,7 +397,7 @@ export const createStudyMaterial = async (material: Omit<StudyMaterial, 'id' | '
   const { data, error: fetchError } = await client
     .from('study_materials')
     .select('id, title, subject, class_name, section_id, teacher_profile_id, upload_date, drive_url')
-    .eq('section_id', (section as any).id)
+    .eq('section_id', (section as SectionIdRow).id)
     .eq('subject', material.subject)
     .single();
 
@@ -302,7 +424,7 @@ export const fetchEvents = async () => {
 
   if (error) throw error;
 
-  return (data || []).map((row: any) => ({
+  return ((data || []) as EventRow[]).map((row) => ({
     id: row.id,
     name: row.name,
     date: row.date,
@@ -444,7 +566,7 @@ export const findOrCreateLibraryBookByTitle = async (rawTitle: string) => {
 
   if (matchError) throw matchError;
 
-  const existing = (matches || []).find((book: any) => normalizeTitle(book.title).toLowerCase() === title.toLowerCase());
+  const existing = ((matches || []) as LibraryBookRow[]).find((book) => normalizeTitle(book.title).toLowerCase() === title.toLowerCase());
   if (existing) return mapLibraryBook(existing);
 
   return createBook({
@@ -486,14 +608,14 @@ export const issueBook = async (id: string) => {
   if (error) throw error;
 };
 
-const mapLibraryStudent = (row: any): LibraryStudent => ({
+const mapLibraryStudent = (row: LibraryStudentRow): LibraryStudent => ({
   id: row.id,
   name: row.name,
   email: row.email,
   rollNo: row.roll_no,
   categoryId: row.category_id,
   sectionId: row.section_id,
-  sectionName: row.sections?.name,
+  sectionName: firstRelation(row.sections)?.name,
 });
 
 export const fetchStudents = async () => {
@@ -554,42 +676,44 @@ export interface LibraryReminderHistory {
 
 export const fetchLibraryIssues = async () => {
   const client = assertSupabase();
-  try {
-    await client.rpc('process_library_overdue_reminders');
-  } catch {
-    // Older Supabase schemas may not have the overdue processor yet.
-  }
-  let { data, error }: { data: any[] | null; error: any } = await client
+  const issueResponse = await client
     .from('library_issues')
-    .select('id, student_id, book_id, issue_date, due_date, returned_at, returned_date, status, reminder_sent, reminder_sent_at, overdue_status, updated_at, library_reminders(id), book:librarian_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, roll_no, section_id, sections(name))')
+    .select('id, student_id, book_id, issue_date, due_date, returned_at, status, updated_at, book:librarian_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, roll_no, section_id, sections(name))')
     .order('updated_at', { ascending: false });
+  let data = issueResponse.data as unknown as LibraryIssueRow[] | null;
+  let error: unknown = issueResponse.error;
 
   if (error) {
     const fallback = await client
       .from('library_issues')
       .select('id, student_id, book_id, issue_date, due_date, returned_at, status, book:librarian_books(id, title, author, category, isbn, total_copies, available_copies, status), student:students(id, name, roll_no, section_id, sections(name))')
       .order('due_date', { ascending: false });
-    data = fallback.data;
+    data = fallback.data as unknown as LibraryIssueRow[] | null;
     error = fallback.error;
   }
 
   if (error) throw error;
 
-  return (data || []).map((row: any) => ({
+  return (data || []).map((row) => ({
     id: row.id,
     student_id: row.student_id,
     book_id: row.book_id,
     issue_date: row.issue_date,
     due_date: row.due_date,
     returned_at: row.returned_at,
-    returned_date: row.returned_date,
+    returned_date: null,
     status: String(row.status || '').toLowerCase(),
-    reminderSent: Boolean(row.reminder_sent),
-    reminderSentAt: row.reminder_sent_at,
-    overdueStatus: row.overdue_status || (!row.returned_at && row.due_date < new Date().toISOString().slice(0, 10) ? 'overdue' : 'current'),
-    reminderCount: row.library_reminders?.length || 0,
-    book: row.book ? mapLibraryBook(row.book) : undefined,
-    student: row.student ? { id: row.student.id, name: row.student.name, rollNo: row.student.roll_no, sectionName: row.student.sections?.name } : undefined,
+    reminderSent: false,
+    reminderSentAt: null,
+    overdueStatus: !row.returned_at && row.due_date < new Date().toISOString().slice(0, 10) ? 'overdue' : 'current',
+    reminderCount: 0,
+    book: firstRelation(row.book) ? mapLibraryBook(firstRelation(row.book) as LibraryBookRow) : undefined,
+    student: firstRelation(row.student) ? {
+      id: firstRelation(row.student)!.id,
+      name: firstRelation(row.student)!.name,
+      rollNo: firstRelation(row.student)!.roll_no,
+      sectionName: firstRelation(firstRelation(row.student)!.sections)?.name,
+    } : undefined,
   })) as LibraryIssue[];
 };
 
@@ -602,7 +726,7 @@ export const createIssueRecord = async (studentId: string, bookId: string, dueDa
   });
 
   if (error) throw error;
-  return data as any;
+  return data as unknown;
 };
 
 export const markIssueReturned = async (issueId: string) => {
@@ -612,7 +736,7 @@ export const markIssueReturned = async (issueId: string) => {
   });
 
   if (error) throw error;
-  return data as any;
+  return data as unknown;
 };
 
 export const sendReturnReminders = async (issueIds: string[], message?: string) => {
@@ -631,15 +755,20 @@ export const fetchLibraryReminderHistory = async () => {
 
   if (error) throw error;
 
-  return (data || []).map((row: any) => ({
+  return ((data || []) as unknown as LibraryReminderHistoryRow[]).map((row) => ({
     id: row.id,
     issueId: row.issue_id,
     studentId: row.student_id,
     bookId: row.book_id,
     message: row.reminder_message,
     createdAt: row.created_at,
-    book: row.book ? { id: row.book.id, title: row.book.title } : undefined,
-    student: row.student ? { id: row.student.id, name: row.student.name, rollNo: row.student.roll_no, sectionName: row.student.sections?.name } : undefined,
+    book: firstRelation(row.book) ? { id: firstRelation(row.book)!.id, title: firstRelation(row.book)!.title } : undefined,
+    student: firstRelation(row.student) ? {
+      id: firstRelation(row.student)!.id,
+      name: firstRelation(row.student)!.name,
+      rollNo: firstRelation(row.student)!.roll_no,
+      sectionName: firstRelation(firstRelation(row.student)!.sections)?.name,
+    } : undefined,
   })) as LibraryReminderHistory[];
 };
 
@@ -686,8 +815,8 @@ export const fetchFeeRecords = async (studentEmail?: string) => {
     throw error;
   }
 
-  return (data || []).map((row: any) => {
-    const notes = [...(row.accountant_notes || [])].sort((left: any, right: any) =>
+  return ((data || []) as FeeRecordRow[]).map((row) => {
+    const notes = [...(row.accountant_notes || [])].sort((left, right) =>
       String(right.updated_at || '').localeCompare(String(left.updated_at || ''))
     );
 

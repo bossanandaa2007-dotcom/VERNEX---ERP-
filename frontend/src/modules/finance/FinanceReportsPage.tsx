@@ -42,6 +42,8 @@ const formatGeneratedAt = (value: Date) =>
   }).format(value);
 
 const normalizeClassName = (value?: string) => value?.trim() || 'Unassigned';
+const getStudentKey = (record: FeeRecord) =>
+  record.studentId || record.studentEmail || record.rollNo || record.studentName || record.id;
 const normalizeStatus = (status?: string) => {
   if (status === 'Paid') {
     return 'Paid';
@@ -81,23 +83,26 @@ const FinanceReportsPage = () => {
     void loadFeeRecords();
   }, []);
 
-  const classOptions = Array.from(
-    new Map(
-      [
-        ...sections.map((section) => normalizeClassName(section.name)),
-        ...feeRecords.map((record) => normalizeClassName(record.sectionName)),
-      ]
-        .filter(Boolean)
-        .sort((left, right) => {
-          const leftRoll = extractRollValue(left);
-          const rightRoll = extractRollValue(right);
-          if (leftRoll !== rightRoll) {
-            return leftRoll - rightRoll;
-          }
-          return left.localeCompare(right);
-        })
-        .map((name) => [name, name]),
-    ).values(),
+  const classOptions = useMemo(
+    () => Array.from(
+      new Map(
+        [
+          ...sections.map((section) => normalizeClassName(section.name)),
+          ...feeRecords.map((record) => normalizeClassName(record.sectionName)),
+        ]
+          .filter(Boolean)
+          .sort((left, right) => {
+            const leftRoll = extractRollValue(left);
+            const rightRoll = extractRollValue(right);
+            if (leftRoll !== rightRoll) {
+              return leftRoll - rightRoll;
+            }
+            return left.localeCompare(right);
+          })
+          .map((name) => [name, name]),
+      ).values(),
+    ),
+    [feeRecords, sections],
   );
 
   const activeClassName = generatedClassName || selectedClassName;
@@ -144,30 +149,57 @@ const FinanceReportsPage = () => {
   );
 
   const totals = useMemo(
-    () => classRecords.reduce(
-      (summary, record) => {
-        summary.totalAmount += Number(record.totalAmount || 0);
-        summary.paidAmount += Number(record.paidAmount || 0);
-        summary.pendingAmount += Number(record.pendingAmount || 0);
-        if (record.status === 'Paid') {
-          summary.paidStudents += 1;
-        } else if (record.status === 'Partial') {
-          summary.partialStudents += 1;
-          summary.pendingStudents += 1;
-        } else {
-          summary.pendingStudents += 1;
-        }
-        return summary;
-      },
-      {
-        totalAmount: 0,
-        paidAmount: 0,
-        pendingAmount: 0,
-        paidStudents: 0,
-        pendingStudents: 0,
-        partialStudents: 0,
-      },
-    ),
+    () => {
+      const studentMap = new Map<string, {
+        hasPaid: boolean;
+        hasPartial: boolean;
+        hasPendingBalance: boolean;
+        allPaid: boolean;
+      }>();
+
+      const summary = classRecords.reduce(
+        (currentSummary, record) => {
+          currentSummary.totalAmount += Number(record.totalAmount || 0);
+          currentSummary.paidAmount += Number(record.paidAmount || 0);
+          currentSummary.pendingAmount += Number(record.pendingAmount || 0);
+
+          const key = getStudentKey(record);
+          const existing = studentMap.get(key) || {
+            hasPaid: false,
+            hasPartial: false,
+            hasPendingBalance: false,
+            allPaid: true,
+          };
+          const status = normalizeStatus(record.status);
+          const paidAmount = Number(record.paidAmount || 0);
+          const pendingAmount = Number(record.pendingAmount || 0);
+
+          studentMap.set(key, {
+            hasPaid: existing.hasPaid || status === 'Paid',
+            hasPartial: existing.hasPartial || status === 'Partial' || (paidAmount > 0 && pendingAmount > 0),
+            hasPendingBalance: existing.hasPendingBalance || status !== 'Paid' || pendingAmount > 0,
+            allPaid: existing.allPaid && status === 'Paid' && pendingAmount <= 0,
+          });
+
+          return currentSummary;
+        },
+        {
+          totalAmount: 0,
+          paidAmount: 0,
+          pendingAmount: 0,
+        },
+      );
+
+      const studentSummaries = Array.from(studentMap.values());
+
+      return {
+        ...summary,
+        studentCount: studentSummaries.length,
+        paidStudents: studentSummaries.filter((student) => student.allPaid).length,
+        pendingStudents: studentSummaries.filter((student) => student.hasPendingBalance).length,
+        partialStudents: studentSummaries.filter((student) => !student.allPaid && student.hasPartial).length,
+      };
+    },
     [classRecords],
   );
 
@@ -206,7 +238,7 @@ const FinanceReportsPage = () => {
     doc.setFontSize(11);
     doc.text(`Class: ${activeClassName}`, 14, 36);
     doc.text(`Generated: ${formatGeneratedAt(reportGeneratedAt)}`, 14, 42);
-    doc.text(`Students: ${classRecords.length}`, 14, 48);
+    doc.text(`Students: ${totals.studentCount}`, 14, 48);
 
     doc.text(`Total Fee: ${formatCurrency(totals.totalAmount)}`, 120, 36);
     doc.text(`Collected: ${formatCurrency(totals.paidAmount)}`, 120, 42);
@@ -366,7 +398,7 @@ const FinanceReportsPage = () => {
                     <Users className="h-4 w-4" />
                     <span className="text-xs font-semibold uppercase tracking-[0.2em]">Students</span>
                   </div>
-                  <p className="mt-2 text-2xl font-bold">{classRecords.length}</p>
+                  <p className="mt-2 text-2xl font-bold">{totals.studentCount}</p>
                 </div>
                 <div className="rounded-[20px] bg-white/10 px-4 py-3">
                   <div className="flex items-center gap-2 text-violet-100">

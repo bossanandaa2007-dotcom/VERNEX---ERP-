@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, BookOpen, Plus, Pencil, Trash2, MoreVertical } from 'lucide-react';
 import Modal from '../../../components/common/Modal';
-import { fetchBooks, fetchStudents, createIssueRecord, createBook, updateBook, deleteBook, type LibraryBook } from '../../../services/erpContent';
+import { fetchBooks, fetchStudents, createIssueRecord, createBook, updateBook, deleteBook, type LibraryBook, type LibraryStudent } from '../../../services/erpContent';
 
 const emptyBookForm = {
   title: '',
@@ -12,6 +12,21 @@ const emptyBookForm = {
   availableCopies: '1',
 };
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message || '').trim();
+    if (message) {
+      return message;
+    }
+  }
+
+  return fallback;
+};
+
 const BooksPage = () => {
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [search, setSearch] = useState('');
@@ -19,22 +34,31 @@ const BooksPage = () => {
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<LibraryBook | null>(null);
   const [selectedBook, setSelectedBook] = useState<LibraryBook | null>(null);
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<LibraryStudent[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string>('');
   const [bookForm, setBookForm] = useState(emptyBookForm);
   const [bookFormError, setBookFormError] = useState('');
+  const [issueError, setIssueError] = useState('');
   const [isSavingBook, setIsSavingBook] = useState(false);
+  const [isIssuingBook, setIsIssuingBook] = useState(false);
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const bs = await fetchBooks();
-      const st = await fetchStudents();
-      if (!mounted) return;
-      setBooks(bs);
-      setStudents(st);
+      try {
+        const bs = await fetchBooks();
+        const st = await fetchStudents();
+        if (!mounted) return;
+        setBooks(bs);
+        setStudents(st);
+      } catch (error) {
+        console.error('Failed to load library books:', error);
+        if (mounted) {
+          setIssueError('Could not load library data.');
+        }
+      }
     })();
     return () => { mounted = false; };
   }, []);
@@ -52,6 +76,7 @@ const BooksPage = () => {
     setSelectedBook(book);
     setIsModalOpen(true);
     setSelectedStudent(null);
+    setIssueError('');
     const nextDueDate = new Date();
     nextDueDate.setDate(nextDueDate.getDate() + 21);
     setDueDate(nextDueDate.toISOString().slice(0, 10));
@@ -59,13 +84,21 @@ const BooksPage = () => {
   };
 
   const handleIssue = async () => {
-    if (!selectedBook || !selectedStudent || !dueDate) return;
+    setIssueError('');
+    if (!selectedBook || !selectedStudent || !dueDate) {
+      setIssueError('Choose a student before issuing this book.');
+      return;
+    }
     try {
+      setIsIssuingBook(true);
       await createIssueRecord(selectedStudent, selectedBook.id, dueDate);
       setBooks(prev => prev.map(b => b.id === selectedBook.id ? { ...b, availableCopies: Math.max(b.availableCopies - 1, 0) } : b));
       setIsModalOpen(false);
-    } catch (e) {
-      // ignore
+    } catch (error) {
+      console.error('Failed to issue book:', error);
+      setIssueError(getErrorMessage(error, 'Could not issue this book.'));
+    } finally {
+      setIsIssuingBook(false);
     }
   };
 
@@ -321,9 +354,16 @@ const BooksPage = () => {
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
             Return due date: <span className="font-semibold text-slate-900">{dueDate}</span>
           </div>
+          {issueError && (
+            <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-600">
+              {issueError}
+            </div>
+          )}
           <div className="flex gap-3 pt-2">
-            <button onClick={()=>setIsModalOpen(false)} className="flex-1 px-4 py-2 border rounded-xl">Cancel</button>
-            <button onClick={handleIssue} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl">Issue Book</button>
+            <button onClick={()=>setIsModalOpen(false)} disabled={isIssuingBook} className="flex-1 px-4 py-2 border rounded-xl disabled:opacity-60">Cancel</button>
+            <button onClick={handleIssue} disabled={isIssuingBook} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl disabled:opacity-60">
+              {isIssuingBook ? 'Issuing...' : 'Issue Book'}
+            </button>
           </div>
         </div>
       </Modal>

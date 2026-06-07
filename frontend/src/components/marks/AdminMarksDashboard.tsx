@@ -15,6 +15,9 @@ import { useAuthStore } from '../../store/useAuthStore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 const AdminMarksDashboard = () => {
   const user = useAuthStore((state) => state.user);
   const sections = useClassStore((state) => state.sections);
@@ -40,8 +43,8 @@ const AdminMarksDashboard = () => {
           search: searchQuery.trim(),
         });
         setMarks(data);
-      } catch (loadError: any) {
-        setError(loadError?.message || 'Failed to load marks.');
+      } catch (loadError: unknown) {
+        setError(getErrorMessage(loadError, 'Failed to load marks.'));
       } finally {
         setIsLoading(false);
       }
@@ -73,8 +76,8 @@ const AdminMarksDashboard = () => {
           examType: selectedExam,
         });
         setLocks(data);
-      } catch (loadError: any) {
-        setError(loadError?.message || 'Failed to load mark lock status.');
+      } catch (loadError: unknown) {
+        setError(getErrorMessage(loadError, 'Failed to load mark lock status.'));
       }
     };
 
@@ -116,8 +119,8 @@ const AdminMarksDashboard = () => {
 
       await refreshLocks();
       setLockConfirm(null);
-    } catch (lockError: any) {
-      setError(lockError?.message || 'Unable to update lock status.');
+    } catch (lockError: unknown) {
+      setError(getErrorMessage(lockError, 'Unable to update lock status.'));
     } finally {
       setIsLockSaving(false);
     }
@@ -193,7 +196,7 @@ const AdminMarksDashboard = () => {
         <div className="relative">
           <select 
             value={selectedExam}
-            onChange={e => setSelectedExam(e.target.value as any)}
+            onChange={e => setSelectedExam(e.target.value as ExamType | 'All')}
             className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-100 outline-none transition-all appearance-none cursor-pointer font-medium"
           >
             <option value="All">All Exams</option>

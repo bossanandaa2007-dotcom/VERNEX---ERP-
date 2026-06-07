@@ -1,8 +1,8 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xfjkbhaimsgimmbyzaxt.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SERVICE_ROLE_KEY) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY is required.');
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
 }
 
 const jsonHeaders = {
@@ -123,15 +123,6 @@ const updateTeacherProfileLink = async (teacherId, profileId) => {
   });
 };
 
-const normalizeSection = (sectionName) => {
-  const parts = sectionName.split('-');
-  return {
-    className: sectionName,
-    standard: parts[0] || sectionName,
-    section: parts[1] || sectionName,
-  };
-};
-
 const main = async () => {
   const [students, teachers, authUsers] = await Promise.all([fetchStudents(), fetchTeachers(), fetchAuthUsers()]);
   const authUserMap = new Map(
@@ -201,13 +192,6 @@ const main = async () => {
       name: teacher.name,
       email: teacher.email,
       role: 'Teacher',
-      standard: teacher.assigned_class,
-      class_name: teacher.assigned_class,
-      section: teacher.assigned_class.split('-')[1] || teacher.assigned_class,
-      standards: teacher.standards || [],
-      classes: teacher.standards || [],
-      subject: teacher.subject || null,
-      subjects: teacher.subjects || (teacher.subject ? [teacher.subject] : []),
     });
   }
 
@@ -228,19 +212,11 @@ const main = async () => {
       studentLinks.push({ studentId: student.id, profileId });
     }
 
-    const { className, standard, section } = normalizeSection(student.sectionName);
     profileRows.push({
       id: profileId,
       name: student.name,
       email: student.email,
       role: 'Student',
-      standard,
-      class_name: className,
-      section,
-      standards: [standard],
-      classes: [className],
-      subject: null,
-      subjects: [],
     });
   }
 

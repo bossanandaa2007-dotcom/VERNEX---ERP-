@@ -75,12 +75,16 @@ const StudentMarks = () => {
       const scores = (overview?.subjects || [])
         .map((subject) => {
           const cell = subject.exams[examType];
-          return scorePercent(cell.marks, cell.maxMarks);
+          return typeof cell.marks === 'number' && cell.maxMarks
+            ? { marks: cell.marks, maxMarks: cell.maxMarks }
+            : null;
         })
-        .filter((score): score is number => typeof score === 'number');
+        .filter((score): score is { marks: number; maxMarks: number } => score !== null);
 
-      const average = scores.length
-        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+      const totalMarks = scores.reduce((sum, score) => sum + score.marks, 0);
+      const totalMaxMarks = scores.reduce((sum, score) => sum + score.maxMarks, 0);
+      const average = totalMaxMarks
+        ? Math.round((totalMarks / totalMaxMarks) * 100)
         : null;
 
       return {

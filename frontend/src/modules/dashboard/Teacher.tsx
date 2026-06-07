@@ -38,21 +38,29 @@ const TeacherDashboard = () => {
   }, [initialize]);
 
   useEffect(() => {
+    let ignore = false;
+
+    const updateSchedule = (items: TimetableEntry[]) => {
+      if (!ignore) {
+        setTodaySchedule(items);
+      }
+    };
+
     if (!user?.id || user.role !== 'Teacher') {
-      setTodaySchedule([]);
+      window.requestAnimationFrame(() => updateSchedule([]));
       return;
     }
 
     const today = new Date().getDay();
     if (today === 0) {
-      setTodaySchedule([]);
+      window.requestAnimationFrame(() => updateSchedule([]));
       return;
     }
 
-    setIsScheduleLoading(true);
+    const loadingFrame = window.requestAnimationFrame(() => setIsScheduleLoading(true));
     void fetchTimetableEntries({ teacherProfileId: user.id })
       .then((entries) => {
-        setTodaySchedule(
+        updateSchedule(
           entries
             .filter((entry) => entry.dayOfWeek === today)
             .sort((left, right) => {
@@ -65,9 +73,16 @@ const TeacherDashboard = () => {
       })
       .catch((error) => {
         console.error('Failed to load teacher schedule:', error);
-        setTodaySchedule([]);
+        updateSchedule([]);
       })
-      .finally(() => setIsScheduleLoading(false));
+      .finally(() => {
+        window.cancelAnimationFrame(loadingFrame);
+        setIsScheduleLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [user?.id, user?.role]);
 
   const totalStudents = useMemo(() => {

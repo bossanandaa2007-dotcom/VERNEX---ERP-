@@ -97,20 +97,28 @@ begin
     raise exception 'No copies available.';
   end if;
 
+  if exists (
+    select 1
+    from public.library_issues
+    where student_id = target_student_id
+      and book_id = target_book_id
+      and status = 'Issued'
+      and returned_at is null
+  ) then
+    raise exception 'This student already has an active issue for this book.';
+  end if;
+
   update public.librarian_books
   set available_copies = greatest(available_copies - 1, 0)
   where id = target_book_id;
 
   insert into public.library_issues (
-    student_id, book_id, issued_by, issue_date, due_date, status, overdue_status
+    student_id, book_id, issued_by, issue_date, due_date, status
   )
   values (
-    target_student_id, target_book_id, auth.uid(), current_date, resolved_due_date, 'issued', 'current'
+    target_student_id, target_book_id, auth.uid(), current_date, resolved_due_date, 'Issued'
   )
   returning * into created_issue;
-
-  insert into public.library_issue_history (issue_id, action, note, created_by)
-  values (created_issue.id, 'issued', 'Book issued with 21-day return policy.', auth.uid());
 
   return created_issue;
 end;
