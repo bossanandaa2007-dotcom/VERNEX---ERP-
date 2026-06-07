@@ -21,14 +21,14 @@ export interface AuthenticatedUser {
 
 interface ProfileRow {
   id: string;
-  auth_user_id: string | null;
-  name: string | null;
+  auth_user_id?: string | null;
+  name?: string | null;
   email: string | null;
-  role: string | null;
-  full_name: string | null;
-  main_role: string | null;
-  designation: string | null;
-  is_active: boolean | null;
+  role?: string | null;
+  full_name?: string | null;
+  main_role?: string | null;
+  designation?: string | null;
+  is_active?: boolean | null;
 }
 
 interface StudentProfileRow {
@@ -234,49 +234,89 @@ const mapProfileToUser = async (session: Session, profile: ProfileRow | null): P
   };
 };
 
-const getSessionProfile = async (session: Session): Promise<AuthenticatedUser> => {
+const USER_PROFILE_COLUMNS = 'id, auth_user_id, email, full_name, main_role, designation, is_active';
+const LEGACY_PROFILE_COLUMNS = 'id, name, email, role';
+
+const fetchUserProfileByAuthId = async (session: Session) => {
   const client = assertSupabase();
   const { data, error } = await client
-    .from('profiles')
-    .select('id, auth_user_id, name, email, role, full_name, main_role, designation, is_active')
+    .from('user_profiles')
+    .select(USER_PROFILE_COLUMNS)
     .eq('auth_user_id', session.user.id)
     .maybeSingle<ProfileRow>();
 
   if (error) {
-    throw error;
+    console.error('Failed to load user profile by auth UID:', error);
+    return null;
   }
 
-  if (data) {
-    return mapProfileToUser(session, data);
+  return data || null;
+};
+
+const fetchUserProfileByEmail = async (session: Session) => {
+  if (!session.user.email) {
+    return null;
   }
 
-  if (session.user.email) {
-    const { data: emailProfile, error: emailError } = await client
-      .from('profiles')
-      .select('id, auth_user_id, name, email, role, full_name, main_role, designation, is_active')
-      .eq('email', session.user.email)
-      .maybeSingle<ProfileRow>();
+  const client = assertSupabase();
+  const { data, error } = await client
+    .from('user_profiles')
+    .select(USER_PROFILE_COLUMNS)
+    .eq('email', session.user.email.toLowerCase())
+    .maybeSingle<ProfileRow>();
 
-    if (emailError) {
-      console.error('Failed to load profile by email fallback:', emailError);
-    }
-
-    if (emailProfile) {
-      return mapProfileToUser(session, emailProfile);
-    }
+  if (error) {
+    console.error('Failed to load user profile by email:', error);
+    return null;
   }
 
-  const { data: legacyProfile, error: legacyError } = await client
+  return data || null;
+};
+
+const fetchLegacyProfileById = async (session: Session) => {
+  const client = assertSupabase();
+  const { data, error } = await client
     .from('profiles')
-    .select('id, auth_user_id, name, email, role, full_name, main_role, designation, is_active')
+    .select(LEGACY_PROFILE_COLUMNS)
     .eq('id', session.user.id)
     .maybeSingle<ProfileRow>();
 
-  if (legacyError) {
-    console.error('Failed to load profile by legacy id fallback:', legacyError);
+  if (error) {
+    console.error('Failed to load legacy profile by auth UID:', error);
+    return null;
   }
 
-  return mapProfileToUser(session, legacyProfile || null);
+  return data || null;
+};
+
+const fetchLegacyProfileByEmail = async (session: Session) => {
+  if (!session.user.email) {
+    return null;
+  }
+
+  const client = assertSupabase();
+  const { data, error } = await client
+    .from('profiles')
+    .select(LEGACY_PROFILE_COLUMNS)
+    .eq('email', session.user.email.toLowerCase())
+    .maybeSingle<ProfileRow>();
+
+  if (error) {
+    console.error('Failed to load legacy profile by email:', error);
+    return null;
+  }
+
+  return data || null;
+};
+
+const getSessionProfile = async (session: Session): Promise<AuthenticatedUser> => {
+  const profile =
+    await fetchUserProfileByAuthId(session)
+    || await fetchUserProfileByEmail(session)
+    || await fetchLegacyProfileById(session)
+    || await fetchLegacyProfileByEmail(session);
+
+  return mapProfileToUser(session, profile || null);
 };
 
 export const initializeSupabaseAuth = async (): Promise<AuthenticatedUser | null> => {
