@@ -27,103 +27,100 @@ as $$
   end
 $$;
 
-create or replace function public.main_role_display_label(input_main_role text)
-returns text
-language sql
-immutable
-as $$
-  select case input_main_role
-    when 'admin' then 'Admin'
-    when 'teacher' then 'Teacher'
-    when 'student' then 'Student'
-    when 'accountant' then 'Accountant'
-    when 'librarian' then 'Librarian'
-    when 'governing_body' then 'Governing Body'
-    else null
-  end
-$$;
+create table if not exists public.user_profiles (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null references auth.users (id) on delete cascade,
+  email text not null,
+  full_name text not null,
+  main_role text not null,
+  designation text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
 
-alter table public.profiles
-add column if not exists auth_user_id uuid references auth.users (id) on delete cascade,
-add column if not exists full_name text,
-add column if not exists main_role text,
-add column if not exists designation text,
-add column if not exists is_active boolean not null default true,
-add column if not exists updated_at timestamptz not null default timezone('utc', now());
+alter table public.user_profiles
+drop constraint if exists user_profiles_main_role_check;
 
-update public.profiles
-set
-  auth_user_id = coalesce(auth_user_id, id),
-  full_name = coalesce(nullif(trim(full_name), ''), name),
-  main_role = coalesce(public.normalize_app_main_role(main_role), public.normalize_app_main_role(role)),
-  designation = coalesce(nullif(trim(designation), ''), role),
-  updated_at = coalesce(updated_at, created_at, timezone('utc', now()))
-where
-  auth_user_id is null
-  or full_name is null
-  or main_role is null
-  or designation is null
-  or updated_at is null;
-
-alter table public.profiles
-alter column auth_user_id set not null,
-alter column main_role set not null;
-
-alter table public.profiles
-drop constraint if exists profiles_main_role_check;
-
-alter table public.profiles
-add constraint profiles_main_role_check
+alter table public.user_profiles
+add constraint user_profiles_main_role_check
 check (main_role in ('admin', 'teacher', 'student', 'accountant', 'librarian', 'governing_body'));
 
-create unique index if not exists profiles_auth_user_id_uidx
-on public.profiles (auth_user_id);
+create unique index if not exists user_profiles_auth_user_id_uidx
+on public.user_profiles (auth_user_id);
 
-create index if not exists profiles_email_idx
-on public.profiles (lower(email));
+create unique index if not exists user_profiles_email_uidx
+on public.user_profiles (lower(email));
 
-create index if not exists profiles_main_role_idx
-on public.profiles (main_role);
+create index if not exists user_profiles_main_role_idx
+on public.user_profiles (main_role);
 
-create or replace function public.sync_profile_role_fields()
+insert into public.user_profiles (
+  auth_user_id,
+  email,
+  full_name,
+  main_role,
+  designation,
+  is_active,
+  created_at,
+  updated_at
+)
+select
+  p.id,
+  lower(trim(p.email)),
+  coalesce(nullif(trim(p.name), ''), p.email),
+  public.normalize_app_main_role(p.role),
+  p.role,
+  true,
+  coalesce(p.created_at, timezone('utc', now())),
+  timezone('utc', now())
+from public.profiles p
+where public.normalize_app_main_role(p.role) is not null
+on conflict (auth_user_id) do update
+set
+  email = excluded.email,
+  full_name = excluded.full_name,
+  main_role = excluded.main_role,
+  designation = coalesce(public.user_profiles.designation, excluded.designation),
+  updated_at = timezone('utc', now());
+
+create or replace function public.touch_user_profiles_updated_at()
 returns trigger
 language plpgsql
 set search_path = public
 as $$
-declare
-  normalized_role text;
-  legacy_role text;
 begin
-  new.auth_user_id := coalesce(new.auth_user_id, new.id);
-  new.full_name := coalesce(nullif(trim(new.full_name), ''), new.name);
+  new.email := lower(trim(new.email));
+  new.main_role := public.normalize_app_main_role(new.main_role);
 
-  normalized_role := coalesce(
-    public.normalize_app_main_role(new.main_role),
-    public.normalize_app_main_role(new.role)
-  );
-
-  if normalized_role is null then
-    raise exception 'Invalid profile main role: %', coalesce(new.main_role, new.role);
+  if new.main_role is null then
+    raise exception 'Invalid user profile main role';
   end if;
 
-  legacy_role := public.main_role_display_label(normalized_role);
-  if legacy_role is null then
-    raise exception 'Invalid canonical profile main role: %', normalized_role;
+  if new.designation is not null then
+    new.designation := nullif(trim(new.designation), '');
   end if;
 
-  new.main_role := normalized_role;
-  new.role := legacy_role;
-  new.designation := coalesce(nullif(trim(new.designation), ''), legacy_role);
+  new.full_name := coalesce(nullif(trim(new.full_name), ''), new.email);
   new.updated_at := timezone('utc', now());
-
   return new;
 end;
 $$;
 
-drop trigger if exists sync_profile_role_fields_before_write on public.profiles;
+drop trigger if exists touch_user_profiles_updated_at_before_write on public.user_profiles;
 
-create trigger sync_profile_role_fields_before_write
-before insert or update of auth_user_id, full_name, name, main_role, role, designation
-on public.profiles
+create trigger touch_user_profiles_updated_at_before_write
+before insert or update of email, full_name, main_role, designation, is_active
+on public.user_profiles
 for each row
-execute function public.sync_profile_role_fields();
+execute function public.touch_user_profiles_updated_at();
+
+alter table public.user_profiles enable row level security;
+
+drop policy if exists "user_profiles_select_own" on public.user_profiles;
+
+create policy "user_profiles_select_own"
+on public.user_profiles
+for select
+to authenticated
+using (auth_user_id = auth.uid());
