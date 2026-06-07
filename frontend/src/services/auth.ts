@@ -1,11 +1,15 @@
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { getRoleLabel, normalizeRole, type MainRole } from '../utils/roles';
 
 export interface AuthenticatedUser {
   id: string;
   name: string;
   email: string;
   role: string;
+  mainRole: MainRole | null;
+  designation?: string;
+  isActive: boolean;
   standard?: string;
   class?: string;
   section?: string;
@@ -17,9 +21,14 @@ export interface AuthenticatedUser {
 
 interface ProfileRow {
   id: string;
+  auth_user_id: string | null;
   name: string | null;
   email: string | null;
   role: string | null;
+  full_name: string | null;
+  main_role: string | null;
+  designation: string | null;
+  is_active: boolean | null;
 }
 
 interface StudentProfileRow {
@@ -90,7 +99,22 @@ const singleRelation = <T>(value: T | T[] | null | undefined): T | null => {
 const compactUnique = (values: Array<string | null | undefined>) =>
   Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean) as string[]));
 
-const normalizeRole = (role?: string | null) => role || 'Student';
+const getMetadataValue = (metadata: Record<string, unknown> | undefined, keys: string[]) => {
+  for (const key of keys) {
+    const value = metadata?.[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+};
+
+const getAuthDisplayName = (session: Session) =>
+  getMetadataValue(session.user.user_metadata, ['full_name', 'name', 'display_name']);
+
+const getGoverningDesignation = (session: Session) =>
+  getMetadataValue(session.user.user_metadata, ['designation', 'role_title', 'sub_role', 'position']);
 
 const splitClassName = (className?: string) => {
   if (!className) {
@@ -170,14 +194,22 @@ const fetchTeacherProfile = async (profileId: string): Promise<UserRoleContext> 
 };
 
 const mapProfileToUser = async (session: Session, profile: ProfileRow | null): Promise<AuthenticatedUser> => {
-  const role = normalizeRole(profile?.role || session.user.user_metadata?.role);
+  const mainRole =
+    normalizeRole(profile?.main_role)
+    || normalizeRole(profile?.role)
+    || normalizeRole(session.user.user_metadata?.role);
+  const role = getRoleLabel(mainRole);
   let roleContext: UserRoleContext = {};
+  const authDisplayName = getAuthDisplayName(session);
+  const governingDesignation = mainRole === 'governing_body'
+    ? profile?.designation || getGoverningDesignation(session) || 'Governing Body'
+    : undefined;
 
   try {
     roleContext =
-      role === 'Student'
+      mainRole === 'student'
         ? await fetchStudentProfile(session.user.id)
-        : role === 'Teacher'
+        : mainRole === 'teacher'
           ? await fetchTeacherProfile(session.user.id)
           : {};
   } catch (error) {
@@ -186,9 +218,12 @@ const mapProfileToUser = async (session: Session, profile: ProfileRow | null): P
 
   return {
     id: session.user.id,
-    name: profile?.name || session.user.user_metadata?.name || session.user.email || 'User',
+    name: profile?.full_name || profile?.name || authDisplayName || session.user.email || (mainRole === 'governing_body' ? 'Governing User' : 'User'),
     email: profile?.email || session.user.email || '',
     role,
+    mainRole,
+    designation: governingDesignation,
+    isActive: profile?.is_active ?? true,
     standard: roleContext.standard,
     class: roleContext.className,
     section: roleContext.section,
@@ -203,15 +238,45 @@ const getSessionProfile = async (session: Session): Promise<AuthenticatedUser> =
   const client = assertSupabase();
   const { data, error } = await client
     .from('profiles')
-    .select('id, name, email, role')
-    .eq('id', session.user.id)
+    .select('id, auth_user_id, name, email, role, full_name, main_role, designation, is_active')
+    .eq('auth_user_id', session.user.id)
     .maybeSingle<ProfileRow>();
 
   if (error) {
     throw error;
   }
 
-  return mapProfileToUser(session, data);
+  if (data) {
+    return mapProfileToUser(session, data);
+  }
+
+  if (session.user.email) {
+    const { data: emailProfile, error: emailError } = await client
+      .from('profiles')
+      .select('id, auth_user_id, name, email, role, full_name, main_role, designation, is_active')
+      .eq('email', session.user.email)
+      .maybeSingle<ProfileRow>();
+
+    if (emailError) {
+      console.error('Failed to load profile by email fallback:', emailError);
+    }
+
+    if (emailProfile) {
+      return mapProfileToUser(session, emailProfile);
+    }
+  }
+
+  const { data: legacyProfile, error: legacyError } = await client
+    .from('profiles')
+    .select('id, auth_user_id, name, email, role, full_name, main_role, designation, is_active')
+    .eq('id', session.user.id)
+    .maybeSingle<ProfileRow>();
+
+  if (legacyError) {
+    console.error('Failed to load profile by legacy id fallback:', legacyError);
+  }
+
+  return mapProfileToUser(session, legacyProfile || null);
 };
 
 export const initializeSupabaseAuth = async (): Promise<AuthenticatedUser | null> => {

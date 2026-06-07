@@ -5,6 +5,7 @@ import { useClassStore } from './store/useClassStore';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
+import { normalizeRole } from './utils/roles';
 
 const LoginModule = lazy(() => import('./modules/auth/Login'));
 const AdminDashboard = lazy(() => import('./modules/dashboard/Admin'));
@@ -47,19 +48,22 @@ const TimetablePage = lazy(() => import('./modules/timetable/TimetablePage'));
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { isAuthenticated, isLoading, user } = useAuthStore();
   const location = useLocation();
+  const normalizedAllowedRoles = allowedRoles
+    ?.map(normalizeRole)
+    .filter((role): role is NonNullable<ReturnType<typeof normalizeRole>> => Boolean(role));
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen text-slate-500">Loading...</div>;
   }
 
   if (!isAuthenticated || !user) {
-    const loginPath = allowedRoles?.includes('Student') || location.pathname.startsWith('/student')
+    const loginPath = normalizedAllowedRoles?.includes('student') || location.pathname.startsWith('/student')
       ? '/student-login'
       : '/login';
     return <Navigate to={loginPath} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (!user.isActive || !user.mainRole || (normalizedAllowedRoles && !normalizedAllowedRoles.includes(user.mainRole))) {
     return <Navigate to="/unauthorized" replace />;
   }
 
@@ -73,7 +77,7 @@ function App() {
   const refreshSchoolData = useClassStore((state) => state.refresh);
   const resetSchoolData = useClassStore((state) => state.reset);
   const userId = user?.id;
-  const userRole = user?.role;
+  const userRole = user?.mainRole;
 
   useEffect(() => {
     void initialize();
@@ -89,7 +93,7 @@ function App() {
       return;
     }
 
-    if (userRole === 'Student') {
+    if (userRole === 'student') {
       resetSchoolData();
       return;
     }

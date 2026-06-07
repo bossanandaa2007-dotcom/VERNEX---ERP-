@@ -358,7 +358,7 @@ const ReportsPage = () => {
     doc.rect(0, 0, 297, 28, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
-    doc.text('EduSync ERP - Admin Institutional Report', 14, 17);
+    doc.text('VerneX ERP - Admin Institutional Report', 14, 17);
     doc.setFontSize(10);
     doc.text(`Generated for ${user?.name || 'Admin'} on ${formatDateTime(generatedAt)}`, 14, 24);
 

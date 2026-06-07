@@ -370,7 +370,7 @@ const FinanceDashboard = () => {
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255);
     doc.setFontSize(24);
-    doc.text('EduSync ERP - Fee Receipt', 14, 25);
+    doc.text('VerneX ERP - Fee Receipt', 14, 25);
 
     doc.setTextColor(50);
     doc.setFontSize(12);

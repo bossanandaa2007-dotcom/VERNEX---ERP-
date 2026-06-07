@@ -11,7 +11,7 @@ const DashboardLayout = () => {
   const mainRef = useRef<HTMLElement | null>(null);
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
-  const isMobileAppRole = user?.role === 'Teacher' || user?.role === 'Student' || user?.role === 'Governing Body';
+  const isMobileAppRole = user?.mainRole === 'teacher' || user?.mainRole === 'student' || user?.mainRole === 'governing_body';
 
   // On small screens, collapse by default
   useEffect(() => {
@@ -76,7 +76,7 @@ const DashboardLayout = () => {
           </div>
         </main>
       </div>
-      <MobileBottomNav role={user?.role} />
+      <MobileBottomNav role={user?.mainRole} />
     </div>
   );
 };
