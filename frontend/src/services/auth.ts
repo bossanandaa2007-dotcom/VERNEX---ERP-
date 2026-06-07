@@ -88,6 +88,30 @@ const assertSupabase = () => {
   return supabase;
 };
 
+const toError = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message.trim()) {
+    return error;
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const message = 'message' in error ? error.message : undefined;
+    const description = 'error_description' in error ? error.error_description : undefined;
+    const code = 'error' in error ? error.error : undefined;
+
+    for (const value of [message, description, code]) {
+      if (typeof value === 'string' && value.trim()) {
+        return new Error(value);
+      }
+    }
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return new Error(error);
+  }
+
+  return new Error(fallback);
+};
+
 const singleRelation = <T>(value: T | T[] | null | undefined): T | null => {
   if (Array.isArray(value)) {
     return value[0] || null;
@@ -345,7 +369,7 @@ export const loginWithSupabase = async (email: string, password: string): Promis
   const { data, error } = await client.auth.signInWithPassword({ email, password });
 
   if (error) {
-    throw error;
+    throw toError(error, 'Unable to sign in. Please verify the Supabase deployment configuration.');
   }
 
   if (!data.session) {
