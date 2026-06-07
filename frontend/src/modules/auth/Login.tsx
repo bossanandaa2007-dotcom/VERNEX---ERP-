@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
+import { getDashboardPath, isStaffRole } from '../../utils/roles';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -14,27 +15,6 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 type LoginMode = 'staff' | 'student';
-
-const STAFF_ROLES = ['Admin', 'Teacher', 'Accountant', 'Governing Body', 'Librarian'];
-
-const getDashboardPath = (role?: string) => {
-  switch (role) {
-    case 'Admin':
-      return '/admin/dashboard';
-    case 'Teacher':
-      return '/teacher/dashboard';
-    case 'Student':
-      return '/student/dashboard';
-    case 'Accountant':
-      return '/accountant/fees';
-    case 'Governing Body':
-      return '/governing/dashboard';
-    case 'Librarian':
-      return '/librarian/dashboard';
-    default:
-      return '/';
-  }
-};
 
 const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
   const { login, logout } = useAuthStore();
@@ -58,15 +38,22 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
       const success = await login(data.email, data.password);
 
       if (success) {
-        const userRole = useAuthStore.getState().user?.role;
+        const currentUser = useAuthStore.getState().user;
+        const userRole = currentUser?.mainRole;
 
-        if (isStudentLogin && userRole !== 'Student') {
+        if (!currentUser?.isActive || !userRole) {
+          await logout();
+          setError('This account is missing an active ERP role. Please contact the administrator.');
+          return;
+        }
+
+        if (isStudentLogin && userRole !== 'student') {
           await logout();
           setError('This login is only for students. Please use the staff login.');
           return;
         }
 
-        if (!isStudentLogin && (!userRole || !STAFF_ROLES.includes(userRole))) {
+        if (!isStudentLogin && !isStaffRole(userRole)) {
           await logout();
           setError('Students must use the student login page.');
           return;

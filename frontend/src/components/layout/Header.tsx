@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Bell, Search, Menu, User, Mail, Shield, LogOut, CheckCircle, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Bell, Search, Menu, Mail, Shield, LogOut, CheckCircle, KeyRound, Eye, EyeOff } from 'lucide-react';
 import Modal from '../common/Modal';
 import { changeCurrentUserPassword } from '../../services/auth';
 import { supabase } from '../../lib/supabase';
@@ -39,9 +39,12 @@ export const Header = ({
   const [showPasswordText, setShowPasswordText] = useState(false);
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const teacherSubjects = user?.subjects?.length ? user.subjects.join(', ') : user?.subject;
+  const displayRole = user?.mainRole === 'governing_body'
+    ? user.designation || 'Governing Body'
+    : user?.role;
   const unreadCount = notifications.filter((notification) => !notification.is_read).length;
   const mobileTitle = (() => {
-    if (user?.role === 'Governing Body') {
+    if (user?.mainRole === 'governing_body') {
       const params = new URLSearchParams(location.search);
       const view = params.get('view');
       if (location.pathname.includes('/calendar')) return 'Calendar';
@@ -58,7 +61,7 @@ export const Header = ({
     if (location.pathname.includes('/timetable')) return 'Timetable';
     if (location.pathname.includes('/performance') || location.pathname.includes('/marks')) return 'Performance';
     if (location.pathname.includes('/profile')) return 'Profile';
-    return user?.role === 'Teacher' || user?.role === 'Student' ? 'Home' : 'Dashboard';
+    return user?.mainRole === 'teacher' || user?.mainRole === 'student' ? 'Home' : 'Dashboard';
   })();
 
   const resetPasswordForm = () => {
@@ -168,7 +171,7 @@ export const Header = ({
             <Menu size={20} strokeWidth={1.8} />
           </button>
           <div className="min-w-0 lg:hidden">
-            <p className="text-xs font-medium text-slate-500">{user?.role || 'ERP'}</p>
+            <p className="text-xs font-medium text-slate-500">{displayRole || 'ERP'}</p>
             <h1 className="truncate text-lg font-semibold leading-none text-slate-950">{mobileTitle}</h1>
           </div>
           
@@ -200,7 +203,7 @@ export const Header = ({
           >
             <div className="hidden md:flex flex-col items-end">
               <span className="text-sm font-medium text-slate-900 transition-colors group-hover:text-[#3f5f9f]">{user?.name}</span>
-              <span className="text-xs font-medium text-slate-500">{user?.role}</span>
+              <span className="text-xs font-medium text-slate-500">{displayRole}</span>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#4653a6] font-semibold text-white shadow-sm transition-colors max-lg:h-9 max-lg:w-9">
               {user?.name?.charAt(0) || 'U'}
@@ -291,7 +294,7 @@ export const Header = ({
              </div>
              <div className="text-center">
                 <h3 className="text-xl font-bold text-slate-900">{user?.name}</h3>
-                <p className="mt-1 text-sm font-normal text-slate-500">{user?.role}</p>
+                <p className="mt-1 text-sm font-normal text-slate-500">{displayRole}</p>
              </div>
              <div className="flex gap-2">
                 <span className="flex items-center gap-1 rounded border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -301,13 +304,6 @@ export const Header = ({
           </div>
 
           <div className="space-y-4">
-             <div className="flex items-center gap-4 rounded border border-slate-100 bg-slate-50 p-4">
-                <div className="rounded bg-white p-2.5 text-[#3f5f9f] shadow-sm"><User size={19} strokeWidth={1.8} /></div>
-                <div>
-                  <p className="erp-section-label mb-1 leading-none">User ID</p>
-                  <p className="text-sm font-semibold text-slate-700">{user?.id}</p>
-                </div>
-             </div>
              <div className="flex items-center gap-4 rounded border border-slate-100 bg-slate-50 p-4">
                 <div className="rounded bg-white p-2.5 text-emerald-600 shadow-sm"><Mail size={19} strokeWidth={1.8} /></div>
                 <div>
@@ -322,7 +318,16 @@ export const Header = ({
                   <p className="text-sm font-semibold text-slate-700">{user?.role}</p>
                 </div>
              </div>
-             {user?.role === 'Teacher' && (
+             {user?.mainRole === 'governing_body' && (
+                <div className="flex items-center gap-4 rounded border border-slate-100 bg-slate-50 p-4">
+                   <div className="rounded bg-white p-2.5 text-amber-600 shadow-sm"><Shield size={19} strokeWidth={1.8} /></div>
+                   <div>
+                     <p className="erp-section-label mb-1 leading-none">Designation</p>
+                     <p className="text-sm font-semibold text-slate-700">{displayRole}</p>
+                   </div>
+                </div>
+             )}
+             {user?.mainRole === 'teacher' && (
                 <div className="flex items-center gap-4 rounded border border-slate-100 bg-slate-50 p-4">
                    <div className="rounded bg-white p-2.5 text-amber-600 shadow-sm"><Shield size={19} strokeWidth={1.8} /></div>
                    <div>

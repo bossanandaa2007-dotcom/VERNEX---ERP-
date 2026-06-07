@@ -232,7 +232,7 @@ const FinanceReportsPage = () => {
     doc.rect(0, 0, 297, 26, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
-    doc.text('EduSync ERP - Class Fee Report', 14, 16);
+    doc.text('VerneX ERP - Class Fee Report', 14, 16);
 
     doc.setTextColor(31, 41, 55);
     doc.setFontSize(11);

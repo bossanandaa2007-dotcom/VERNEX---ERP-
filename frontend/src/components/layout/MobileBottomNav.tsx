@@ -1,6 +1,7 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Award, BarChart3, BookOpen, CalendarDays, FileText, GraduationCap, Home, UserRound, UsersRound } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import type { MainRole } from '../../utils/roles';
 
 const teacherTabs = [
   { name: 'Home', icon: Home, path: '/teacher/dashboard' },
@@ -33,15 +34,15 @@ const librarianTabs = [
   { name: 'Reminders', icon: FileText, path: '/librarian/reminders' },
 ];
 
-export const MobileBottomNav = ({ role }: { role?: string }) => {
+export const MobileBottomNav = ({ role }: { role?: MainRole | null }) => {
   const location = useLocation();
-  const tabs = role === 'Teacher' ? teacherTabs : role === 'Student' ? studentTabs : role === 'Governing Body' ? governingTabs : role === 'Librarian' ? librarianTabs : [];
+  const tabs = role === 'teacher' ? teacherTabs : role === 'student' ? studentTabs : role === 'governing_body' ? governingTabs : role === 'librarian' ? librarianTabs : [];
 
   if (!tabs.length) {
     return null;
   }
 
-  if (role === 'Governing Body') {
+  if (role === 'governing_body') {
     const current = `${location.pathname}${location.search}`;
 
     return (

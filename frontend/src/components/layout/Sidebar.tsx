@@ -3,10 +3,11 @@ import { useAuthStore } from '../../store/useAuthStore';
 import {
   LayoutDashboard, Users, Shield, CheckCircle, Award,
   Library, IndianRupee, Calendar, FileText, Settings,
-  BookOpen, BarChart3, LogOut, ChevronLeft, ChevronRight,
+  BookOpen, BarChart3, LogOut, ChevronLeft,
   Building2, CalendarDays, ClipboardList, type LucideIcon
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import type { MainRole } from '../../utils/roles';
 
 interface NavItem {
   name: string;
@@ -14,15 +15,15 @@ interface NavItem {
   path: string;
 }
 
-const getNavItems = (role: string) => {
+const getNavItems = (role: MainRole) => {
   const items: NavItem[] = [];
 
   // always add a single dashboard entry for allowed roles
-  if (role !== 'Accountant') {
-    items.push({ name: 'Dashboard', icon: LayoutDashboard, path: `/${role === 'Governing Body' ? 'governing' : role.toLowerCase()}/dashboard` });
+  if (role !== 'accountant') {
+    items.push({ name: 'Dashboard', icon: LayoutDashboard, path: `/${role === 'governing_body' ? 'governing' : role}/dashboard` });
   }
 
-  if (role === 'Admin') {
+  if (role === 'admin') {
     items.push(
       { name: 'Classes Mgmt', icon: Building2, path: '/admin/classes' },
       { name: 'Students', icon: Users, path: '/admin/students' },
@@ -37,7 +38,7 @@ const getNavItems = (role: string) => {
     );
   }
 
-  if (role === 'Teacher') {
+  if (role === 'teacher') {
     items.push(
       { name: 'My Classes', icon: Users, path: '/teacher/classes' },
       { name: 'Timetable', icon: CalendarDays, path: '/teacher/timetable' },
@@ -52,7 +53,7 @@ const getNavItems = (role: string) => {
     );
   }
 
-  if (role === 'Student') {
+  if (role === 'student') {
     items.push(
       { name: 'My Attendance', icon: CheckCircle, path: '/student/attendance' },
       { name: 'Timetable', icon: CalendarDays, path: '/student/timetable' },
@@ -66,14 +67,14 @@ const getNavItems = (role: string) => {
     );
   }
 
-  if (role === 'Accountant') {
+  if (role === 'accountant') {
     items.push(
       { name: 'Fees & Finance', icon: IndianRupee, path: '/accountant/fees' },
       { name: 'Reports', icon: FileText, path: '/accountant/reports' }
     );
   }
 
-  if (role === 'Librarian') {
+  if (role === 'librarian') {
     items.push(
       { name: 'Books', icon: BookOpen, path: '/librarian/books' },
       { name: 'Issued', icon: BookOpen, path: '/librarian/issued' },
@@ -81,7 +82,7 @@ const getNavItems = (role: string) => {
     );
   }
 
-  if (role === 'Governing Body') {
+  if (role === 'governing_body') {
     items.push(
       { name: 'Analytics', icon: BarChart3, path: '/governing/dashboard?view=analytics' },
       { name: 'Teachers', icon: Users, path: '/governing/dashboard?view=teachers' },
@@ -133,12 +134,12 @@ export const Sidebar = ({
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const role = user?.role || 'Admin';
+  const role = user?.mainRole || 'admin';
 
   const navItems = getNavItems(role);
   const currentLocation = `${location.pathname}${location.search}`;
   const isNavItemActive = (path: string, name: string, isActive: boolean) => {
-    if (role !== 'Governing Body') {
+    if (role !== 'governing_body') {
       return isActive;
     }
 
@@ -151,7 +152,7 @@ export const Sidebar = ({
 
   const handleLogout = () => {
     void logout().finally(() => {
-      navigate(role === 'Student' ? '/student-login' : '/login');
+      navigate(role === 'student' ? '/student-login' : '/login');
     });
   };
 
@@ -165,10 +166,10 @@ export const Sidebar = ({
       {/* Brand */}
       <div className="flex h-[60px] shrink-0 items-center justify-between border-b border-slate-800 px-3.5 py-3">
         <div className={cn("flex items-center gap-3 overflow-hidden", collapsed && "opacity-0 hidden")}>
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-[#4653a6] text-sm font-semibold text-white">
-            E
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded bg-white/95 p-1.5">
+            <img src="/vernex-icon.png" alt="VerneX ERP" className="h-full w-full object-contain" />
           </div>
-          <span className="truncate text-[15px] font-semibold text-white">EduSync ERP</span>
+          <span className="truncate text-[15px] font-semibold text-white">VerneX ERP</span>
         </div>
         {!collapsed && (
           <button onClick={() => setCollapsed(true)} className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
@@ -176,8 +177,13 @@ export const Sidebar = ({
           </button>
         )}
         {collapsed && (
-          <button onClick={() => setCollapsed(false)} className="mx-auto rounded bg-[#4653a6] p-2 text-white transition-colors hover:bg-[#5260b4]">
-            <ChevronRight size={19} strokeWidth={1.8} />
+          <button
+            onClick={() => setCollapsed(false)}
+            className="mx-auto flex h-11 w-11 items-center justify-center rounded bg-white/95 p-1.5 transition-colors hover:bg-white"
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+          >
+            <img src="/vernex-icon.png" alt="VerneX ERP" className="h-full w-full object-contain" />
           </button>
         )}
       </div>
@@ -198,9 +204,9 @@ export const Sidebar = ({
 
               return cn(
                 "group flex items-center gap-2.5 rounded px-2.5 py-2 text-[13px] transition-colors duration-150 max-lg:py-2.5",
-                role === 'Teacher' && teacherMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
-                role === 'Student' && studentMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
-                role === 'Governing Body' && governingMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
+                role === 'teacher' && teacherMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
+                role === 'student' && studentMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
+                role === 'governing_body' && governingMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
                 active
                   ? "bg-[#4653a6] text-white"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
