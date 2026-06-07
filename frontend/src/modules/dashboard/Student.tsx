@@ -8,16 +8,17 @@ import { fetchStudentAttendanceSummary } from '../../services/attendance';
 import { fetchStudentByProfile } from '../../services/schoolData';
 import { useClassStore } from '../../store/useClassStore';
 import { fetchStudentMarksOverview, MARK_EXAMS, type StudentMarksOverview } from '../../services/marks';
+import type { IStudent } from '../../types/school';
 
-const scorePercent = (marks?: number | null, maxMarks = 100) => {
-  if (typeof marks !== 'number' || !maxMarks) return null;
-  return Math.round((marks / maxMarks) * 100);
-};
+interface StudentDashboardData extends IStudent {
+  class?: string;
+  section?: string;
+}
 
 const StudentDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [studentData, setStudentData] = useState<any>(null);
+  const [studentData, setStudentData] = useState<StudentDashboardData | null>(null);
   const [attendance, setAttendance] = useState(0);
   const [marksOverview, setMarksOverview] = useState<StudentMarksOverview | null>(null);
   const initialize = useClassStore((state) => state.initialize);
@@ -50,13 +51,17 @@ const StudentDashboard = () => {
     const scores = (marksOverview?.subjects || [])
       .map((subject) => {
         const cell = subject.exams[examType];
-        return scorePercent(cell.marks, cell.maxMarks);
+        return typeof cell.marks === 'number' && cell.maxMarks
+          ? { marks: cell.marks, maxMarks: cell.maxMarks }
+          : null;
       })
-      .filter((score): score is number => typeof score === 'number');
+      .filter((score): score is { marks: number; maxMarks: number } => score !== null);
+    const totalMarks = scores.reduce((sum, score) => sum + score.marks, 0);
+    const totalMaxMarks = scores.reduce((sum, score) => sum + score.maxMarks, 0);
 
     return {
       name: examType,
-      score: scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0,
+      score: totalMaxMarks ? Math.round((totalMarks / totalMaxMarks) * 100) : 0,
       hasMarks: scores.length > 0,
     };
   });
@@ -101,12 +106,14 @@ const StudentDashboard = () => {
           { title: 'Attendance Rate', value: `${attendance}%`, icon: Calendar, color: 'bg-orange-500', path: '/student/attendance' },
           { title: 'Pending Fees', value: formatCurrency(0), icon: CreditCard, color: 'bg-rose-500', path: '/student/fees' },
           { title: 'Assignments Due', value: '0', icon: Clock, color: 'bg-blue-500', path: '/student/materials' },
-          { title: 'Recent Awards', value: '0', icon: Award, color: 'bg-amber-500', path: '#' },
+          { title: 'Recent Awards', value: '0', icon: Award, color: 'bg-amber-500' },
         ].map((stat, i) => (
           <div 
             key={i} 
-            onClick={() => navigate(stat.path)}
-            className="flex cursor-pointer flex-col gap-3 border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-300 hover:bg-slate-50 lg:flex-row lg:items-center lg:gap-4"
+            onClick={() => stat.path && navigate(stat.path)}
+            className={`flex flex-col gap-3 border border-slate-200 bg-white p-4 shadow-sm transition-colors lg:flex-row lg:items-center lg:gap-4 ${
+              stat.path ? 'cursor-pointer hover:border-blue-300 hover:bg-slate-50' : ''
+            }`}
           >
              <div className={`w-fit rounded p-2.5 lg:p-3 ${stat.color} text-white shrink-0`}>
                 <stat.icon size={20} />

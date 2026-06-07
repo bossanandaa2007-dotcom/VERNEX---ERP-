@@ -11,6 +11,7 @@ import {
   Shield,
   TrendingUp,
   Users,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   Area,
@@ -83,7 +84,16 @@ const tabToView: Record<Tab, string> = {
   MARKS: 'marks',
 };
 
-const StatCard = ({ title, value, icon: Icon, bg, color, subtitle }: any) => (
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: LucideIcon;
+  bg: string;
+  color: string;
+  subtitle?: string;
+}
+
+const StatCard = ({ title, value, icon: Icon, bg, color, subtitle }: StatCardProps) => (
   <div className="border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
     <div className="flex items-center gap-3">
       <div className={`${bg} ${color} flex h-11 w-11 shrink-0 items-center justify-center rounded`}>
@@ -207,7 +217,7 @@ export default function GoverningDashboard() {
     setSearchParams({ view: tabToView[nextTab] }, { replace: true });
   };
 
-  const desktopTabs: { id: Tab; label: string; icon: any }[] = [
+  const desktopTabs: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: 'DASHBOARD', label: 'Dashboard', icon: Home },
     { id: 'ANALYTICS', label: 'Analytics', icon: BarChart3 },
     { id: 'STUDENTS', label: 'Students', icon: GraduationCap },

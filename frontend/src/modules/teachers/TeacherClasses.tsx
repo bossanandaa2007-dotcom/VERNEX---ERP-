@@ -233,14 +233,13 @@ const TeacherClasses = () => {
             ? fetchStudentMarksByProfile(student.profileId).catch(() => [])
             : Promise.resolve([]),
         ]);
-        const markPercentages = markRows
-          .map((mark) => (mark.maxMarks ? Math.round((mark.marks / mark.maxMarks) * 100) : null))
-          .filter((score): score is number => typeof score === 'number');
+        const totalMarks = markRows.reduce((sum, mark) => sum + Number(mark.marks || 0), 0);
+        const totalMaxMarks = markRows.reduce((sum, mark) => sum + Number(mark.maxMarks || 0), 0);
 
         return {
           studentId: student.id,
-          averageMarks: markPercentages.length
-            ? Math.round(markPercentages.reduce((sum, score) => sum + score, 0) / markPercentages.length)
+          averageMarks: totalMaxMarks
+            ? Math.round((totalMarks / totalMaxMarks) * 100)
             : null,
           attendanceRate: attendanceSummary?.attendanceRate ?? null,
         };

@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Award, BarChart3, BookOpen, CalendarDays, FileText, GraduationCap, Home, UserRound, UsersRound } from 'lucide-react';
-import { cn } from './Sidebar';
+import { cn } from '../../utils/cn';
 
 const teacherTabs = [
   { name: 'Home', icon: Home, path: '/teacher/dashboard' },

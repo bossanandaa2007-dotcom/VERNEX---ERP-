@@ -4,17 +4,18 @@ import {
   LayoutDashboard, Users, Shield, CheckCircle, Award,
   Library, IndianRupee, Calendar, FileText, Settings,
   BookOpen, BarChart3, LogOut, ChevronLeft, ChevronRight,
-  Building2, CalendarDays, ClipboardList
+  Building2, CalendarDays, ClipboardList, type LucideIcon
 } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '../../utils/cn';
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+interface NavItem {
+  name: string;
+  icon: LucideIcon;
+  path: string;
 }
 
 const getNavItems = (role: string) => {
-  const items: { name: string; icon: any; path: string }[] = [];
+  const items: NavItem[] = [];
 
   // always add a single dashboard entry for allowed roles
   if (role !== 'Accountant') {

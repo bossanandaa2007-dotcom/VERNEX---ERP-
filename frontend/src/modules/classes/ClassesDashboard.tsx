@@ -5,10 +5,10 @@ import {
     Plus, Trash2, ChevronRight, ArrowLeft,
     User, Shield, Users, Phone, Award,
     Briefcase, X, CheckCircle2, UserCheck,
-    Calendar, AlertTriangle, MapPin, Hash, Upload
+    Calendar, AlertTriangle, MapPin, Hash, Upload, type LucideIcon
 } from 'lucide-react';
 import { useClassStore } from '../../store/useClassStore';
-import type { IClassSubjectGroup, IStudent } from '../../types/school';
+import type { IClassCategory, IClassSubjectGroup, IStudent, ITeacher } from '../../types/school';
 import { getTodayInputDate } from '../../utils/dateLimits';
 
 type AddModalState =
@@ -19,8 +19,23 @@ type DeleteState =
     | { type: 'SECTION' | 'TEACHER' | 'STUDENT'; id: string; name: string }
     | { type: 'SUBJECT'; name: string; gradeKey: string; gradeLabel: string };
 
+type ActiveProfile = ITeacher | IStudent | null;
+
+interface InCharge {
+    name: string;
+    role: string;
+    experience: string;
+    contact: string;
+}
+
+interface IconButtonProps {
+    icon: LucideIcon;
+    onClick: React.MouseEventHandler<HTMLButtonElement>;
+    variant?: 'gray' | 'blue' | 'red' | 'teal';
+}
+
 // ─── Shared Mini Components ────────────────────────────────────
-const IconBtn = ({ icon: Icon, onClick, variant = 'gray' }: any) => {
+const IconBtn = ({ icon: Icon, onClick, variant = 'gray' }: IconButtonProps) => {
     const cls: Record<string, string> = {
         gray: 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600',
         blue: 'bg-blue-50 text-blue-500 hover:bg-blue-100',
@@ -129,6 +144,11 @@ const getSectionGradeKey = (sectionName: string) => {
 
 const getGradeLabel = (gradeKey: string) => (['LKG', 'UKG'].includes(gradeKey) ? gradeKey : `Class ${gradeKey}`);
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback;
+
+const categoryIcons: Record<string, LucideIcon> = { Baby, BookOpen, GraduationCap, Building2 };
+
 const findGradeCurriculumGroup = (
     groups: IClassSubjectGroup[],
     sectionNames: string[]
@@ -152,7 +172,7 @@ export default function ClassesDashboard() {
     const [view, setView] = useState<'DASHBOARD' | 'CATEGORY' | 'SECTION' | 'TEACHER_PROFILE' | 'STUDENT_PROFILE'>('DASHBOARD');
     const [activeCategoryID, setActiveCategoryID] = useState<string | null>(null);
     const [activeSectionID, setActiveSectionID] = useState<string | null>(null);
-    const [activeProfile, setActiveProfile] = useState<any>(null);
+    const [activeProfile, setActiveProfile] = useState<ActiveProfile>(null);
     const [showModal, setShowModal] = useState<AddModalState | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<DeleteState | null>(null);
     const [toast, setToast] = useState<string | null>(null);
@@ -210,8 +230,8 @@ export default function ClassesDashboard() {
             if (confirmDelete.type === 'SUBJECT') await store.deleteGradeSubject(confirmDelete.gradeKey, confirmDelete.name);
             setConfirmDelete(null);
             notify(confirmDelete.type === 'SUBJECT' ? `${confirmDelete.name} has been successfully deleted from ${confirmDelete.gradeLabel}.` : 'Entry removed from registry.');
-        } catch (error: any) {
-            notify(error?.message || 'Delete failed.');
+        } catch (error: unknown) {
+            notify(getErrorMessage(error, 'Delete failed.'));
         }
     };
 
@@ -240,7 +260,7 @@ export default function ClassesDashboard() {
                 const studentEmail = get('email').trim().toLowerCase();
                 await store.addStudent({
                     name: get('name'), rollNo: get('roll'), categoryId: activeCategoryID!,
-                    sectionId: activeSectionID!, gender: get('gender') as any,
+                    sectionId: activeSectionID!, gender: get('gender') as IStudent['gender'],
                     dob: get('dob'), contact: get('phone'),
                     parentName: get('parent'), parentContact: get('phone'), address: 'New Delhi',
                     email: studentEmail,
@@ -259,8 +279,8 @@ export default function ClassesDashboard() {
                 await store.addGradeSubject(showModal.gradeKey, get('subject'));
                 notify(`${get('subject').trim()} added to ${showModal.gradeLabel}.`);
             }
-        } catch (error: any) {
-            notify(error?.message || 'Registration failed.');
+        } catch (error: unknown) {
+            notify(getErrorMessage(error, 'Registration failed.'));
             setIsSubjectSaving(false);
             return;
         }
@@ -404,8 +424,8 @@ export default function ClassesDashboard() {
                 </section>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {store.categories.map((cat: any) => {
-                        const Icon = ({ Baby, BookOpen, GraduationCap, Building2 } as any)[cat.icon] || BookOpen;
+                    {store.categories.map((cat: IClassCategory) => {
+                        const Icon = categoryIcons[cat.icon] || BookOpen;
                         return (
                             <motion.div
                                 key={cat.id}
@@ -438,7 +458,7 @@ export default function ClassesDashboard() {
     if (view === 'CATEGORY') {
         const teachers = store.teachers.filter(t => t.category === activeCategoryID);
         const sections = store.sections.filter(s => s.categoryId === activeCategoryID);
-        const inCharges = (store.inCharges as any)[activeCategoryID!] || [];
+        const inCharges = (store.inCharges as Record<string, InCharge[]>)[activeCategoryID!] || [];
 
         return (
             <div className="p-10 max-w-7xl mx-auto min-h-screen">
@@ -466,7 +486,7 @@ export default function ClassesDashboard() {
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2 mb-6">
                             <Shield size={12} className="text-teal-500" /> Administration
                         </p>
-                        {inCharges.map((ic: any, i: number) => (
+                        {inCharges.map((ic: InCharge, i: number) => (
                             <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center font-black text-slate-300">{ic.name[0]}</div>
@@ -680,6 +700,7 @@ export default function ClassesDashboard() {
 
     // ── TEACHER PROFILE ────────────────────────────────────────────
     if (view === 'TEACHER_PROFILE' && activeProfile) {
+        const teacherProfile = activeProfile as ITeacher;
         return (
             <div className="p-10 max-w-5xl mx-auto min-h-screen">
                 <button onClick={() => setView('CATEGORY')} className="mb-10 flex items-center gap-2 text-slate-400 font-bold hover:text-slate-900 transition-colors">
@@ -688,12 +709,12 @@ export default function ClassesDashboard() {
                 <div className="bg-white rounded-[64px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col md:flex-row">
                     <div className="w-full md:w-2/5 bg-slate-900 p-16 text-white flex flex-col justify-between gap-12">
                         <div className="w-28 h-28 rounded-[36px] bg-teal-500 flex items-center justify-center text-5xl font-black border-4 border-white/10">
-                            {activeProfile.name[0]}
+                            {teacherProfile.name[0]}
                         </div>
                         <div>
-                            <h1 className="text-5xl font-black tracking-tighter leading-none mb-4">{activeProfile.name}</h1>
+                            <h1 className="text-5xl font-black tracking-tighter leading-none mb-4">{teacherProfile.name}</h1>
                             <div className="flex flex-wrap gap-2">
-                                <span className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-black uppercase tracking-widest">{activeProfile.subject}</span>
+                                <span className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-black uppercase tracking-widest">{teacherProfile.subject}</span>
                                 <span className="px-4 py-1.5 bg-teal-500 rounded-full text-xs font-black uppercase tracking-widest">Faculty</span>
                             </div>
                         </div>
@@ -702,13 +723,13 @@ export default function ClassesDashboard() {
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-12">Professional Dossier</h3>
                         <div className="grid grid-cols-2 gap-x-10 gap-y-10">
                             {[
-                                { l: 'Subject Specialty', v: activeProfile.subject, i: BookOpen },
-                                { l: 'Qualification', v: activeProfile.qualification, i: Award },
-                                { l: 'Experience', v: activeProfile.experience, i: Briefcase },
-                                { l: 'Class Teacher Of', v: activeProfile.classTeacherOf || 'Not assigned', i: UserCheck },
-                                { l: 'Subject Sections', v: activeProfile.subjectTeacherSections?.join(', ') || 'Not assigned', i: MapPin },
-                                { l: 'Contact', v: activeProfile.contact, i: Phone },
-                                { l: 'System ID', v: activeProfile.id?.slice(0, 12), i: Shield },
+                                { l: 'Subject Specialty', v: teacherProfile.subject, i: BookOpen },
+                                { l: 'Qualification', v: teacherProfile.qualification, i: Award },
+                                { l: 'Experience', v: teacherProfile.experience, i: Briefcase },
+                                { l: 'Class Teacher Of', v: teacherProfile.classTeacherOf || 'Not assigned', i: UserCheck },
+                                { l: 'Subject Sections', v: teacherProfile.subjectTeacherSections?.join(', ') || 'Not assigned', i: MapPin },
+                                { l: 'Contact', v: teacherProfile.contact, i: Phone },
+                                { l: 'System ID', v: teacherProfile.id?.slice(0, 12), i: Shield },
                             ].map((item, i) => (
                                 <div key={i}>
                                     <div className="flex items-center gap-2 mb-2">
@@ -727,6 +748,7 @@ export default function ClassesDashboard() {
 
     // ── STUDENT PROFILE ────────────────────────────────────────────
     if (view === 'STUDENT_PROFILE' && activeProfile) {
+        const studentProfile = activeProfile as IStudent;
         return (
             <div className="p-10 max-w-5xl mx-auto min-h-screen">
                 <button onClick={() => setView('SECTION')} className="mb-10 flex items-center gap-2 text-slate-400 font-bold hover:text-slate-900 transition-colors">
@@ -735,10 +757,10 @@ export default function ClassesDashboard() {
                 <div className="bg-white rounded-[64px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col md:flex-row">
                     <div className="w-full md:w-2/5 bg-teal-600 p-16 text-white flex flex-col justify-between gap-12">
                         <div className="w-28 h-28 rounded-[36px] bg-white flex items-center justify-center text-5xl font-black text-teal-600 shadow-xl">
-                            {activeProfile.name[0]}
+                            {studentProfile.name[0]}
                         </div>
                         <div>
-                            <h1 className="text-5xl font-black tracking-tighter leading-none mb-4">{activeProfile.name}</h1>
+                            <h1 className="text-5xl font-black tracking-tighter leading-none mb-4">{studentProfile.name}</h1>
                             <span className="px-5 py-2 bg-slate-900 rounded-xl text-[10px] font-black uppercase tracking-[0.2em]">Student Enrolee</span>
                         </div>
                     </div>
@@ -746,13 +768,13 @@ export default function ClassesDashboard() {
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-12">Enrollment File</h3>
                         <div className="grid grid-cols-2 gap-x-10 gap-y-10">
                             {[
-                                { l: 'Roll Number', v: activeProfile.rollNo, i: Hash },
-                                { l: 'Gender', v: activeProfile.gender, i: User },
-                                { l: 'Academic Class', v: activeClass?.name || activeProfile.categoryId, i: MapPin },
-                                { l: 'Section', v: activeSection?.name || activeProfile.sectionId, i: Users },
-                                { l: 'Date of Birth', v: activeProfile.dob, i: Calendar },
-                                { l: 'Parent', v: activeProfile.parentName, i: Shield },
-                                { l: 'Contact', v: activeProfile.contact, i: Phone },
+                                { l: 'Roll Number', v: studentProfile.rollNo, i: Hash },
+                                { l: 'Gender', v: studentProfile.gender, i: User },
+                                { l: 'Academic Class', v: activeClass?.name || studentProfile.categoryId, i: MapPin },
+                                { l: 'Section', v: activeSection?.name || studentProfile.sectionId, i: Users },
+                                { l: 'Date of Birth', v: studentProfile.dob, i: Calendar },
+                                { l: 'Parent', v: studentProfile.parentName, i: Shield },
+                                { l: 'Contact', v: studentProfile.contact, i: Phone },
                             ].map((item, i) => (
                                 <div key={i}>
                                     <div className="flex items-center gap-2 mb-2">
@@ -778,7 +800,7 @@ export default function ClassesDashboard() {
 }
 
 // ─── Add Modal ─────────────────────────────────────────────────
-function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }: { onClose: () => void; onSubmit: any; type: string; gradeLabel?: string; isSubmitting?: boolean }) {
+function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }: { onClose: () => void; onSubmit: React.FormEventHandler<HTMLFormElement>; type: string; gradeLabel?: string; isSubmitting?: boolean }) {
     const maxDob = getTodayInputDate();
 
     return (
@@ -878,7 +900,7 @@ function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }:
 }
 
 // ─── Delete Confirm ────────────────────────────────────────────
-function DeleteConfirm({ item, onCancel, onConfirm }: { item: any; onCancel: () => void; onConfirm: () => void }) {
+function DeleteConfirm({ item, onCancel, onConfirm }: { item: DeleteState; onCancel: () => void; onConfirm: () => void }) {
     const [isFinalTeacherStep, setIsFinalTeacherStep] = useState(false);
     const isTeacherDelete = item.type === 'TEACHER';
     const isSubjectDelete = item.type === 'SUBJECT';

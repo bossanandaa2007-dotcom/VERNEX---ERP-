@@ -18,6 +18,9 @@ const entryKey = (dayOfWeek: number, periodNumber: number) => `${dayOfWeek}:${pe
 const byNaturalName = <T extends { name: string }>(left: T, right: T) =>
   left.name.localeCompare(right.name, undefined, { numeric: true });
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 const TimetablePage = () => {
   const user = useAuthStore((state) => state.user);
   const initialize = useClassStore((state) => state.initialize);
@@ -50,7 +53,11 @@ const TimetablePage = () => {
       return;
     }
 
-    setSelectedSectionId(sortedSections[0].id);
+    const frame = window.requestAnimationFrame(() => {
+      setSelectedSectionId(sortedSections[0].id);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [isAdmin, selectedSectionId, sortedSections]);
 
   const activeSection = useMemo<ISection | null>(() => {
@@ -91,19 +98,24 @@ const TimetablePage = () => {
       return;
     }
 
-    setIsLoading(true);
-    setMessage(null);
-
     const request = isAdmin
       ? fetchTimetableEntries({ sectionId: selectedSectionId })
       : isTeacher
         ? fetchTimetableEntries({ teacherProfileId: user.id })
         : fetchStudentTimetableEntries(user.id);
 
+    const frame = window.requestAnimationFrame(() => {
+      setIsLoading(true);
+      setMessage(null);
+    });
+
     void request
       .then(setEntries)
-      .catch((error) => setMessage(error?.message || 'Failed to load timetable.'))
-      .finally(() => setIsLoading(false));
+      .catch((error: unknown) => setMessage(getErrorMessage(error, 'Failed to load timetable.')))
+      .finally(() => {
+        window.cancelAnimationFrame(frame);
+        setIsLoading(false);
+      });
   }, [isAdmin, isTeacher, selectedSectionId, user?.id]);
 
   const resolveTeacherForSubject = (section: ISection, subject: string) =>
@@ -160,8 +172,8 @@ const TimetablePage = () => {
       });
       setMessage('Timetable updated.');
       await refreshActiveTimetable();
-    } catch (error: any) {
-      setMessage(error?.message || 'Unable to update this period.');
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, 'Unable to update this period.'));
     }
   };
 

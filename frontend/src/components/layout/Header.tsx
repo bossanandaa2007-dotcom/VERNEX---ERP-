@@ -14,6 +14,9 @@ interface HeaderNotification {
   created_at: string;
 }
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 export const Header = ({ 
   collapsed, 
   setCollapsed 
@@ -146,8 +149,8 @@ export const Header = ({
         confirmPassword: '',
       });
       setPasswordMessage({ type: 'success', text: 'Password updated. Use the new password for future logins.' });
-    } catch (error: any) {
-      setPasswordMessage({ type: 'error', text: error?.message || 'Unable to change password.' });
+    } catch (error: unknown) {
+      setPasswordMessage({ type: 'error', text: getErrorMessage(error, 'Unable to change password.') });
     } finally {
       setIsChangingPassword(false);
     }

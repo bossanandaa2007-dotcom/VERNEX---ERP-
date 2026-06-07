@@ -108,6 +108,130 @@ export interface GoverningMarksOverview {
   averagePercent: number;
 }
 
+interface SectionNameRow {
+  id?: string;
+  name?: string;
+}
+
+interface SubjectNameRow {
+  name: string;
+}
+
+interface SectionSubjectRow {
+  section_id: string;
+  subject_name: string;
+  sort_order?: number;
+}
+
+interface StudentMarkDetailsRow {
+  id: string;
+  student_id: string;
+  section_id: string;
+  subject_name: string;
+  marks: number;
+  max_marks: number;
+  exam_type: ExamType;
+  students?: { name?: string } | Array<{ name?: string }>;
+  sections?: { name?: string } | Array<{ name?: string }>;
+}
+
+interface TeacherHomeRow {
+  home_section_id?: string | null;
+  home_section_subject?: string | null;
+  subject?: string | null;
+  subjects?: string[] | null;
+  assigned_class?: string | null;
+  standards?: string[] | null;
+  home_section?: SectionNameRow | SectionNameRow[] | null;
+}
+
+interface TeacherAssignmentScopeRow {
+  section_id: string;
+  subject: string;
+  sections?: SectionNameRow | SectionNameRow[];
+}
+
+interface TeacherMarkStudentRow {
+  id: string;
+  name: string;
+  roll_no: string;
+  section_id: string;
+  sections?: SectionNameRow | SectionNameRow[];
+}
+
+interface StudentMarkCellRow {
+  id: string;
+  student_id: string;
+  section_id?: string;
+  subject_name: string;
+  marks?: number | null;
+  max_marks?: number | null;
+  exam_type?: ExamType;
+}
+
+interface ClassExamLockRow {
+  id: string;
+  section_id: string;
+  exam_type: ExamType;
+  locked_at: string;
+  locked_by?: string | null;
+}
+
+interface ExamHighRow {
+  subject_name: string;
+  exam_type: ExamType;
+  highest_marks?: number | null;
+}
+
+interface ClassSubjectGroupRow {
+  id: string;
+  category_id: string;
+  name: string;
+}
+
+interface GroupSectionRow {
+  group_id: string;
+  section_id: string;
+  sections?: SectionNameRow | SectionNameRow[];
+}
+
+interface GroupSubjectRow {
+  group_id: string;
+  subject_name: string;
+}
+
+interface GoverningMarkRow {
+  id: string;
+  section_id: string;
+  subject_name: string;
+  marks: number;
+  max_marks: number;
+  exam_type: ExamType;
+  sections?: SectionNameRow | SectionNameRow[];
+}
+
+const firstRelation = <T>(value: T | T[] | null | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
+const uniqueStrings = (values: Array<string | null | undefined>) =>
+  Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+
+const extractTextValues = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => extractTextValues(item));
+  }
+
+  if (typeof value === 'string') {
+    return [value];
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).flatMap((item) => extractTextValues(item));
+  }
+
+  return [];
+};
+
 const assertSupabase = () => {
   if (!supabase) {
     throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
@@ -118,9 +242,9 @@ const assertSupabase = () => {
 
 const STUDENT_MARKS_WITH_DETAILS_SELECT = 'id, student_id, section_id, subject_name, marks, max_marks, exam_type, students!inner(name), sections!inner(name)';
 
-const mapStudentMarkRecord = (row: any): StudentMarkRecord => {
-  const student = Array.isArray(row.students) ? row.students[0] : row.students;
-  const section = Array.isArray(row.sections) ? row.sections[0] : row.sections;
+const mapStudentMarkRecord = (row: StudentMarkDetailsRow): StudentMarkRecord => {
+  const student = firstRelation(row.students);
+  const section = firstRelation(row.sections);
 
   return {
     id: row.id,
@@ -151,14 +275,14 @@ export const fetchSubjectsForClass = async (className: string) => {
   const { data, error } = await client
     .from('section_subjects')
     .select('subject_name')
-    .eq('section_id', (section as any).id)
+    .eq('section_id', (section as SectionNameRow).id)
     .order('sort_order', { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return (data || []).map((row: any) => row.subject_name as string);
+  return ((data || []) as SectionSubjectRow[]).map((row) => row.subject_name);
 };
 
 export const fetchTeacherMarkScopes = async (teacherProfileId: string): Promise<TeacherMarkScope[]> => {
@@ -172,7 +296,7 @@ export const fetchTeacherMarkScopes = async (teacherProfileId: string): Promise<
       .order('subject', { ascending: true }),
     client
       .from('teachers')
-      .select('home_section_id, home_section_subject, home_section:sections!teachers_home_section_id_fkey(name)')
+      .select('home_section_id, home_section_subject, subject, subjects, assigned_class, standards, home_section:sections!teachers_home_section_id_fkey(name)')
       .eq('profile_id', teacherProfileId)
       .maybeSingle(),
   ]);
@@ -185,8 +309,8 @@ export const fetchTeacherMarkScopes = async (teacherProfileId: string): Promise<
     throw teacherRes.error;
   }
 
-  const assignmentScopes = (subjectAssignmentsRes.data || []).map((row: any) => {
-    const section = Array.isArray(row.sections) ? row.sections[0] : row.sections;
+  const assignmentScopes = ((subjectAssignmentsRes.data || []) as TeacherAssignmentScopeRow[]).map((row) => {
+    const section = firstRelation(row.sections);
     return {
       className: section?.name as string,
       sectionId: row.section_id as string,
@@ -194,9 +318,13 @@ export const fetchTeacherMarkScopes = async (teacherProfileId: string): Promise<
     };
   }).filter((row) => row.className && row.sectionId && row.subject);
 
-  const teacherRow: any = teacherRes.data;
-  const homeSection = teacherRow?.home_section ? (Array.isArray(teacherRow.home_section) ? teacherRow.home_section[0] : teacherRow.home_section) : null;
-  const ownSubjects = teacherRow?.home_section_subject ? [teacherRow.home_section_subject] : [];
+  const teacherRow = teacherRes.data as TeacherHomeRow | null;
+  const homeSection = firstRelation(teacherRow?.home_section);
+  const ownSubjects = uniqueStrings([
+    teacherRow?.home_section_subject,
+    teacherRow?.subject,
+    ...(teacherRow?.subjects || []),
+  ]);
   const ownClassScopes = homeSection?.name && teacherRow?.home_section_id
     ? ownSubjects.map((subject: string) => ({
         className: homeSection.name as string,
@@ -205,7 +333,7 @@ export const fetchTeacherMarkScopes = async (teacherProfileId: string): Promise<
       }))
     : [];
 
-  return Array.from(
+  const directScopes = Array.from(
     new Map(
       [...assignmentScopes, ...ownClassScopes].map((scope) => [
         `${scope.sectionId}:${scope.subject.toLowerCase()}`,
@@ -213,6 +341,101 @@ export const fetchTeacherMarkScopes = async (teacherProfileId: string): Promise<
       ])
     ).values()
   );
+
+  if (directScopes.length) {
+    return directScopes;
+  }
+
+  const [classNamesRes, subjectNamesRes] = await Promise.all([
+    client.rpc('current_teacher_class_names'),
+    client.rpc('current_teacher_subject_names'),
+  ]);
+
+  if (classNamesRes.error) {
+    throw classNamesRes.error;
+  }
+
+  if (subjectNamesRes.error) {
+    throw subjectNamesRes.error;
+  }
+
+  const rpcClassNames = uniqueStrings(extractTextValues(classNamesRes.data));
+  const rpcSubjects = uniqueStrings(extractTextValues(subjectNamesRes.data));
+
+  const rpcClassScopes = rpcClassNames.length
+    ? await (async () => {
+        const { data: rpcSections, error: rpcSectionsError } = await client
+          .from('sections')
+          .select('id, name')
+          .in('name', rpcClassNames);
+
+        if (rpcSectionsError) {
+          throw rpcSectionsError;
+        }
+
+        const sectionIdByName = new Map(
+          ((rpcSections || []) as Array<{ id: string; name: string }>).map((section) => [section.name, section.id])
+        );
+
+        return rpcClassNames.flatMap((className) => {
+          const sectionId = sectionIdByName.get(className);
+          if (!sectionId) {
+            return [];
+          }
+
+          return rpcSubjects.map((subject) => ({
+            className,
+            sectionId,
+            subject,
+          }));
+        });
+      })()
+    : [];
+
+  if (rpcClassScopes.length) {
+    return rpcClassScopes;
+  }
+
+  const fallbackClassNames = uniqueStrings([
+    teacherRow?.assigned_class,
+    ...(teacherRow?.standards || []),
+    homeSection?.name,
+  ]);
+  const fallbackSubjects = uniqueStrings([
+    teacherRow?.home_section_subject,
+    teacherRow?.subject,
+    ...(teacherRow?.subjects || []),
+  ]);
+
+  if (!fallbackClassNames.length || !fallbackSubjects.length) {
+    return [];
+  }
+
+  const { data: fallbackSections, error: fallbackSectionsError } = await client
+    .from('sections')
+    .select('id, name')
+    .in('name', fallbackClassNames);
+
+  if (fallbackSectionsError) {
+    throw fallbackSectionsError;
+  }
+
+  const sectionIdByName = new Map(
+    ((fallbackSections || []) as Array<{ id: string; name: string }>).map((section) => [section.name, section.id])
+  );
+
+  return fallbackClassNames.flatMap((className) => {
+    const sectionId = sectionIdByName.get(className);
+    if (!sectionId) {
+      return [];
+    }
+
+    return fallbackSubjects.map((subject) => ({
+      className,
+      sectionId,
+      subject,
+    }));
+  });
 };
 
 export const fetchTeacherMarkSheet = async (className: string, subject: string, examType: ExamType) => {
@@ -234,7 +457,7 @@ export const fetchTeacherMarkSheet = async (className: string, subject: string, 
   const { data: marks, error: marksError } = await client
     .from('student_marks')
     .select('id, student_id, marks, max_marks')
-    .eq('section_id', (students[0] as any).section_id)
+    .eq('section_id', (students[0] as TeacherMarkStudentRow).section_id)
     .eq('subject_name', subject)
     .eq('exam_type', examType);
 
@@ -242,9 +465,9 @@ export const fetchTeacherMarkSheet = async (className: string, subject: string, 
     throw marksError;
   }
 
-  const markMap = new Map((marks || []).map((mark: any) => [mark.student_id, mark]));
+  const markMap = new Map(((marks || []) as StudentMarkCellRow[]).map((mark) => [mark.student_id, mark]));
 
-  return (students || []).map((student: any) => ({
+  return ((students || []) as TeacherMarkStudentRow[]).map((student) => ({
     studentId: student.id,
     studentName: student.name,
     rollNo: student.roll_no,
@@ -304,7 +527,7 @@ export const fetchClassExamMarkLocks = async (filters?: { sectionId?: string; ex
     throw error;
   }
 
-  return (data || []).map((row: any) => ({
+  return ((data || []) as ClassExamLockRow[]).map((row) => ({
     id: row.id,
     sectionId: row.section_id,
     examType: row.exam_type,
@@ -361,7 +584,7 @@ export const fetchTeacherStudentPerformance = async (
     fetchTeacherMarkScopes(teacherProfileId),
     client
       .from('teachers')
-      .select('home_section_id')
+      .select('home_section_id, assigned_class, standards, home_section:sections!teachers_home_section_id_fkey(name)')
       .eq('profile_id', teacherProfileId)
       .maybeSingle(),
   ]);
@@ -370,7 +593,7 @@ export const fetchTeacherStudentPerformance = async (
     throw teacherRes.error;
   }
 
-  const homeSectionId = (teacherRes.data as any)?.home_section_id as string | undefined;
+  const homeSectionId = (teacherRes.data as TeacherHomeRow | null)?.home_section_id || undefined;
   const sectionIds = Array.from(new Set([
     ...scopes.map((scope) => scope.sectionId).filter(Boolean),
     homeSectionId,
@@ -380,7 +603,7 @@ export const fetchTeacherStudentPerformance = async (
     return [];
   }
 
-  const [studentsRes, sectionSubjectsRes, marksRes, locksRes] = await Promise.all([
+  const [studentsRes, sectionSubjectsRes, locksRes] = await Promise.all([
     client
       .from('students')
       .select('id, name, roll_no, section_id, sections!inner(name)')
@@ -391,11 +614,6 @@ export const fetchTeacherStudentPerformance = async (
       .select('section_id, subject_name, sort_order')
       .in('section_id', sectionIds)
       .order('sort_order', { ascending: true }),
-    client
-      .from('student_marks')
-      .select('id, student_id, section_id, subject_name, marks, max_marks, exam_type')
-      .in('section_id', sectionIds)
-      .eq('exam_type', examType),
     client
       .from('class_exam_mark_locks')
       .select('section_id, exam_type')
@@ -411,38 +629,64 @@ export const fetchTeacherStudentPerformance = async (
     throw sectionSubjectsRes.error;
   }
 
-  if (marksRes.error) {
-    throw marksRes.error;
-  }
-
   if (locksRes.error) {
     throw locksRes.error;
   }
 
   const subjectsBySection = new Map<string, string[]>();
-  (sectionSubjectsRes.data || []).forEach((row: any) => {
+  ((sectionSubjectsRes.data || []) as SectionSubjectRow[]).forEach((row) => {
     const current = subjectsBySection.get(row.section_id) || [];
     current.push(row.subject_name as string);
     subjectsBySection.set(row.section_id, current);
   });
 
-  const markMap = new Map<string, any>();
+  const markMap = new Map<string, StudentMarkCellRow>();
   const highestBySectionSubject = new Map<string, number>();
-  (marksRes.data || []).forEach((mark: any) => {
-    markMap.set(`${mark.student_id}:${String(mark.subject_name).toLowerCase()}`, mark);
-    const key = `${mark.section_id}:${String(mark.subject_name).toLowerCase()}`;
-    const current = highestBySectionSubject.get(key);
-    if (typeof mark.marks === 'number' && (typeof current !== 'number' || mark.marks > current)) {
-      highestBySectionSubject.set(key, mark.marks);
-    }
+  const scopesBySection = new Map<string, string[]>();
+  scopes.forEach((scope) => {
+    const current = scopesBySection.get(scope.sectionId) || [];
+    current.push(scope.subject);
+    scopesBySection.set(scope.sectionId, current);
   });
+
+  const scopedSubjects = uniqueStrings(scopes.map((scope) => scope.subject));
+  if (scopedSubjects.length) {
+    const { data: scopeMarks, error: scopeMarksError } = await client
+      .from('student_marks')
+      .select('id, student_id, section_id, subject_name, marks, max_marks, exam_type')
+      .in('section_id', Array.from(scopesBySection.keys()))
+      .in('subject_name', scopedSubjects)
+      .eq('exam_type', examType);
+
+    if (scopeMarksError) {
+      throw scopeMarksError;
+    }
+
+    ((scopeMarks || []) as StudentMarkCellRow[]).forEach((mark) => {
+      if (!mark.section_id) {
+        return;
+      }
+
+      const sectionSubjects = scopesBySection.get(mark.section_id) || [];
+      if (!sectionSubjects.some((subject) => subject.toLowerCase() === String(mark.subject_name).toLowerCase())) {
+        return;
+      }
+
+      markMap.set(`${mark.student_id}:${String(mark.subject_name).toLowerCase()}`, mark);
+      const key = `${mark.section_id}:${String(mark.subject_name).toLowerCase()}`;
+      const current = highestBySectionSubject.get(key);
+      if (typeof mark.marks === 'number' && (typeof current !== 'number' || mark.marks > current)) {
+        highestBySectionSubject.set(key, mark.marks);
+      }
+    });
+  }
 
   const editableScopeSet = new Set(scopes.map((scope) => `${scope.sectionId}:${scope.subject.toLowerCase()}`));
   const subjectVisibleScopeSet = new Set(scopes.map((scope) => `${scope.sectionId}:${scope.subject.toLowerCase()}`));
-  const lockedSectionSet = new Set((locksRes.data || []).map((row: any) => `${row.section_id}:${row.exam_type}`));
+  const lockedSectionSet = new Set(((locksRes.data || []) as ClassExamLockRow[]).map((row) => `${row.section_id}:${row.exam_type}`));
 
-  return (studentsRes.data || []).map((student: any) => {
-    const section = Array.isArray(student.sections) ? student.sections[0] : student.sections;
+  return ((studentsRes.data || []) as TeacherMarkStudentRow[]).map((student) => {
+    const section = firstRelation(student.sections);
     const subjectRows = (subjectsBySection.get(student.section_id) || []).filter((subject) =>
       student.section_id === homeSectionId ||
       subjectVisibleScopeSet.has(`${student.section_id}:${subject.toLowerCase()}`)
@@ -452,7 +696,7 @@ export const fetchTeacherStudentPerformance = async (
       return {
         subject,
         markId: mark?.id,
-        marks: mark?.marks,
+        marks: typeof mark?.marks === 'number' ? mark.marks : undefined,
         maxMarks: mark?.max_marks || 100,
         highestMarks: highestBySectionSubject.get(`${student.section_id}:${subject.toLowerCase()}`),
         canEdit: !isLocked && editableScopeSet.has(`${student.section_id}:${subject.toLowerCase()}`),
@@ -510,10 +754,10 @@ export const fetchStudentMarksByProfile = async (profileId: string, examType?: E
     throw error;
   }
 
-  const allowedSubjects = new Set((sectionSubjects || []).map((row: any) => String(row.subject_name).toLowerCase()));
+  const allowedSubjects = new Set(((sectionSubjects || []) as SectionSubjectRow[]).map((row) => String(row.subject_name).toLowerCase()));
 
   return (data || [])
-    .filter((row: any) => allowedSubjects.has(String(row.subject_name).toLowerCase()))
+    .filter((row: StudentMarkDetailsRow) => allowedSubjects.has(String(row.subject_name).toLowerCase()))
     .map(mapStudentMarkRecord) as StudentMarkRecord[];
 };
 
@@ -566,21 +810,21 @@ export const fetchStudentMarksOverview = async (profileId: string): Promise<Stud
     throw highsRes.error;
   }
 
-  const markMap = new Map<string, any>();
+  const markMap = new Map<string, StudentMarkCellRow>();
   const highestMap = new Map<string, number>();
-  (marks || []).forEach((mark: any) => {
+  ((marks || []) as StudentMarkCellRow[]).forEach((mark) => {
     const key = `${String(mark.subject_name).toLowerCase()}:${mark.exam_type}`;
     markMap.set(key, mark);
   });
 
-  (highsRes.data || []).forEach((row: any) => {
+  ((highsRes.data || []) as ExamHighRow[]).forEach((row) => {
     const key = `${String(row.subject_name).toLowerCase()}:${row.exam_type}`;
     if (typeof row.highest_marks === 'number') {
       highestMap.set(key, row.highest_marks);
     }
   });
 
-  const subjects = (sectionSubjects || []).map((row: any) => {
+  const subjects = ((sectionSubjects || []) as SectionSubjectRow[]).map((row) => {
     const subject = row.subject_name as string;
     const exams = createEmptyExamRecord();
     MARK_EXAMS.forEach((examType) => {
@@ -588,7 +832,7 @@ export const fetchStudentMarksOverview = async (profileId: string): Promise<Stud
       if (mark) {
         exams[examType] = {
           markId: mark.id,
-          marks: mark.marks,
+          marks: typeof mark.marks === 'number' ? mark.marks : undefined,
           maxMarks: mark.max_marks || 100,
           highestMarks: highestMap.get(`${subject.toLowerCase()}:${examType}`),
         };
@@ -626,7 +870,7 @@ export const fetchStudentMarksOverview = async (profileId: string): Promise<Stud
   return {
     studentId: student.id,
     studentName: student.name,
-    className: (sectionRes.data as any)?.name || '',
+    className: (sectionRes.data as SectionNameRow | null)?.name || '',
     sectionId: student.sectionId,
     subjects,
     examHighs,
@@ -689,22 +933,22 @@ export const fetchGoverningMarksOverview = async (
   if (subjectsRes.error) throw subjectsRes.error;
   if (marksRes.error) throw marksRes.error;
 
-  const groups = (groupsRes.data || []).map((row: any) => ({
-    id: row.id as string,
-    name: row.name as string,
-    categoryId: row.category_id as string,
+  const groups = ((groupsRes.data || []) as ClassSubjectGroupRow[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    categoryId: row.category_id,
   }));
-  const sections = (groupSectionsRes.data || []).map((row: any) => {
-    const section = Array.isArray(row.sections) ? row.sections[0] : row.sections;
+  const sections = ((groupSectionsRes.data || []) as GroupSectionRow[]).map((row) => {
+    const section = firstRelation(row.sections);
     return {
-      id: row.section_id as string,
-      name: (section?.name || row.section_id) as string,
-      groupId: row.group_id as string,
+      id: row.section_id,
+      name: section?.name || row.section_id,
+      groupId: row.group_id,
     };
   });
-  const groupSubjectRows = (groupSubjectsRes.data || []).map((row: any) => ({
-    groupId: row.group_id as string,
-    subject: row.subject_name as string,
+  const groupSubjectRows = ((groupSubjectsRes.data || []) as GroupSubjectRow[]).map((row) => ({
+    groupId: row.group_id,
+    subject: row.subject_name,
   }));
 
   const allowedSectionIds = new Set(
@@ -718,7 +962,7 @@ export const fetchGoverningMarksOverview = async (
       .map((row) => row.subject.toLowerCase())
   );
 
-  const records = ((marksRes.data || []) as any[]).filter((row) => {
+  const records = ((marksRes.data || []) as GoverningMarkRow[]).filter((row) => {
     const sectionMatch = !filters.sectionId || filters.sectionId === 'All'
       ? allowedSectionIds.size ? allowedSectionIds.has(row.section_id) : true
       : row.section_id === filters.sectionId;
@@ -730,7 +974,7 @@ export const fetchGoverningMarksOverview = async (
     return sectionMatch && subjectMatch && examMatch;
   });
 
-  const summarize = (keyFor: (row: any) => string) => {
+  const summarize = (keyFor: (row: GoverningMarkRow) => string) => {
     const buckets = new Map<string, { earned: number; max: number; records: number }>();
     records.forEach((row) => {
       const key = keyFor(row);
@@ -756,7 +1000,7 @@ export const fetchGoverningMarksOverview = async (
     records: row.records,
   }));
   const classAverage = summarize((row) => {
-    const section = Array.isArray(row.sections) ? row.sections[0] : row.sections;
+    const section = firstRelation(row.sections);
     return section?.name || row.section_id;
   }).map((row) => ({
     class: row.key,
@@ -771,7 +1015,7 @@ export const fetchGoverningMarksOverview = async (
     sections,
     subjects: Array.from(new Set([
       ...groupSubjectRows.map((row) => row.subject),
-      ...(subjectsRes.data || []).map((row: any) => row.name as string),
+      ...((subjectsRes.data || []) as SubjectNameRow[]).map((row) => row.name),
     ].filter(Boolean))).sort((left, right) => left.localeCompare(right)),
     subjectPerformance,
     classAverage,

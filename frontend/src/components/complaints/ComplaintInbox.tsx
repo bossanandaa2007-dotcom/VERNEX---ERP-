@@ -13,6 +13,8 @@ const ComplaintInbox = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const isTeacher = user?.role === 'Teacher';
+  const isGoverningBody = user?.role === 'Governing Body';
+  const canResolveComplaints = isTeacher || isGoverningBody;
   const targetRole = isTeacher ? 'Teacher' : 'Governing Body';
 
   useEffect(() => {
@@ -136,22 +138,26 @@ const ComplaintInbox = () => {
                   <p className="mt-1 font-bold text-slate-800">{new Date(complaint.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
-              <textarea
-                id={`complaint-response-${complaint.id}`}
-                rows={2}
-                defaultValue={complaint.response || ''}
-                placeholder="Add response (optional)"
-                className="erp-input mt-3 w-full resize-none px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-100"
-              />
-              {complaint.status === 'OPEN' ? (
+              {canResolveComplaints && (
+                <textarea
+                  id={`complaint-response-${complaint.id}`}
+                  rows={2}
+                  defaultValue={complaint.response || ''}
+                  placeholder="Add response (optional)"
+                  className="erp-input mt-3 w-full resize-none px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-100"
+                />
+              )}
+              {canResolveComplaints && complaint.status === 'OPEN' ? (
                 <button
                   onClick={() => void handleResolve(complaint.id)}
                   className="mt-3 w-full rounded bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
                 >
                   Mark as Resolved
                 </button>
-              ) : (
+              ) : complaint.status === 'RESOLVED' ? (
                 <p className="mt-3 text-sm font-bold text-emerald-600">Resolved</p>
+              ) : (
+                <p className="mt-3 text-sm font-bold text-slate-500">Open for review</p>
               )}
             </div>
           ))}
@@ -189,22 +195,26 @@ const ComplaintInbox = () => {
                   </td>
                   <td className="px-6 py-4 text-slate-600 font-medium">{new Date(complaint.createdAt).toLocaleDateString()}</td>
                   <td className="px-6 py-4 space-y-3">
-                    <textarea
-                      id={`complaint-response-${complaint.id}`}
-                      rows={2}
-                      defaultValue={complaint.response || ''}
-                      placeholder="Add response (optional)"
-                      className="erp-input w-full min-w-[240px] resize-none px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-100"
-                    />
-                    {complaint.status === 'OPEN' ? (
+                    {canResolveComplaints && (
+                      <textarea
+                        id={`complaint-response-${complaint.id}`}
+                        rows={2}
+                        defaultValue={complaint.response || ''}
+                        placeholder="Add response (optional)"
+                        className="erp-input w-full min-w-[240px] resize-none px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    )}
+                    {canResolveComplaints && complaint.status === 'OPEN' ? (
                       <button
                         onClick={() => void handleResolve(complaint.id)}
                         className="rounded bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
                       >
                         Mark as Resolved
                       </button>
-                    ) : (
+                    ) : complaint.status === 'RESOLVED' ? (
                       <p className="text-xs font-semibold text-emerald-600">Resolved</p>
+                    ) : (
+                      <p className="text-xs font-semibold text-slate-500">Open for review</p>
                     )}
                   </td>
                 </tr>

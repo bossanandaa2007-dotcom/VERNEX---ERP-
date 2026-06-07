@@ -10,6 +10,21 @@ import {
   type LibraryStudent,
 } from '../../../services/erpContent';
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message || '').trim();
+    if (message) {
+      return message;
+    }
+  }
+
+  return fallback;
+};
+
 const LibrarianDashboard = () => {
   const [bookCount, setBookCount] = useState(0);
   const [issuedCount, setIssuedCount] = useState(0);
@@ -164,7 +179,7 @@ const LibrarianDashboard = () => {
       setRollNo('');
     } catch (error) {
       console.error('Failed to issue book:', error);
-      setQuickMsg('Failed to issue book. Try again.');
+      setQuickMsg(getErrorMessage(error, 'Failed to issue book. Try again.'));
     } finally {
       setIsIssuing(false);
     }

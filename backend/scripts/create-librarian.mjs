@@ -59,7 +59,7 @@ async function main() {
 
   console.log('Profile upserted. Test librarian ready:');
   console.log('  email:', EMAIL);
-  console.log('  password:', PASSWORD);
+  console.log('  password: [set from TEST_LIBRARIAN_PASSWORD]');
   console.log('\nRun the delete script to remove this test user when finished.');
 }
 

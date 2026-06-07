@@ -22,6 +22,22 @@ export interface RecipientOption {
   department?: string;
 }
 
+interface StudentRoutingRow {
+  id: string;
+  name: string;
+  roll_no: string;
+  category_id: string;
+  section_id: string;
+  className?: string;
+  gender?: StudentRoutingContext['gender'];
+  sections?: { name?: string } | Array<{ name?: string }>;
+}
+
+interface GoverningProfileRow {
+  id: string;
+  name?: string | null;
+}
+
 const assertSupabase = () => {
   if (!supabase) {
     throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
@@ -46,14 +62,17 @@ export const fetchStudentRoutingContext = async (profileId: string): Promise<Stu
     return null;
   }
 
+  const row = data as StudentRoutingRow;
+  const section = Array.isArray(row.sections) ? row.sections[0] : row.sections;
+
   return {
-    id: (data as any).id,
-    name: (data as any).name,
-    rollNo: (data as any).roll_no,
-    categoryId: (data as any).category_id,
-    sectionId: (data as any).section_id,
-    className: (data as any).sections?.name,
-    gender: (data as any).gender,
+    id: row.id,
+    name: row.name,
+    rollNo: row.roll_no,
+    categoryId: row.category_id,
+    sectionId: row.section_id,
+    className: section?.name || row.className || '',
+    gender: row.gender,
   };
 };
 
@@ -77,11 +96,7 @@ export const fetchRecipientsForStudentContext = async (
           .eq('role', 'Subject Teacher')
           .order('subject', { ascending: true })
       : Promise.resolve({ data: [], error: null }),
-    client
-      .from('profiles')
-      .select('id, name, role')
-      .eq('role', 'Governing Body')
-      .order('name', { ascending: true }),
+    client.rpc('list_governing_body_recipients'),
   ]);
 
   if (classTeacherRes.error) {
@@ -158,9 +173,9 @@ export const fetchRecipientsForStudentContext = async (
     });
   });
 
-  const governingBodyRecipients = (governingRes.data || []).map((profile: any) => ({
-    id: profile.id as string,
-    name: (profile.name as string) || 'Governing Body',
+  const governingBodyRecipients = ((governingRes.data || []) as GoverningProfileRow[]).map((profile) => ({
+    id: profile.id,
+    name: profile.name || 'Governing Body',
     role: 'Governing Body' as const,
     routeType: 'Governing Body' as const,
     subjects: [],

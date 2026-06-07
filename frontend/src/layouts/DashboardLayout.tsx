@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Header } from '../components/layout/Header';
-import { cn } from '../components/layout/Sidebar';
+import { cn } from '../utils/cn';
 import { MobileBottomNav } from '../components/layout/MobileBottomNav';
 import { useAuthStore } from '../store/useAuthStore';
 
 const DashboardLayout = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024);
   const mainRef = useRef<HTMLElement | null>(null);
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
@@ -30,9 +30,13 @@ const DashboardLayout = () => {
 
   // auto collapse on mobile when route changes
   useEffect(() => {
-    if (window.innerWidth < 1024) {
-      setCollapsed(true);
-    }
+    const frame = window.requestAnimationFrame(() => {
+      if (window.innerWidth < 1024) {
+        setCollapsed(true);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [location.pathname]);
 
   useEffect(() => {

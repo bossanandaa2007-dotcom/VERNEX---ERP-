@@ -17,6 +17,9 @@ import type { TeacherManagementDetails, TeacherSubjectAssignmentDetail } from '.
 
 const columnHelper = createColumnHelper<ITeacher>();
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 const getColumns = (onManage: (teacher: ITeacher) => void, onDelete: (teacher: ITeacher) => void) => [
   columnHelper.accessor('name', {
     header: 'Faculty',
@@ -166,9 +169,9 @@ const TeacherList = () => {
             });
             setSelectedSubjectAssignment(details.availableSubjectAssignments[0]?.label || '');
           })
-          .catch((error: any) => {
+          .catch((error: unknown) => {
             console.error(error);
-            setManagementError(error?.message || 'Unable to load faculty management details.');
+            setManagementError(getErrorMessage(error, 'Unable to load faculty management details.'));
           })
           .finally(() => setManagementLoading(false));
       },
@@ -223,9 +226,9 @@ const TeacherList = () => {
       setSelectedSubjectAssignment(details.availableSubjectAssignments[0]?.label || '');
       setAssignmentClassFilter('All');
       setAssignmentSubjectFilter('All');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      setManagementError(error?.message || 'Unable to refresh faculty details.');
+      setManagementError(getErrorMessage(error, 'Unable to refresh faculty details.'));
     } finally {
       setManagementLoading(false);
     }
@@ -288,9 +291,9 @@ const TeacherList = () => {
       });
       showToast('Faculty details updated.');
       await reloadManagementDetails(manageTeacher.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      setManagementError(error?.message || 'Unable to save faculty details.');
+      setManagementError(getErrorMessage(error, 'Unable to save faculty details.'));
       setManagementLoading(false);
     }
   };
@@ -312,9 +315,9 @@ const TeacherList = () => {
       await addTeacherSubjectAssignment(manageTeacher.id, assignment);
       showToast(`${manageTeacher.name} now handles ${assignment.subject} for ${assignment.className}.`);
       await reloadManagementDetails(manageTeacher.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      setManagementError(error?.message || 'Unable to add subject-teacher assignment.');
+      setManagementError(getErrorMessage(error, 'Unable to add subject-teacher assignment.'));
       setManagementLoading(false);
     }
   };
@@ -330,9 +333,9 @@ const TeacherList = () => {
       await removeTeacherSubjectAssignment(manageTeacher.id, assignment.sectionId, assignment.subject);
       showToast(`${manageTeacher.name} was removed from ${assignment.subject} in ${assignment.className}.`);
       await reloadManagementDetails(manageTeacher.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      setManagementError(error?.message || 'Unable to remove subject-teacher assignment.');
+      setManagementError(getErrorMessage(error, 'Unable to remove subject-teacher assignment.'));
       setManagementLoading(false);
     }
   };
@@ -350,9 +353,9 @@ const TeacherList = () => {
       if (manageTeacher?.id === deleteCandidate.id) {
         closeManagementModal();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      showToast(error?.message || 'Unable to delete faculty member.');
+      showToast(getErrorMessage(error, 'Unable to delete faculty member.'));
     } finally {
       setIsDeletingTeacher(false);
     }

@@ -75,6 +75,38 @@ interface AttendanceRecordRow {
   } | null;
 }
 
+interface AttendanceStudentRow {
+  id: string;
+  profile_id?: string | null;
+  name: string;
+  email?: string | null;
+  roll_no: string;
+  category_id: string;
+  section_id: string;
+  gender: IStudent['gender'];
+  dob: string;
+  contact: string;
+  parent_name: string;
+  parent_contact: string;
+  address: string;
+}
+
+interface AttendanceStudentMatchRow {
+  id: string;
+  name: string;
+  section_id: string;
+}
+
+interface AttendanceStatusRow {
+  student_id: string;
+  status: 'Present' | 'Absent';
+}
+
+interface StudentNameRow {
+  id: string;
+  name: string;
+}
+
 const assertSupabase = () => {
   if (!supabase) {
     throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
@@ -106,27 +138,38 @@ const formatMonthLabel = (isoDate: string) =>
 const getRealRecords = (records: AttendanceRecordRow[]) =>
   records.filter((record) => !(record.metadata && record.metadata.seeded));
 
-const normalizeTrendForDates = (records: AttendanceRecordRow[], dates: string[]) =>
-  dates.map((date) => {
-    const dayRecords = records.filter((record) => record.attendance_date === date);
-    const presentCount = dayRecords.filter((record) => record.status === 'Present').length;
-    const absentCount = dayRecords.filter((record) => record.status === 'Absent').length;
-    const total = dayRecords.length;
+const normalizeTrendForDates = (records: AttendanceRecordRow[], dates: string[]) => {
+  const dayMap = new Map<string, { presentCount: number; absentCount: number; total: number }>();
+
+  records.forEach((record) => {
+    const current = dayMap.get(record.attendance_date) || { presentCount: 0, absentCount: 0, total: 0 };
+    current.total += 1;
+    if (record.status === 'Present') {
+      current.presentCount += 1;
+    } else if (record.status === 'Absent') {
+      current.absentCount += 1;
+    }
+    dayMap.set(record.attendance_date, current);
+  });
+
+  return dates.map((date) => {
+    const stats = dayMap.get(date) || { presentCount: 0, absentCount: 0, total: 0 };
 
     // compute percentages with one decimal place to avoid small ratios rounding to 0
-    const presentPct = total ? Math.round((presentCount / total) * 1000) / 10 : 0;
-    const absentPct = total ? Math.round((absentCount / total) * 1000) / 10 : 0;
+    const presentPct = stats.total ? Math.round((stats.presentCount / stats.total) * 1000) / 10 : 0;
+    const absentPct = stats.total ? Math.round((stats.absentCount / stats.total) * 1000) / 10 : 0;
 
     return {
       label: formatDayLabel(date),
       date,
       present: presentPct,
       absent: absentPct,
-      presentCount,
-      absentCount,
-      total,
+      presentCount: stats.presentCount,
+      absentCount: stats.absentCount,
+      total: stats.total,
     };
   });
+};
 
 const normalizeClassBreakdown = (records: AttendanceRecordRow[]) => {
   const classMap = new Map<string, { presentCount: number; total: number }>();
@@ -214,7 +257,7 @@ export const saveAttendanceConfirmation = async ({ sectionId, attendanceDate, st
   }
 
   const studentMap = new Map(
-    (studentRows || []).map((student: any) => [String(student.name).trim().toLowerCase(), student])
+    ((studentRows || []) as AttendanceStudentMatchRow[]).map((student) => [String(student.name).trim().toLowerCase(), student])
   );
 
   const rows = students.map((student) => {
@@ -262,7 +305,7 @@ export const fetchAttendanceSheet = async (classId: string, attendanceDate: stri
     throw studentsError;
   }
 
-  const studentRows = (students || []).map((student: any) => ({
+  const studentRows = ((students || []) as AttendanceStudentRow[]).map((student) => ({
     id: student.id,
     profileId: student.profile_id,
     name: student.name,
@@ -288,7 +331,7 @@ export const fetchAttendanceSheet = async (classId: string, attendanceDate: stri
     throw attendanceError;
   }
 
-  const attendanceMap = new Map((attendanceRows || []).map((row: any) => [row.student_id, row.status]));
+  const attendanceMap = new Map(((attendanceRows || []) as AttendanceStatusRow[]).map((row) => [row.student_id, row.status]));
 
   return studentRows.map((student) => ({
     ...student,
@@ -387,7 +430,7 @@ export const fetchAttendanceOverview = async (
       throw studentsError;
     }
 
-    (students || []).forEach((student: any) => {
+    ((students || []) as StudentNameRow[]).forEach((student) => {
       studentNameMap.set(student.id, student.name);
     });
   }
@@ -438,7 +481,7 @@ export const fetchAttendanceMonthlyTrend = async (months = 6): Promise<Attendanc
 
   const buckets = new Map<string, { present: number; total: number; date: string }>();
 
-  getRealRecords((data || []) as AttendanceRecordRow[]).forEach((record: any) => {
+  getRealRecords((data || []) as AttendanceRecordRow[]).forEach((record) => {
     const monthKey = String(record.attendance_date).slice(0, 7);
     const current = buckets.get(monthKey) || { present: 0, total: 0, date: `${monthKey}-01` };
     current.total += 1;

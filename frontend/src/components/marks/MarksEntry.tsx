@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Award, BookOpen, CheckCircle, Filter, Lock, Search, Users } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
@@ -146,7 +146,7 @@ const MarksEntry = () => {
     return markValue;
   };
 
-  const hasDraftChange = (student: TeacherStudentPerformanceRow, subject: TeacherStudentSubjectPerformance) => {
+  const hasDraftChange = useCallback((student: TeacherStudentPerformanceRow, subject: TeacherStudentSubjectPerformance) => {
     const cellKey = getCellKey(student.studentId, subject.subject);
     if (!Object.prototype.hasOwnProperty.call(draftMarks, cellKey)) {
       return false;
@@ -160,11 +160,11 @@ const MarksEntry = () => {
 
     const parsedValue = getDraftMarkValue(student, subject, rawValue);
     return typeof parsedValue === 'number' && !Number.isNaN(parsedValue) && parsedValue !== subject.marks;
-  };
+  }, [draftMarks]);
 
   const pendingSaveCount = useMemo(
     () => rows.reduce((count, student) => count + student.subjects.filter((subject) => hasDraftChange(student, subject)).length, 0),
-    [draftMarks, rows]
+    [hasDraftChange, rows]
   );
 
   const handleSaveAllMarks = async () => {

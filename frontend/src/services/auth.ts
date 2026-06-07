@@ -90,6 +90,8 @@ const singleRelation = <T>(value: T | T[] | null | undefined): T | null => {
 const compactUnique = (values: Array<string | null | undefined>) =>
   Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean) as string[]));
 
+const normalizeRole = (role?: string | null) => role || 'Student';
+
 const splitClassName = (className?: string) => {
   if (!className) {
     return {};
@@ -168,7 +170,7 @@ const fetchTeacherProfile = async (profileId: string): Promise<UserRoleContext> 
 };
 
 const mapProfileToUser = async (session: Session, profile: ProfileRow | null): Promise<AuthenticatedUser> => {
-  const role = profile?.role || session.user.user_metadata?.role || 'Student';
+  const role = normalizeRole(profile?.role || session.user.user_metadata?.role);
   let roleContext: UserRoleContext = {};
 
   try {
