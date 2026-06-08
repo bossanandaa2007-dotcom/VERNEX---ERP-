@@ -17,8 +17,30 @@ import type { TeacherManagementDetails, TeacherSubjectAssignmentDetail } from '.
 
 const columnHelper = createColumnHelper<ITeacher>();
 
-const getErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message || '').trim();
+    if (message) return message;
+  }
+
+  return fallback;
+};
+
+const getPasswordValidationError = (password: string, confirmPassword: string) => {
+  if (password.length < 8) {
+    return 'Password must be at least 8 characters.';
+  }
+
+  if (password !== confirmPassword) {
+    return 'Password and confirm password do not match.';
+  }
+
+  return null;
+};
 
 const getColumns = (onManage: (teacher: ITeacher) => void, onDelete: (teacher: ITeacher) => void) => [
   columnHelper.accessor('name', {
@@ -136,6 +158,8 @@ const TeacherList = () => {
   const [assignmentSubjectFilter, setAssignmentSubjectFilter] = useState('All');
   const [deleteCandidate, setDeleteCandidate] = useState<ITeacher | null>(null);
   const [isDeletingTeacher, setIsDeletingTeacher] = useState(false);
+  const [isAddingTeacher, setIsAddingTeacher] = useState(false);
+  const [addTeacherError, setAddTeacherError] = useState<string | null>(null);
 
   useEffect(() => {
     void initialize();
@@ -238,27 +262,46 @@ const TeacherList = () => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const primarySubject = String(formData.get('subject') || '').trim();
+    const password = String(formData.get('password') || '');
+    const confirmPassword = String(formData.get('confirmPassword') || '');
+    const passwordError = getPasswordValidationError(password, confirmPassword);
+
+    if (passwordError) {
+      setAddTeacherError(passwordError);
+      return;
+    }
+
     const extraSubjects = String(formData.get('subjects') || '')
       .split(',')
       .map((item) => item.trim())
       .filter(Boolean);
     const subjects = Array.from(new Set([primarySubject, ...extraSubjects].filter(Boolean)));
 
-    await addTeacher({
-      name: String(formData.get('name') || '').trim(),
-      email: String(formData.get('email') || '').trim(),
-      category: String(formData.get('category') || '').trim(),
-      subject: primarySubject,
-      subjects,
-      qualification: String(formData.get('qualification') || '').trim(),
-      experience: String(formData.get('experience') || '').trim(),
-      contact: String(formData.get('contact') || '').trim(),
-      assignedClass: '',
-      standards: [],
-    });
+    try {
+      setIsAddingTeacher(true);
+      setAddTeacherError(null);
+      await addTeacher({
+        name: String(formData.get('name') || '').trim(),
+        email: String(formData.get('email') || '').trim(),
+        category: String(formData.get('category') || '').trim(),
+        subject: primarySubject,
+        subjects,
+        qualification: String(formData.get('qualification') || '').trim(),
+        experience: String(formData.get('experience') || '').trim(),
+        contact: String(formData.get('contact') || '').trim(),
+        assignedClass: '',
+        standards: [],
+        password,
+      });
 
-    setIsAddModalOpen(false);
-    showToast('Faculty member added. Staffing can now be assigned from the faculty list.');
+      event.currentTarget.reset();
+      setIsAddModalOpen(false);
+      showToast('Faculty member added. They can now login with the password set by Admin.');
+    } catch (error: unknown) {
+      setAddTeacherError(getErrorMessage(error, 'Unable to add faculty member.'));
+    } finally {
+      setIsAddingTeacher(false);
+    }
   };
 
   const handleSaveTeacherProfile = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -498,7 +541,14 @@ const TeacherList = () => {
         </div>
       </div>
 
-      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add Faculty Member">
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setAddTeacherError(null);
+        }}
+        title="Add Faculty Member"
+      >
         <form onSubmit={handleAddTeacher} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Full Name</label>
@@ -539,9 +589,26 @@ const TeacherList = () => {
             <label className="text-sm font-semibold text-slate-700">Contact</label>
             <input name="contact" required className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="+91 9000000000" />
           </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Login Password</label>
+              <input name="password" type="password" minLength={8} required autoComplete="new-password" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Minimum 8 characters" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Confirm Password</label>
+              <input name="confirmPassword" type="password" minLength={8} required autoComplete="new-password" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Repeat password" />
+            </div>
+          </div>
+          {addTeacherError && (
+            <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              {addTeacherError}
+            </div>
+          )}
           <div className="flex gap-3 pt-4">
-            <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 font-medium text-slate-700 transition-colors hover:bg-slate-50">Cancel</button>
-            <button type="submit" className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 font-bold text-white shadow-lg shadow-indigo-600/20 transition-colors hover:bg-indigo-700">Add Faculty</button>
+            <button type="button" disabled={isAddingTeacher} onClick={() => setIsAddModalOpen(false)} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">Cancel</button>
+            <button type="submit" disabled={isAddingTeacher} className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 font-bold text-white shadow-lg shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+              {isAddingTeacher ? 'Adding...' : 'Add Faculty'}
+            </button>
           </div>
         </form>
       </Modal>

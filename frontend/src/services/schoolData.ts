@@ -74,6 +74,10 @@ export interface TeacherManagementDetails {
   availableSubjectAssignments: FacultyAssignmentOption[];
 }
 
+export type TeacherCreateInput = Omit<ITeacher, 'id'> & {
+  password: string;
+};
+
 interface StudentRow {
   id: string;
   profile_id: string | null;
@@ -89,6 +93,10 @@ interface StudentRow {
   parent_contact: string;
   address: string;
 }
+
+export type StudentCreateInput = Omit<IStudent, 'id'> & {
+  password: string;
+};
 
 interface SubjectGroupRow {
   id: string;
@@ -351,28 +359,39 @@ export const deleteSectionRecord = async (id: string) => {
   if (error) throw error;
 };
 
-export const createTeacherRecord = async (teacher: Omit<ITeacher, 'id'>) => {
+const assertValidLoginPassword = (password: string) => {
+  if (password.length < 8) {
+    throw new Error('Password must be at least 8 characters.');
+  }
+};
+
+export const createTeacherRecord = async (teacher: TeacherCreateInput) => {
   const client = assertSupabase();
-  const { data, error } = await client
-    .from('teachers')
-    .insert({
-      profile_id: teacher.profileId || null,
-      name: teacher.name,
-      category_id: teacher.category,
-      subject: teacher.subject,
-      subjects: teacher.subjects || (teacher.subject ? [teacher.subject] : []),
-      qualification: teacher.qualification,
-      experience: teacher.experience,
-      contact: teacher.contact,
-      email: teacher.email,
-    })
-    .select('id, profile_id, home_section_id, home_section_subject, name, category_id, subject, subjects, qualification, experience, contact, email, home_section:sections!teachers_home_section_id_fkey(name)')
-    .single<TeacherRow>();
+  assertValidLoginPassword(teacher.password);
+  const normalizedEmail = teacher.email.trim().toLowerCase();
+
+  const { data: createdTeacherId, error } = await client.rpc('admin_create_teacher_with_login', {
+    target_name: teacher.name,
+    target_email: normalizedEmail,
+    target_password: teacher.password,
+    target_category_id: teacher.category,
+    target_subject: teacher.subject,
+    target_subjects: teacher.subjects || (teacher.subject ? [teacher.subject] : []),
+    target_qualification: teacher.qualification,
+    target_experience: teacher.experience,
+    target_contact: teacher.contact,
+  });
 
   if (error) throw error;
 
-  const { error: provisionError } = await client.rpc('provision_teacher_login', { target_teacher_id: data.id });
-  if (provisionError) throw provisionError;
+  const teacherId = String(createdTeacherId);
+  const { data: createdTeacher, error: createdTeacherError } = await client
+    .from('teachers')
+    .select('id, profile_id')
+    .eq('id', teacherId)
+    .single<{ id: string; profile_id: string | null }>();
+
+  if (createdTeacherError) throw createdTeacherError;
 
   const assignedClassNames = Array.from(new Set([...(teacher.standards || []), teacher.assignedClass].filter(Boolean)));
 
@@ -386,8 +405,8 @@ export const createTeacherRecord = async (teacher: Omit<ITeacher, 'id'>) => {
 
       const assignmentRows = (sectionRows || []).map((section) => ({
         section_id: section.id,
-        teacher_id: data.id,
-        teacher_profile_id: data.profile_id,
+        teacher_id: teacherId,
+        teacher_profile_id: createdTeacher.profile_id,
         role: 'Subject Teacher',
         subject: teacher.subject,
       }));
@@ -401,7 +420,7 @@ export const createTeacherRecord = async (teacher: Omit<ITeacher, 'id'>) => {
   const { data: refreshedTeacher, error: refreshedTeacherError } = await client
     .from('teachers')
     .select('id, profile_id, home_section_id, home_section_subject, name, category_id, subject, subjects, qualification, experience, contact, email, home_section:sections!teachers_home_section_id_fkey(name)')
-    .eq('id', data.id)
+    .eq('id', teacherId)
     .single<TeacherRow>();
 
   if (refreshedTeacherError) throw refreshedTeacherError;
@@ -903,38 +922,33 @@ export const assignTeacherToFacultySlot = async (
   if (insertError) throw insertError;
 };
 
-export const createStudentRecord = async (student: Omit<IStudent, 'id'>) => {
+export const createStudentRecord = async (student: StudentCreateInput) => {
   const client = assertSupabase();
   assertValidStudentDob(student);
-  const studentEmail = student.email?.trim() || buildGeneratedStudentEmail(student);
-  const { data, error } = await client
-    .from('students')
-    .insert({
-      profile_id: student.profileId || null,
-      name: student.name,
-      email: studentEmail,
-      roll_no: student.rollNo,
-      category_id: student.categoryId,
-      section_id: student.sectionId,
-      gender: student.gender,
-      dob: student.dob,
-      contact: student.contact,
-      parent_name: student.parentName,
-      parent_contact: student.parentContact,
-      address: student.address,
-    })
-    .select('id, profile_id, name, email, roll_no, category_id, section_id, gender, dob, contact, parent_name, parent_contact, address')
-    .single<StudentRow>();
+  assertValidLoginPassword(student.password);
+  const studentEmail = (student.email?.trim() || buildGeneratedStudentEmail(student)).toLowerCase();
+
+  const { data: createdStudentId, error } = await client.rpc('admin_create_student_with_login', {
+    target_name: student.name,
+    target_roll_no: student.rollNo,
+    target_email: studentEmail,
+    target_gender: student.gender,
+    target_dob: student.dob,
+    target_contact: student.contact,
+    target_parent_name: student.parentName,
+    target_parent_contact: student.parentContact,
+    target_address: student.address,
+    target_category_id: student.categoryId,
+    target_section_id: student.sectionId,
+    target_password: student.password,
+  });
 
   if (error) throw error;
-
-  const { error: provisionError } = await client.rpc('provision_student_login', { target_student_id: data.id });
-  if (provisionError) throw provisionError;
 
   const { data: refreshedStudent, error: refreshedStudentError } = await client
     .from('students')
     .select('id, profile_id, name, email, roll_no, category_id, section_id, gender, dob, contact, parent_name, parent_contact, address')
-    .eq('id', data.id)
+    .eq('id', String(createdStudentId))
     .single<StudentRow>();
 
   if (refreshedStudentError) throw refreshedStudentError;

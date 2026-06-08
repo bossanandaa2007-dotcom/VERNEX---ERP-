@@ -9,7 +9,7 @@ import {
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { Search, ChevronDown, Filter, Mail, Phone, Plus, Upload, ArrowLeft } from 'lucide-react';
+import { Search, ChevronDown, Filter, Mail, Phone, Plus, Upload, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useClassStore } from '../../store/useClassStore';
 import { getTodayInputDate } from '../../utils/dateLimits';
 import type { IStudent } from '../../types/school';
@@ -29,7 +29,28 @@ const normalizeStudentGender = (value: string): IStudent['gender'] => {
 };
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-  return error instanceof Error ? error.message : fallback;
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message || '').trim();
+    if (message) return message;
+  }
+
+  return fallback;
+};
+
+const getPasswordValidationError = (password: string, confirmPassword: string) => {
+  if (password.length < 8) {
+    return 'Password must be at least 8 characters.';
+  }
+
+  if (password !== confirmPassword) {
+    return 'Password and confirm password do not match.';
+  }
+
+  return null;
 };
 
 const columns = [
@@ -103,6 +124,9 @@ const StudentList = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [bulkInput, setBulkInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const maxDob = getTodayInputDate();
 
   useEffect(() => {
@@ -173,7 +197,13 @@ const StudentList = () => {
             {showBulkForm ? 'Close Bulk' : 'Bulk Add'}
           </button>
           <button
-            onClick={() => setShowForm((s) => !s)}
+            onClick={() => {
+              setShowForm((s) => !s);
+              setError(null);
+              setSuccessMessage(null);
+              setShowPassword(false);
+              setShowConfirmPassword(false);
+            }}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 text-white bg-indigo-600 border border-indigo-600 rounded-xl hover:bg-indigo-700 text-sm font-bold transition-colors"
           >
             {showForm ? <ArrowLeft size={16} /> : <Plus size={16} />}
@@ -184,6 +214,11 @@ const StudentList = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         {isLoading && <div className="px-6 py-4 text-sm font-medium text-slate-500 border-b border-slate-100">Loading students...</div>}
+        {successMessage && (
+          <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-4 text-sm font-medium text-emerald-700">
+            {successMessage}
+          </div>
+        )}
 
         <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-4">
           <div className="relative w-full lg:w-80">
@@ -278,7 +313,17 @@ const StudentList = () => {
             onSubmit={async (e) => {
               e.preventDefault();
               setError(null);
+              setSuccessMessage(null);
               const form = new FormData(e.currentTarget as HTMLFormElement);
+              const password = String(form.get('password') || '');
+              const confirmPassword = String(form.get('confirmPassword') || '');
+              const passwordError = getPasswordValidationError(password, confirmPassword);
+
+              if (passwordError) {
+                setError(passwordError);
+                return;
+              }
+
               const payload = {
                 name: String(form.get('name') || '').trim(),
                 email: String(form.get('email') || '').trim().toLowerCase(),
@@ -291,17 +336,22 @@ const StudentList = () => {
                 address: String(form.get('address') || ''),
                 categoryId: String(form.get('categoryId') || categories[0]?.id || ''),
                 sectionId: String(form.get('sectionId') || sections[0]?.id || ''),
+                password,
               };
 
-              if (!payload.name || !payload.email || !payload.rollNo) {
-                setError('Name, email and roll number are required');
+              if (!payload.name || !payload.email || !payload.rollNo || !payload.dob || !payload.categoryId || !payload.sectionId) {
+                setError('Name, email, roll number, DOB, level and section are required');
                 return;
               }
 
               try {
                 setIsSaving(true);
                 await addStudent(payload);
+                (e.currentTarget as HTMLFormElement).reset();
                 setShowForm(false);
+                setShowPassword(false);
+                setShowConfirmPassword(false);
+                setSuccessMessage('Student added. They can now login with the password set by Admin.');
               } catch (err: unknown) {
                 setError(getErrorMessage(err, 'Failed to add student'));
               } finally {
@@ -310,29 +360,69 @@ const StudentList = () => {
             }}
             className="p-4 border-t border-slate-100 bg-slate-50 grid gap-3 md:grid-cols-3"
           >
-            <input name="name" placeholder="Student name" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
-            <input name="rollNo" placeholder="Roll number" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
-            <input name="email" type="email" placeholder="Student login email" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="name" required placeholder="Student name" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="rollNo" required placeholder="Roll number" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="email" type="email" required placeholder="Student login email" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
             <select name="gender" className="rounded-2xl border border-slate-200 bg-white px-4 py-2">
               <option value="Male">Male</option>
               <option value="Female">Female</option>
               <option value="Other">Other</option>
             </select>
-            <input name="dob" type="date" max={maxDob} className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
-            <input name="contact" placeholder="Student contact" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
-            <input name="parentName" placeholder="Parent name" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-1" />
-            <input name="parentContact" placeholder="Parent contact" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-1" />
-            <select name="categoryId" className="rounded-2xl border border-slate-200 bg-white px-4 py-2">
+            <input name="dob" type="date" max={maxDob} required className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="contact" required placeholder="Student contact" className="rounded-2xl border border-slate-200 bg-white px-4 py-2" />
+            <input name="parentName" required placeholder="Parent name" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-1" />
+            <input name="parentContact" required placeholder="Parent contact" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-1" />
+            <div className="relative">
+              <input
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                minLength={8}
+                required
+                autoComplete="new-password"
+                placeholder="Login password"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 pr-11"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                minLength={8}
+                required
+                autoComplete="new-password"
+                placeholder="Confirm password"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 pr-11"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((value) => !value)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <select name="categoryId" required className="rounded-2xl border border-slate-200 bg-white px-4 py-2">
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-            <select name="sectionId" className="rounded-2xl border border-slate-200 bg-white px-4 py-2">
+            <select name="sectionId" required className="rounded-2xl border border-slate-200 bg-white px-4 py-2">
               {sections.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
-            <input name="address" placeholder="Address" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-3" />
+            <input name="address" required placeholder="Address" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 md:col-span-3" />
             {error && <p className="text-rose-600 md:col-span-3">{error}</p>}
             <div className="md:col-span-3">
               <button type="submit" disabled={isSaving} className="px-4 py-2 bg-slate-900 text-white rounded-xl">

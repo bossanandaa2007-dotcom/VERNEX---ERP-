@@ -31,6 +31,8 @@ interface ProfileRow {
   is_active?: boolean | null;
 }
 
+const GOVERNING_BODY_LABEL = 'Governing Body';
+
 interface StudentProfileRow {
   section_id: string;
   sections:
@@ -140,6 +142,20 @@ const getAuthDisplayName = (session: Session) =>
 const getGoverningDesignation = (session: Session) =>
   getMetadataValue(session.user.user_metadata, ['designation', 'role_title', 'sub_role', 'position']);
 
+const getDesignationFromLegacyRole = (role?: string | null) => {
+  if (!role || normalizeRole(role) !== 'governing_body') {
+    return undefined;
+  }
+
+  const value = role.trim();
+  return value && value !== GOVERNING_BODY_LABEL ? value : undefined;
+};
+
+const getStoredGoverningDesignation = (designation?: string | null) => {
+  const value = designation?.trim();
+  return value && value !== GOVERNING_BODY_LABEL ? value : undefined;
+};
+
 const splitClassName = (className?: string) => {
   if (!className) {
     return {};
@@ -217,7 +233,11 @@ const fetchTeacherProfile = async (profileId: string): Promise<UserRoleContext> 
   };
 };
 
-const mapProfileToUser = async (session: Session, profile: ProfileRow | null): Promise<AuthenticatedUser> => {
+const mapProfileToUser = async (
+  session: Session,
+  profile: ProfileRow | null,
+  legacyProfile?: ProfileRow | null
+): Promise<AuthenticatedUser> => {
   const mainRole =
     normalizeRole(profile?.main_role)
     || normalizeRole(profile?.role)
@@ -226,7 +246,12 @@ const mapProfileToUser = async (session: Session, profile: ProfileRow | null): P
   let roleContext: UserRoleContext = {};
   const authDisplayName = getAuthDisplayName(session);
   const governingDesignation = mainRole === 'governing_body'
-    ? profile?.designation || getGoverningDesignation(session) || 'Governing Body'
+    ? getStoredGoverningDesignation(profile?.designation)
+      || getStoredGoverningDesignation(legacyProfile?.designation)
+      || getDesignationFromLegacyRole(profile?.role)
+      || getDesignationFromLegacyRole(legacyProfile?.role)
+      || getGoverningDesignation(session)
+      || GOVERNING_BODY_LABEL
     : undefined;
 
   try {
@@ -242,7 +267,7 @@ const mapProfileToUser = async (session: Session, profile: ProfileRow | null): P
 
   return {
     id: session.user.id,
-    name: profile?.full_name || profile?.name || authDisplayName || session.user.email || (mainRole === 'governing_body' ? 'Governing User' : 'User'),
+    name: profile?.full_name || profile?.name || legacyProfile?.name || authDisplayName || session.user.email || (mainRole === 'governing_body' ? 'Governing User' : 'User'),
     email: profile?.email || session.user.email || '',
     role,
     mainRole,
@@ -259,7 +284,7 @@ const mapProfileToUser = async (session: Session, profile: ProfileRow | null): P
 };
 
 const USER_PROFILE_COLUMNS = 'id, auth_user_id, email, full_name, main_role, designation, is_active';
-const LEGACY_PROFILE_COLUMNS = 'id, name, email, role';
+const LEGACY_PROFILE_COLUMNS = 'id, name, email, role, designation';
 
 const fetchUserProfileByAuthId = async (session: Session) => {
   const client = assertSupabase();
@@ -334,13 +359,11 @@ const fetchLegacyProfileByEmail = async (session: Session) => {
 };
 
 const getSessionProfile = async (session: Session): Promise<AuthenticatedUser> => {
-  const profile =
-    await fetchUserProfileByAuthId(session)
-    || await fetchUserProfileByEmail(session)
-    || await fetchLegacyProfileById(session)
-    || await fetchLegacyProfileByEmail(session);
+  const userProfile = await fetchUserProfileByAuthId(session) || await fetchUserProfileByEmail(session);
+  const legacyProfile = await fetchLegacyProfileById(session) || await fetchLegacyProfileByEmail(session);
+  const profile = userProfile || legacyProfile;
 
-  return mapProfileToUser(session, profile || null);
+  return mapProfileToUser(session, profile || null, legacyProfile || null);
 };
 
 export const initializeSupabaseAuth = async (): Promise<AuthenticatedUser | null> => {

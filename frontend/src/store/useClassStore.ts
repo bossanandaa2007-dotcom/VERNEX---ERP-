@@ -17,7 +17,7 @@ import {
     updateTeacherRecord,
 } from '../services/schoolData';
 import type { IClassCategory, IClassSubjectGroup, ISection, IStudent, ITeacher } from '../types/school';
-import type { FacultyAssignmentOption, TeacherManagementDetails } from '../services/schoolData';
+import type { FacultyAssignmentOption, StudentCreateInput, TeacherCreateInput, TeacherManagementDetails } from '../services/schoolData';
 export type { IClassCategory, ISection, IStudent, ITeacher } from '../types/school';
 
 export interface IClassState {
@@ -34,7 +34,7 @@ export interface IClassState {
     refresh: () => Promise<void>;
 
     // CRUD Actions
-    addTeacher: (teacher: Omit<ITeacher, 'id'>) => Promise<void>;
+    addTeacher: (teacher: TeacherCreateInput) => Promise<void>;
     deleteTeacher: (id: string) => Promise<void>;
     fetchTeacherManagementDetails: (teacherId: string) => Promise<TeacherManagementDetails>;
     updateTeacherRecord: (teacherId: string, updates: {
@@ -55,7 +55,7 @@ export interface IClassState {
     addSection: (section: Omit<ISection, 'id'>) => Promise<void>;
     deleteSection: (id: string) => Promise<void>;
 
-    addStudent: (student: Omit<IStudent, 'id'>) => Promise<void>;
+    addStudent: (student: StudentCreateInput) => Promise<void>;
     addStudents: (students: Array<Omit<IStudent, 'id'>>) => Promise<void>;
     deleteStudent: (id: string) => Promise<void>;
     addGradeSubject: (gradeKey: string, subject: string) => Promise<void>;

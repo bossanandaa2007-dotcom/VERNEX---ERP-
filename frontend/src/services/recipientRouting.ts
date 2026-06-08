@@ -36,6 +36,7 @@ interface StudentRoutingRow {
 interface GoverningProfileRow {
   id: string;
   name?: string | null;
+  designation?: string | null;
 }
 
 const assertSupabase = () => {
@@ -173,14 +174,18 @@ export const fetchRecipientsForStudentContext = async (
     });
   });
 
-  const governingBodyRecipients = ((governingRes.data || []) as GoverningProfileRow[]).map((profile) => ({
-    id: profile.id,
-    name: profile.name || 'Governing Body',
-    role: 'Governing Body' as const,
-    routeType: 'Governing Body' as const,
-    subjects: [],
-    classNames: [],
-  }));
+  const governingBodyRecipients = ((governingRes.data || []) as GoverningProfileRow[]).map((profile) => {
+    const designation = profile.designation?.trim();
+
+    return {
+      id: profile.id,
+      name: designation ? `${profile.name || 'Governing Body'} - ${designation}` : profile.name || 'Governing Body',
+      role: 'Governing Body' as const,
+      routeType: 'Governing Body' as const,
+      subjects: [],
+      classNames: [],
+    };
+  });
 
   return [...dedupedTeacherRecipients.values(), ...governingBodyRecipients];
 };
