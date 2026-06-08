@@ -31,6 +31,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useClassStore } from '../../store/useClassStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { fetchAttendanceOverview } from '../../services/attendance';
 import type { AttendanceOverviewRange, AttendanceRegistryRow } from '../../services/attendance';
 import { fetchGoverningMarksOverview, MARK_EXAMS } from '../../services/marks';
@@ -192,6 +193,7 @@ const GradeFilter = ({
 
 export default function GoverningDashboard() {
   const store = useClassStore();
+  const user = useAuthStore((state) => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
   const [teacherSearch, setTeacherSearch] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
@@ -423,7 +425,11 @@ export default function GoverningDashboard() {
             Read-only summaries for attendance, academics, enrollment, staffing, and institutional reports.
           </p>
           </div>
-          <div className="text-sm font-medium text-slate-500">Management access</div>
+          <div className="text-sm font-medium text-slate-500 lg:text-right">
+            <p className="font-semibold text-slate-900">{user?.name || 'Governing Body'}</p>
+            <p>{user?.designation || 'Governing Body'}</p>
+            <p className="text-xs uppercase tracking-wide">{user?.role || 'Governing Body'}</p>
+          </div>
         </div>
       </section>
 

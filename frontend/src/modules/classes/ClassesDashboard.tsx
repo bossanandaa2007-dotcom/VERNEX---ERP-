@@ -144,8 +144,30 @@ const getSectionGradeKey = (sectionName: string) => {
 
 const getGradeLabel = (gradeKey: string) => (['LKG', 'UKG'].includes(gradeKey) ? gradeKey : `Class ${gradeKey}`);
 
-const getErrorMessage = (error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback;
+const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    if (error && typeof error === 'object' && 'message' in error) {
+        const message = String((error as { message?: unknown }).message || '').trim();
+        if (message) return message;
+    }
+
+    return fallback;
+};
+
+const getPasswordValidationError = (password: string, confirmPassword: string) => {
+    if (password.length < 8) {
+        return 'Password must be at least 8 characters.';
+    }
+
+    if (password !== confirmPassword) {
+        return 'Password and confirm password do not match.';
+    }
+
+    return null;
+};
 
 const categoryIcons: Record<string, LucideIcon> = { Baby, BookOpen, GraduationCap, Building2 };
 
@@ -241,6 +263,7 @@ export default function ClassesDashboard() {
         const get = (k: string) => fd.get(k) as string;
 
         try {
+            setIsSubjectSaving(true);
             if (showModal?.type === 'SECTION') {
                 await store.addSection({
                     name: get('name'), categoryId: activeCategoryID!,
@@ -249,14 +272,26 @@ export default function ClassesDashboard() {
                 });
                 notify('Section added successfully.');
             } else if (showModal?.type === 'TEACHER') {
+                const passwordError = getPasswordValidationError(get('password') || '', get('confirmPassword') || '');
+                if (passwordError) {
+                    throw new Error(passwordError);
+                }
+
+                const teacherEmail = get('email').trim().toLowerCase();
                 await store.addTeacher({
                     name: get('name'), subject: get('subject'), category: activeCategoryID!,
                     qualification: get('qual'), experience: get('exp'),
-                    contact: get('phone'), email: `${get('name').toLowerCase().replace(/\s+/g, '.')}@school.edu`, assignedClass: activeClass?.name || '',
+                    contact: get('phone'), email: teacherEmail, assignedClass: activeClass?.name || '',
                     standards: activeClass?.name ? [activeClass.name] : [],
+                    password: get('password') || '',
                 });
-                notify('Teacher registered successfully.');
+                notify('Teacher registered successfully. They can login with the password set by Admin.');
             } else if (showModal?.type === 'STUDENT') {
+                const passwordError = getPasswordValidationError(get('password') || '', get('confirmPassword') || '');
+                if (passwordError) {
+                    throw new Error(passwordError);
+                }
+
                 const studentEmail = get('email').trim().toLowerCase();
                 await store.addStudent({
                     name: get('name'), rollNo: get('roll'), categoryId: activeCategoryID!,
@@ -264,8 +299,9 @@ export default function ClassesDashboard() {
                     dob: get('dob'), contact: get('phone'),
                     parentName: get('parent'), parentContact: get('phone'), address: 'New Delhi',
                     email: studentEmail,
+                    password: get('password') || '',
                 });
-                notify(`Student admitted. Login: ${studentEmail} / Student@123`);
+                notify(`Student admitted. They can login with the password set by Admin.`);
             } else if (showModal?.type === 'BULK_STUDENTS') {
                 const bulkStudents = parseBulkStudents(get('students'), activeCategoryID!, activeSectionID!);
                 await store.addStudents(bulkStudents);
@@ -275,7 +311,6 @@ export default function ClassesDashboard() {
                     throw new Error('Choose a class group first.');
                 }
 
-                setIsSubjectSaving(true);
                 await store.addGradeSubject(showModal.gradeKey, get('subject'));
                 notify(`${get('subject').trim()} added to ${showModal.gradeLabel}.`);
             }
@@ -831,6 +866,7 @@ function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }:
                     {type === 'TEACHER' && (
                         <>
                             <input name="name" required placeholder="Full Name" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
+                            <input name="email" type="email" required placeholder="Teacher Login Email" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
                             <div className="grid grid-cols-2 gap-3">
                                 <input name="subject" required placeholder="Subject" className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
                                 <input name="qual" required placeholder="Qualification" className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
@@ -838,6 +874,10 @@ function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }:
                             <div className="grid grid-cols-2 gap-3">
                                 <input name="exp" required placeholder="Experience (yrs)" className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
                                 <input name="phone" required placeholder="Phone Number" className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <input name="password" type="password" minLength={8} required autoComplete="new-password" placeholder="Login Password" className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
+                                <input name="confirmPassword" type="password" minLength={8} required autoComplete="new-password" placeholder="Confirm Password" className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
                             </div>
                         </>
                     )}
@@ -856,6 +896,10 @@ function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }:
                             <input name="dob" type="date" max={maxDob} required className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
                             <input name="parent" required placeholder="Parent / Guardian Name" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
                             <input name="phone" required placeholder="Contact Number" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <input name="password" type="password" minLength={8} required autoComplete="new-password" placeholder="Login Password" className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
+                                <input name="confirmPassword" type="password" minLength={8} required autoComplete="new-password" placeholder="Confirm Password" className="p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none" />
+                            </div>
                         </>
                     )}
                     {type === 'BULK_STUDENTS' && (
