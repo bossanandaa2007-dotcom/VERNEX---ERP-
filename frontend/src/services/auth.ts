@@ -45,6 +45,12 @@ interface StudentProfileRow {
     | null;
 }
 
+interface StudentLoginProfileRow {
+  profile_id: string | null;
+  name: string | null;
+  email: string | null;
+}
+
 interface TeacherProfileRow {
   subject: string | null;
   subjects: string[] | null;
@@ -358,10 +364,59 @@ const fetchLegacyProfileByEmail = async (session: Session) => {
   return data || null;
 };
 
+const mapStudentLoginProfile = (student: StudentLoginProfileRow, session: Session): ProfileRow => ({
+  id: student.profile_id || session.user.id,
+  auth_user_id: student.profile_id || session.user.id,
+  email: student.email || session.user.email || '',
+  full_name: student.name || null,
+  main_role: 'student',
+  is_active: true,
+});
+
+const fetchStudentLoginProfileByAuthId = async (session: Session) => {
+  const client = assertSupabase();
+  const { data, error } = await client
+    .from('students')
+    .select('profile_id, name, email')
+    .eq('profile_id', session.user.id)
+    .maybeSingle<StudentLoginProfileRow>();
+
+  if (error) {
+    console.error('Failed to load student login profile by auth UID:', error);
+    return null;
+  }
+
+  return data ? mapStudentLoginProfile(data, session) : null;
+};
+
+const fetchStudentLoginProfileByEmail = async (session: Session) => {
+  if (!session.user.email) {
+    return null;
+  }
+
+  const client = assertSupabase();
+  const { data, error } = await client
+    .from('students')
+    .select('profile_id, name, email')
+    .eq('email', session.user.email.toLowerCase())
+    .maybeSingle<StudentLoginProfileRow>();
+
+  if (error) {
+    console.error('Failed to load student login profile by email:', error);
+    return null;
+  }
+
+  return data ? mapStudentLoginProfile(data, session) : null;
+};
+
+const hasResolvedRole = (profile?: ProfileRow | null) =>
+  Boolean(normalizeRole(profile?.main_role) || normalizeRole(profile?.role));
+
 const getSessionProfile = async (session: Session): Promise<AuthenticatedUser> => {
   const userProfile = await fetchUserProfileByAuthId(session) || await fetchUserProfileByEmail(session);
   const legacyProfile = await fetchLegacyProfileById(session) || await fetchLegacyProfileByEmail(session);
-  const profile = userProfile || legacyProfile;
+  const studentProfile = await fetchStudentLoginProfileByAuthId(session) || await fetchStudentLoginProfileByEmail(session);
+  const profile = [userProfile, legacyProfile, studentProfile].find(hasResolvedRole) || userProfile || legacyProfile || studentProfile;
 
   return mapProfileToUser(session, profile || null, legacyProfile || null);
 };
@@ -389,9 +444,19 @@ export const initializeSupabaseAuth = async (): Promise<AuthenticatedUser | null
 
 export const loginWithSupabase = async (email: string, password: string): Promise<AuthenticatedUser> => {
   const client = assertSupabase();
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  console.log("LOGIN EMAIL:", email);
+  console.log("LOGIN PASSWORD:", password);
+
+  const { data, error } = await client.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  console.log("LOGIN RESULT:", data);
+  console.log("LOGIN ERROR:", error);
 
   if (error) {
+    console.error('LOGIN ERROR:', error);
     throw toError(error, 'Unable to sign in. Please verify the Supabase deployment configuration.');
   }
 

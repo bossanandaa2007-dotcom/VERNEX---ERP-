@@ -927,7 +927,6 @@ export const createStudentRecord = async (student: StudentCreateInput) => {
   assertValidStudentDob(student);
   assertValidLoginPassword(student.password);
   const studentEmail = (student.email?.trim() || buildGeneratedStudentEmail(student)).toLowerCase();
-
   const { data: createdStudentId, error } = await client.rpc('admin_create_student_with_login', {
     target_name: student.name,
     target_roll_no: student.rollNo,

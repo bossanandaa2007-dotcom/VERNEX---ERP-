@@ -214,6 +214,8 @@ declare
   normalized_email text;
   parsed_dob date;
   parsed_section_id uuid;
+  resolved_grade_id uuid;
+  resolved_class_id uuid;
 begin
   if public.current_profile_role() <> 'Admin' then
     raise exception 'Only admins can create student logins.';

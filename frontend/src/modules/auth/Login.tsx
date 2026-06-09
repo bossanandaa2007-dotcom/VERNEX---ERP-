@@ -37,7 +37,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 type LoginMode = 'staff' | 'student';
 
 const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
-  const { login, logout } = useAuthStore();
+  const { login } = useAuthStore();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -62,19 +62,16 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
         const userRole = currentUser?.mainRole;
 
         if (!currentUser?.isActive || !userRole) {
-          await logout();
           setError('This account is missing an active ERP role. Please contact the administrator.');
           return;
         }
 
         if (isStudentLogin && userRole !== 'student') {
-          await logout();
           setError('This login is only for students. Please use the staff login.');
           return;
         }
 
         if (!isStudentLogin && !isStaffRole(userRole)) {
-          await logout();
           setError('Students must use the student login page.');
           return;
         }
@@ -84,7 +81,9 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
         setError('Invalid credentials. Please try again.');
       }
     } catch (err) {
-      setError(getLoginErrorMessage(err));
+      const message = getLoginErrorMessage(err);
+      console.error('LOGIN ERROR:', err);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
