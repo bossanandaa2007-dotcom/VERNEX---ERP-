@@ -7,37 +7,50 @@ import { MobileBottomNav } from '../components/layout/MobileBottomNav';
 import { useAuthStore } from '../store/useAuthStore';
 
 const DashboardLayout = () => {
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024);
+  const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const mainRef = useRef<HTMLElement | null>(null);
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const isMobileAppRole = user?.mainRole === 'teacher' || user?.mainRole === 'student' || user?.mainRole === 'governing_body';
+  const sidebarCollapsed = isMobile ? !isMobileSidebarOpen : collapsed;
+  const setSidebarCollapsed = (nextCollapsed: boolean) => {
+    if (isMobile) {
+      setIsMobileSidebarOpen(!nextCollapsed);
+      return;
+    }
 
-  // On small screens, collapse by default
+    setCollapsed(nextCollapsed);
+  };
+
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) {
-        setCollapsed(true);
-      } else {
-        setCollapsed(false);
-      }
+      const nextIsMobile = window.innerWidth < 1024;
+      setIsMobile((currentIsMobile) => {
+        if (currentIsMobile !== nextIsMobile) {
+          setIsMobileSidebarOpen(false);
+          setCollapsed(false);
+        }
+
+        return nextIsMobile;
+      });
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // trigger on mount
+    handleResize();
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // auto collapse on mobile when route changes
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       if (window.innerWidth < 1024) {
-        setCollapsed(true);
+        setIsMobileSidebarOpen(false);
       }
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (window.innerWidth >= 1024) {
@@ -48,15 +61,35 @@ const DashboardLayout = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 
+  useEffect(() => {
+    const refreshCharts = () => {
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    let nestedFrame = 0;
+    const firstFrame = window.requestAnimationFrame(refreshCharts);
+    const secondFrame = window.requestAnimationFrame(() => {
+      nestedFrame = window.requestAnimationFrame(refreshCharts);
+    });
+    const timer = window.setTimeout(refreshCharts, 180);
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      window.cancelAnimationFrame(nestedFrame);
+      window.clearTimeout(timer);
+    };
+  }, [sidebarCollapsed, location.pathname, location.search]);
+
   return (
     <div className={cn("min-h-screen bg-slate-50 flex", isMobileAppRole && "max-lg:bg-slate-50")}>
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
       
       {/* Mobile Sidebar Overlay */}
-      {!collapsed && (
+      {isMobileSidebarOpen && (
         <div 
-          className="fixed inset-0 z-30 bg-slate-900/45 lg:hidden transition-opacity duration-200"
-          onClick={() => setCollapsed(true)}
+          className="fixed inset-0 z-[45] bg-slate-900/45 lg:hidden transition-opacity duration-200"
+          onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
 
@@ -65,7 +98,7 @@ const DashboardLayout = () => {
         isMobileAppRole && "max-lg:w-full max-lg:max-w-full max-lg:overflow-x-hidden",
         collapsed ? "lg:ml-20" : "lg:ml-64"
       )}>
-        <Header collapsed={collapsed} setCollapsed={setCollapsed} />
+        <Header collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
         
         <main ref={mainRef} className={cn(
           "flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6",

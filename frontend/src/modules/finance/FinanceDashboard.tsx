@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Activity,
   AlertTriangle,
   ArrowLeft,
   Bell,
@@ -990,27 +989,37 @@ const FinanceDashboard = () => {
 
   return (
     <div className="h-full space-y-5 pb-8 lg:space-y-6 lg:pb-12">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Fee Operations</h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-slate-500">
-            {canManageFees
-              ? 'Manage school fee status by grade, class, student, and fee category without payment gateway steps.'
-              : 'View accountant fee assignments, payment updates, reminders, and student status without editing access.'}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-indigo-600 p-3 text-white">
-              <Activity size={22} />
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Accountant Workspace</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Fee Operations</h1>
+            <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-slate-500">
+              {canManageFees
+                ? 'Manage fee status by grade, class, student, and fee category without payment gateway steps.'
+                : 'View accountant fee assignments, payment updates, reminders, and student status without editing access.'}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[520px]">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Accuracy</p>
+              <p className="mt-1 text-lg font-bold text-slate-950">{collectionAccuracy}%</p>
             </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Collection Accuracy</p>
-              <p className="text-2xl font-black text-slate-900">{collectionAccuracy}%</p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Grades</p>
+              <p className="mt-1 text-lg font-bold text-slate-950">{gradeSummaries.length}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Students</p>
+              <p className="mt-1 text-lg font-bold text-slate-950">{recordsWithLocalStatus.length}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Open Dues</p>
+              <p className="mt-1 text-lg font-bold text-amber-700">{recordsWithLocalStatus.filter((fee) => fee.status !== 'Paid').length}</p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {notification && (
         <div className="fixed right-6 top-20 z-50 animate-in slide-in-from-right fade-in duration-300">
@@ -1022,13 +1031,13 @@ const FinanceDashboard = () => {
       )}
 
       {!canManageFees && (
-        <section className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 shadow-sm">
+        <section className="rounded-lg border border-indigo-100 bg-indigo-50 p-4 shadow-sm">
           <div className="flex items-start gap-3">
             <div className="rounded-xl bg-white p-2 text-indigo-600 shadow-sm">
               <FileText size={18} />
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-950">Admin read-only finance view</h2>
+              <h2 className="text-sm font-semibold text-slate-950">Admin read-only finance view</h2>
               <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
                 Fee amounts, payment statuses, notes, and reminders shown here are maintained by the accountant. Admin can review them but cannot alter fees or remind students.
               </p>
@@ -1038,42 +1047,42 @@ const FinanceDashboard = () => {
       )}
 
       {canManageFees && (
-      <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="border-b border-slate-100 bg-slate-950 p-5 text-white lg:border-b-0 lg:border-r lg:border-slate-800">
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="grid gap-0 xl:grid-cols-[0.72fr_1.28fr]">
+          <div className="border-b border-teal-100 bg-teal-50 p-4 text-slate-950 sm:p-5 xl:border-b-0 xl:border-r">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-white/10 p-3 text-emerald-300">
+              <div className="rounded-xl bg-white p-3 text-teal-700 shadow-sm ring-1 ring-teal-100">
                 <Megaphone size={22} />
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">Standard Fee Setup</p>
-                <h2 className="mt-1 text-xl font-black">Assign Term Fee</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Standard Fee Setup</p>
+                <h2 className="mt-1 text-lg font-semibold sm:text-xl">Assign Term Fee</h2>
               </div>
             </div>
-            <p className="mt-4 text-sm font-medium leading-6 text-slate-300">
+            <p className="mt-4 text-sm font-medium leading-6 text-slate-600 lg:max-w-md">
               Set Term 1, Term 2, or Term 3 for a full standard. Standard 3 automatically covers 3-A, 3-B, and 3-C students and creates student notifications.
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <p className="font-black text-white">{availableStandards.length}</p>
-                <p className="mt-1 font-semibold text-slate-400">Standards available</p>
+              <div className="rounded-xl border border-teal-100 bg-white p-3 shadow-sm">
+                <p className="font-semibold text-slate-950">{availableStandards.length}</p>
+                <p className="mt-1 font-semibold text-slate-500">Standards available</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <p className="font-black text-white">{recordsWithLocalStatus.filter((fee) => fee.status !== 'Paid').length}</p>
-                <p className="mt-1 font-semibold text-slate-400">Open dues</p>
+              <div className="rounded-xl border border-teal-100 bg-white p-3 shadow-sm">
+                <p className="font-semibold text-slate-950">{recordsWithLocalStatus.filter((fee) => fee.status !== 'Paid').length}</p>
+                <p className="mt-1 font-semibold text-slate-500">Open dues</p>
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleAssignTermFee} className="grid gap-4 p-4 lg:p-5">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <form onSubmit={handleAssignTermFee} className="grid gap-4 p-4 sm:p-5">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <label className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Standard</span>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Standard</span>
                 <select
                   value={termFeeForm.standard}
                   onChange={(event) => setTermFeeForm((current) => ({ ...current, standard: event.target.value }))}
                   required
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 >
                   <option value="">Select</option>
                   {availableStandards.map((standard) => (
@@ -1083,11 +1092,11 @@ const FinanceDashboard = () => {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Term</span>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Term</span>
                 <select
                   value={termFeeForm.term}
                   onChange={(event) => setTermFeeForm((current) => ({ ...current, term: event.target.value as TermFeeForm['term'] }))}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 >
                   {termOptions.map((term) => (
                     <option key={term} value={term}>{term}</option>
@@ -1096,7 +1105,7 @@ const FinanceDashboard = () => {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</span>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Amount</span>
                 <div className="relative">
                   <IndianRupee size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -1106,39 +1115,39 @@ const FinanceDashboard = () => {
                     onChange={(event) => setTermFeeForm((current) => ({ ...current, amount: sanitizeNumericInput(event.target.value) }))}
                     required
                     placeholder="0.00"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 pl-9 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 pl-9 text-sm font-semibold text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Due Date</span>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Due Date</span>
                 <input
                   type="date"
                   value={termFeeForm.dueDate}
                   onChange={(event) => setTermFeeForm((current) => ({ ...current, dueDate: event.target.value }))}
                   required
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 />
               </label>
             </div>
 
             <div className="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-end">
               <label className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Reminder Message</span>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Reminder Message</span>
                 <textarea
                   value={termFeeForm.message}
                   onChange={(event) => setTermFeeForm((current) => ({ ...current, message: event.target.value }))}
                   rows={2}
                   placeholder="Optional message for students and parents"
-                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 />
               </label>
 
               <button
                 type="submit"
                 disabled={isAssigningTermFee}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 xl:min-w-44"
               >
                 <Send size={16} />
                 {isAssigningTermFee ? 'Assigning...' : 'Assign & Notify'}
@@ -1149,12 +1158,12 @@ const FinanceDashboard = () => {
       </section>
       )}
 
-      <section className={`rounded-2xl border border-slate-100 bg-white p-4 shadow-sm lg:p-5 ${
+      <section className={`rounded-lg border border-slate-200 bg-white p-5 shadow-sm ${
         selectedGrade ? 'hidden md:block' : ''
       }`}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-black text-slate-900">Select Grade</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Select Grade</h2>
             <p className="text-xs font-semibold text-slate-500">Grade 1 to Grade 12</p>
           </div>
           <GraduationCap className="text-indigo-500" size={22} />
@@ -1164,30 +1173,30 @@ const FinanceDashboard = () => {
             <button
               key={gradeInfo.grade}
               onClick={() => handleSelectGrade(gradeInfo.grade)}
-              className={`min-h-32 rounded-2xl border p-4 text-left transition-all active:scale-[0.98] ${
+              className={`min-h-32 rounded-lg border p-4 text-left transition-all active:scale-[0.98] ${
                 selectedGrade === gradeInfo.grade
                   ? 'border-indigo-300 bg-indigo-50 shadow-sm'
                   : 'border-slate-100 bg-slate-50 hover:border-indigo-200 hover:bg-white'
               }`}
             >
-              <p className="text-lg font-black text-slate-900">Grade {gradeInfo.grade}</p>
+              <p className="text-base font-semibold text-slate-900">Grade {gradeInfo.grade}</p>
               <p className="mt-1 text-xs font-bold text-slate-500">{gradeInfo.classCount || 0} classes</p>
               <div className="mt-4 h-2 rounded-full bg-white">
                 <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${gradeInfo.completion}%` }} />
               </div>
-              <p className="mt-2 text-xs font-black text-slate-600">{gradeInfo.completion}% complete</p>
+              <p className="mt-2 text-xs font-semibold text-slate-600">{gradeInfo.completion}% complete</p>
             </button>
           ))}
         </div>
       </section>
 
       {selectedGrade && (
-        <section className={`rounded-2xl border border-slate-100 bg-white p-4 shadow-sm lg:p-5 ${
+        <section className={`rounded-lg border border-slate-200 bg-white p-5 shadow-sm ${
           selectedClassKey ? 'hidden md:block' : ''
         }`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black text-slate-900">Select Class</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Select Class</h2>
               <p className="text-xs font-semibold text-slate-500">Grade {selectedGrade} sections</p>
             </div>
             <button
@@ -1196,7 +1205,7 @@ const FinanceDashboard = () => {
                 setSelectedClassKey(null);
                 setSelectedRecords([]);
               }}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
             >
               <ArrowLeft size={14} /> Grades
             </button>
@@ -1206,28 +1215,28 @@ const FinanceDashboard = () => {
               <button
                 key={classInfo.key}
                 onClick={() => handleSelectClass(classInfo.key)}
-                className={`rounded-2xl border p-4 text-left transition-all active:scale-[0.98] ${
+                className={`rounded-lg border p-4 text-left transition-all active:scale-[0.98] ${
                   selectedClassKey === classInfo.key
                     ? 'border-emerald-300 bg-emerald-50 shadow-sm'
                     : 'border-slate-100 bg-slate-50 hover:border-emerald-200 hover:bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xl font-black text-slate-900">{classInfo.label}</p>
+                  <p className="text-lg font-semibold text-slate-900">{classInfo.label}</p>
                   <Users size={18} className="text-slate-400" />
                 </div>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-xl bg-white px-2 py-2">
-                    <p className="text-[10px] font-black uppercase text-slate-400">Students</p>
-                    <p className="text-sm font-black text-slate-900">{classInfo.studentCount}</p>
+                    <p className="text-xs font-semibold uppercase text-slate-500">Students</p>
+                    <p className="text-sm font-semibold text-slate-900">{classInfo.studentCount}</p>
                   </div>
                   <div className="rounded-xl bg-white px-2 py-2">
-                    <p className="text-[10px] font-black uppercase text-slate-400">Paid</p>
-                    <p className="text-sm font-black text-emerald-700">{classInfo.paidCount}</p>
+                    <p className="text-xs font-semibold uppercase text-slate-500">Paid</p>
+                    <p className="text-sm font-semibold text-emerald-700">{classInfo.paidCount}</p>
                   </div>
                   <div className="rounded-xl bg-white px-2 py-2">
-                    <p className="text-[10px] font-black uppercase text-slate-400">Pending</p>
-                    <p className="text-sm font-black text-amber-700">{classInfo.pendingCount}</p>
+                    <p className="text-xs font-semibold uppercase text-slate-500">Pending</p>
+                    <p className="text-sm font-semibold text-amber-700">{classInfo.pendingCount}</p>
                   </div>
                 </div>
                 <div className="mt-4 h-2 rounded-full bg-white">
@@ -1253,17 +1262,17 @@ const FinanceDashboard = () => {
                 setSelectedClassKey(null);
                 setSelectedRecords([]);
               }}
-              className="mb-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 md:hidden"
+              className="mb-4 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 md:hidden"
             >
               <ArrowLeft size={14} /> Classes
             </button>
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <h2 className="text-lg font-black text-slate-900">{selectedClass?.label || 'Class'} Fee Workspace</h2>
+                <h2 className="text-lg font-semibold text-slate-900">{selectedClass?.label || 'Class'} Fee Workspace</h2>
                 <p className="text-xs font-semibold text-slate-500">Choose category, select students, and update fee status quickly.</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
                   <CheckSquare size={14} />
                   <select
                     value={selectedStatus}
@@ -1277,7 +1286,7 @@ const FinanceDashboard = () => {
                 </label>
                 {canManageFees && (
                   <>
-                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
                       <input
                         type="checkbox"
                         checked={allVisibleSelected}
@@ -1288,13 +1297,13 @@ const FinanceDashboard = () => {
                     </label>
                     <button
                       onClick={toggleAllVisible}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                     >
                       {allVisibleSelected ? 'Clear Selection' : 'Select All Students'}
                     </button>
                     <button
                       onClick={() => handleReminder(selectedRecords)}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-indigo-700"
+                      className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
                     >
                       <Send size={14} /> Bulk Reminder
                     </button>
@@ -1305,7 +1314,7 @@ const FinanceDashboard = () => {
 
             <div className="mt-4 grid gap-3 lg:grid-cols-[1.25fr_0.75fr]">
               <div className="rounded-2xl border border-white/80 bg-white/80 p-3 shadow-sm backdrop-blur">
-                <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
+                <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                   <Filter size={14} /> Fee Category
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -1325,14 +1334,14 @@ const FinanceDashboard = () => {
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className="min-w-0 break-words text-sm font-black text-slate-900">{summary.category}</p>
+                          <p className="min-w-0 break-words text-sm font-semibold text-slate-900">{summary.category}</p>
                           {summary.state !== 'unscheduled' && (
-                            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${styles.badge}`}>
+                            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${styles.badge}`}>
                               {summary.state}
                             </span>
                           )}
                         </div>
-                        <p className={`mt-2 text-xs font-black ${styles.accent}`}>{summary.label}</p>
+                        <p className={`mt-2 text-xs font-semibold ${styles.accent}`}>{summary.label}</p>
                         <p className="mt-1 text-[11px] font-bold text-slate-500">{summary.total} records - {summary.pending} pending</p>
                       </button>
                     );
@@ -1343,9 +1352,9 @@ const FinanceDashboard = () => {
               <div className={`rounded-2xl border p-4 shadow-sm transition-colors duration-300 ${selectedDueStyles.badge}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-75">Selected Deadline</p>
-                    <h3 className="mt-1 break-words text-lg font-black text-slate-900">{selectedCategory}</h3>
-                    <p className={`mt-1 text-sm font-black ${selectedDueStyles.accent}`}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">Selected Deadline</p>
+                    <h3 className="mt-1 break-words text-base font-semibold text-slate-900">{selectedCategory}</h3>
+                    <p className={`mt-1 text-sm font-semibold ${selectedDueStyles.accent}`}>
                       {formatDueDate(selectedCategorySummary?.dueDate)}
                     </p>
                     <p className="mt-1 text-xs font-bold opacity-80">{selectedCategorySummary?.label || 'No deadline'}</p>
@@ -1354,7 +1363,7 @@ const FinanceDashboard = () => {
                 </div>
                 {canManageFees && selectedCategory !== 'All Categories' && (
                   <label className="mt-4 block">
-                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest opacity-75">Edit Due Date</span>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] opacity-75">Edit Due Date</span>
                     <input
                       type="date"
                       value={categoryDueDates[selectedCategory] || ''}
@@ -1363,7 +1372,7 @@ const FinanceDashboard = () => {
                         pushRecentAction(`${selectedCategory} due date updated.`);
                       }}
                       onBlur={() => void handlePersistDueDate(selectedCategory, categoryDueDates[selectedCategory] || '')}
-                      className="w-full rounded-xl border border-white/80 bg-white px-3 py-2 text-sm font-black text-slate-800 outline-none transition-all focus:ring-2 focus:ring-white"
+                      className="w-full rounded-lg border border-white/80 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition-all focus:ring-2 focus:ring-white"
                     />
                   </label>
                 )}
@@ -1372,11 +1381,11 @@ const FinanceDashboard = () => {
 
             {canManageFees && selectedRecords.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-100 bg-white p-3">
-                <span className="text-xs font-black uppercase tracking-widest text-indigo-700">{selectedRecords.length} selected</span>
-                <button onClick={() => savePaymentDrafts(selectedRecords)} className="flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Save size={14} /> Save Payments</button>
-                <button onClick={() => handleMarkRecords(selectedRecords, 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Mark Paid</button>
-                <button onClick={() => handleMarkRecords(selectedRecords, 'Pending')} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white">Mark Not Paid</button>
-                <button onClick={() => setSelectedRecords([])} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">Reject Selection</button>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">{selectedRecords.length} selected</span>
+                <button onClick={() => savePaymentDrafts(selectedRecords)} className="flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white"><Save size={14} /> Save Payments</button>
+                <button onClick={() => handleMarkRecords(selectedRecords, 'Paid')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Mark Paid</button>
+                <button onClick={() => handleMarkRecords(selectedRecords, 'Pending')} className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white">Mark Not Paid</button>
+                <button onClick={() => setSelectedRecords([])} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">Reject Selection</button>
               </div>
             )}
           </div>
@@ -1429,16 +1438,16 @@ const FinanceDashboard = () => {
                         />
                       )}
                       <div className="min-w-0">
-                        <h3 className="break-words text-base font-black text-slate-900">{fee.studentName || fee.studentEmail}</h3>
+                        <h3 className="break-words text-base font-semibold text-slate-900">{fee.studentName || fee.studentEmail}</h3>
                         <p className="mt-1 text-xs font-bold text-slate-500">Roll {fee.rollNo || '-'} - {getClassLabel(fee.sectionName)}</p>
                       </div>
                     </label>
                     <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusStyles[savedStatus]}`}>
+                      <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${statusStyles[savedStatus]}`}>
                         {getStatusLabel(savedStatus)}
                       </span>
                       {cardDueState === 'overdue' && savedStatus !== 'Paid' && (
-                        <span className="rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-rose-700">
+                        <span className="rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-rose-700">
                           Overdue
                         </span>
                       )}
@@ -1446,7 +1455,7 @@ const FinanceDashboard = () => {
                   </div>
 
                   {reminderLevel && (
-                    <div className={`mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-black ${reminderLevel.className}`}>
+                    <div className={`mt-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${reminderLevel.className}`}>
                       <AlertTriangle size={14} />
                       <span>{reminderLevel.label}</span>
                       <span className="font-semibold opacity-80">- {reminderLevel.message}</span>
@@ -1457,34 +1466,34 @@ const FinanceDashboard = () => {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <FileText size={15} className="text-indigo-500" />
-                        <p className="text-sm font-black text-slate-900">{fee.type}</p>
+                        <p className="text-sm font-semibold text-slate-900">{fee.type}</p>
                       </div>
-                      <p className={`text-xs font-black ${cardStyles.accent}`}>Due {formatDueDate(cardDueDate)}</p>
+                      <p className={`text-xs font-semibold ${cardStyles.accent}`}>Due {formatDueDate(cardDueDate)}</p>
                     </div>
                     <div className="mt-3 grid grid-cols-3 gap-2">
                       <div className="rounded-xl bg-white px-2 py-2">
-                        <p className="text-[10px] font-black uppercase text-slate-400">Paid</p>
-                        <p className="text-xs font-black text-emerald-700">{formatCurrency(Number(fee.paidAmount).toFixed(2))}</p>
+                        <p className="text-xs font-semibold uppercase text-slate-500">Paid</p>
+                        <p className="text-xs font-semibold text-emerald-700">{formatCurrency(Number(fee.paidAmount).toFixed(2))}</p>
                       </div>
                       <div className="rounded-xl bg-white px-2 py-2">
-                        <p className="text-[10px] font-black uppercase text-slate-400">Pending</p>
-                        <p className="text-xs font-black text-amber-700">{formatCurrency(Number(fee.pendingAmount).toFixed(2))}</p>
+                        <p className="text-xs font-semibold uppercase text-slate-500">Pending</p>
+                        <p className="text-xs font-semibold text-amber-700">{formatCurrency(Number(fee.pendingAmount).toFixed(2))}</p>
                       </div>
                       <div className="rounded-xl bg-white px-2 py-2">
-                        <p className="text-[10px] font-black uppercase text-slate-400">Total</p>
-                        <p className="text-xs font-black text-slate-900">{formatCurrency(Number(fee.totalAmount).toFixed(2))}</p>
+                        <p className="text-xs font-semibold uppercase text-slate-500">Total</p>
+                        <p className="text-xs font-semibold text-slate-900">{formatCurrency(Number(fee.totalAmount).toFixed(2))}</p>
                       </div>
                     </div>
                   </div>
 
                   {canManageFees && (
                     <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-3">
-                      <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                      <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                         <IndianRupee size={13} /> Payment Entry
                       </div>
                       <div className="grid gap-2 sm:grid-cols-[1fr_0.9fr]">
                         <label className="block">
-                          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Amount Paid</span>
+                          <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Amount Paid</span>
                           <input
                             type="text"
                             inputMode="decimal"
@@ -1493,12 +1502,12 @@ const FinanceDashboard = () => {
                               paidAmount: clampCurrencyInput(event.target.value, Number(fee.totalAmount)),
                             })}
                             disabled={!canManageFees}
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                           />
                         </label>
                         <div className="block">
-                          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-400">Status</span>
-                          <div className={`flex h-[42px] items-center rounded-xl border px-3 py-2 text-sm font-black ${
+                          <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Status</span>
+                          <div className={`flex h-[42px] items-center rounded-lg border px-3 py-2 text-sm font-semibold ${
                             savedStatus === 'Paid'
                               ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                               : savedStatus === 'Partial'
@@ -1512,7 +1521,7 @@ const FinanceDashboard = () => {
                       <button
                         type="button"
                         onClick={() => savePaymentDrafts([fee.id])}
-                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-slate-800"
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                       >
                         <Save size={14} /> Save Payment Info
                       </button>
@@ -1520,7 +1529,7 @@ const FinanceDashboard = () => {
                   )}
 
                   <label className="mt-4 block">
-                    <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                    <span className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                       <Edit3 size={13} /> Pending Note
                     </span>
                     <textarea
@@ -1536,9 +1545,9 @@ const FinanceDashboard = () => {
 
                   {canManageFees && (
                     <div className="mt-4 grid grid-cols-2 gap-2">
-                      <button onClick={() => handleMarkRecords([fee.id], 'Paid')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white">Paid</button>
-                      <button onClick={() => updatePaymentDraft(fee.id, { paidAmount: '0' })} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white">Not Paid</button>
-                      <button onClick={() => handleReminder([fee.id])} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
+                      <button onClick={() => handleMarkRecords([fee.id], 'Paid')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Paid</button>
+                      <button onClick={() => updatePaymentDraft(fee.id, { paidAmount: '0' })} className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white">Not Paid</button>
+                      <button onClick={() => handleReminder([fee.id])} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
                         <MessageSquare size={14} /> Reminder
                       </button>
                     </div>
@@ -1559,7 +1568,7 @@ const FinanceDashboard = () => {
         <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
             <Bell size={16} className="text-indigo-500" />
-            <h2 className="text-sm font-black text-slate-900">Recent Actions</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Recent Actions</h2>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {recentActions.map((action, index) => (
@@ -1576,7 +1585,7 @@ const FinanceDashboard = () => {
           <div className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-black text-slate-900">Partial Payment</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Partial Payment</h2>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   Enter the paid amount. The remaining balance will stay pending.
                 </p>
@@ -1584,13 +1593,13 @@ const FinanceDashboard = () => {
               <button
                 type="button"
                 onClick={() => setPartialPaymentDialog(null)}
-                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
               >
                 Close
               </button>
             </div>
             <label className="mt-5 block">
-              <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Paid Amount</span>
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paid Amount</span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -1598,7 +1607,7 @@ const FinanceDashboard = () => {
                 onChange={(event) => setPartialPaymentDialog((current) =>
                   current ? { ...current, amount: sanitizeNumericInput(event.target.value) } : current
                 )}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base font-black text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base font-semibold text-slate-900 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
                 placeholder="Enter amount paid"
                 autoFocus
               />
@@ -1607,14 +1616,14 @@ const FinanceDashboard = () => {
               <button
                 type="button"
                 onClick={() => setPartialPaymentDialog(null)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-600"
+                className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-600"
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={() => void handleConfirmPartialPayment()}
-                className="rounded-xl bg-sky-600 px-4 py-3 text-xs font-black text-white shadow-sm"
+                className="rounded-lg bg-sky-600 px-4 py-3 text-xs font-semibold text-white shadow-sm"
               >
                 Save Partial
               </button>

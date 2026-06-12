@@ -3,6 +3,7 @@ import { Filter, Search } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useComplaintStore, type ComplaintStatus } from '../../store/useComplaintStore';
 import { fetchComplaints, resolveComplaint } from '../../services/complaints';
+import { getSafeFilterDateChangeHandler, getTodayInputDate, MIN_FILTER_DATE } from '../../utils/dateLimits';
 
 const ComplaintInbox = () => {
   const { user } = useAuthStore();
@@ -16,6 +17,9 @@ const ComplaintInbox = () => {
   const isGoverningBody = user?.role === 'Governing Body';
   const canResolveComplaints = isTeacher || isGoverningBody;
   const targetRole = isTeacher ? 'Teacher' : 'Governing Body';
+  const maxFilterDate = getTodayInputDate();
+  const handleDateFromChange = getSafeFilterDateChangeHandler(setDateFrom, { min: MIN_FILTER_DATE, max: maxFilterDate });
+  const handleDateToChange = getSafeFilterDateChangeHandler(setDateTo, { min: MIN_FILTER_DATE, max: maxFilterDate });
 
   useEffect(() => {
     if (!user?.id) {
@@ -103,13 +107,17 @@ const ComplaintInbox = () => {
           <input
             type="date"
             value={dateFrom}
-            onChange={(event) => setDateFrom(event.target.value)}
+            min={MIN_FILTER_DATE}
+            max={dateTo || maxFilterDate}
+            onChange={(event) => handleDateFromChange(event.target.value)}
             className="erp-input min-w-0 px-3 py-2 text-sm text-slate-600 outline-none"
           />
           <input
             type="date"
             value={dateTo}
-            onChange={(event) => setDateTo(event.target.value)}
+            min={dateFrom || MIN_FILTER_DATE}
+            max={maxFilterDate}
+            onChange={(event) => handleDateToChange(event.target.value)}
             className="erp-input min-w-0 px-3 py-2 text-sm text-slate-600 outline-none"
           />
         </div>

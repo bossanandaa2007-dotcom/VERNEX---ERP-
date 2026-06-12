@@ -290,7 +290,7 @@ const mapProfileToUser = async (
 };
 
 const USER_PROFILE_COLUMNS = 'id, auth_user_id, email, full_name, main_role, designation, is_active';
-const LEGACY_PROFILE_COLUMNS = 'id, name, email, role, designation';
+const LEGACY_PROFILE_COLUMNS = 'id, name, email, role';
 
 const fetchUserProfileByAuthId = async (session: Session) => {
   const client = assertSupabase();
@@ -413,9 +413,15 @@ const hasResolvedRole = (profile?: ProfileRow | null) =>
   Boolean(normalizeRole(profile?.main_role) || normalizeRole(profile?.role));
 
 const getSessionProfile = async (session: Session): Promise<AuthenticatedUser> => {
-  const userProfile = await fetchUserProfileByAuthId(session) || await fetchUserProfileByEmail(session);
   const legacyProfile = await fetchLegacyProfileById(session) || await fetchLegacyProfileByEmail(session);
   const studentProfile = await fetchStudentLoginProfileByAuthId(session) || await fetchStudentLoginProfileByEmail(session);
+  const localProfile = [legacyProfile, studentProfile].find(hasResolvedRole) || legacyProfile || studentProfile;
+
+  if (localProfile) {
+    return mapProfileToUser(session, localProfile, legacyProfile || null);
+  }
+
+  const userProfile = await fetchUserProfileByAuthId(session) || await fetchUserProfileByEmail(session);
   const profile = [userProfile, legacyProfile, studentProfile].find(hasResolvedRole) || userProfile || legacyProfile || studentProfile;
 
   return mapProfileToUser(session, profile || null, legacyProfile || null);
@@ -444,16 +450,11 @@ export const initializeSupabaseAuth = async (): Promise<AuthenticatedUser | null
 
 export const loginWithSupabase = async (email: string, password: string): Promise<AuthenticatedUser> => {
   const client = assertSupabase();
-  console.log("LOGIN EMAIL:", email);
-  console.log("LOGIN PASSWORD:", password);
 
   const { data, error } = await client.auth.signInWithPassword({
     email,
     password,
   });
-
-  console.log("LOGIN RESULT:", data);
-  console.log("LOGIN ERROR:", error);
 
   if (error) {
     console.error('LOGIN ERROR:', error);

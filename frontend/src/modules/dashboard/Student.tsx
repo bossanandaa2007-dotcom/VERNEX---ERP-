@@ -74,7 +74,7 @@ const StudentDashboard = () => {
         <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">{user?.name?.split(' ')[0] || 'Student'}</h1>
         <p className="mt-1 text-sm leading-6 text-slate-600">Class {studentData?.class || user?.class} - Section {studentData?.section || user?.section}</p>
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <button onClick={() => navigate('/student/performance')} className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-left text-slate-950 active:scale-[0.99]">
+          <button onClick={() => navigate('/student/attendance')} className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-left text-slate-950 active:scale-[0.99]">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Attendance</p>
             <p className="mt-1 text-lg font-semibold">{attendance}%</p>
           </button>
@@ -105,7 +105,7 @@ const StudentDashboard = () => {
         {[
           { title: 'Attendance Rate', value: `${attendance}%`, icon: Calendar, color: 'bg-orange-500', path: '/student/attendance' },
           { title: 'Pending Fees', value: formatCurrency(0), icon: CreditCard, color: 'bg-rose-500', path: '/student/fees' },
-          { title: 'Assignments Due', value: '0', icon: Clock, color: 'bg-blue-500', path: '/student/materials' },
+          { title: 'Assignments Due', value: '0', icon: Clock, color: 'bg-blue-500', path: '/student/assignments' },
           { title: 'Recent Awards', value: '0', icon: Award, color: 'bg-amber-500' },
         ].map((stat, i) => (
           <div 

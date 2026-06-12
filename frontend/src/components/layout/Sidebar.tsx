@@ -25,7 +25,7 @@ const getNavItems = (role: MainRole) => {
 
   if (role === 'admin') {
     items.push(
-      { name: 'Classes Mgmt', icon: Building2, path: '/admin/classes' },
+      { name: 'Class Management', icon: Building2, path: '/admin/classes' },
       { name: 'Students', icon: Users, path: '/admin/students' },
       { name: 'Faculty', icon: Shield, path: '/admin/teachers' },
       { name: 'Timetable', icon: CalendarDays, path: '/admin/timetable' },
@@ -96,34 +96,6 @@ const getNavItems = (role: MainRole) => {
   return items;
 };
 
-const teacherMobilePrimaryPaths = new Set([
-  '/teacher/dashboard',
-  '/teacher/classes',
-  '/teacher/attendance',
-  '/teacher/marks-entry',
-  '/teacher/materials',
-  '/teacher/assignments',
-]);
-
-const studentMobilePrimaryPaths = new Set([
-  '/student/dashboard',
-  '/student/attendance',
-  '/student/marks',
-  '/student/performance',
-  '/student/materials',
-  '/student/assignments',
-  '/student/timetable',
-  '/student/academics',
-  '/student/profile',
-]);
-
-const governingMobilePrimaryPaths = new Set([
-  '/governing/dashboard',
-  '/governing/dashboard?view=analytics',
-  '/governing/calendar',
-  '/governing/reports',
-]);
-
 export const Sidebar = ({
   collapsed,
   setCollapsed
@@ -158,7 +130,7 @@ export const Sidebar = ({
 
   return (
     <aside className={cn(
-      "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-slate-800 bg-[#10213a] text-slate-300 shadow-lg transition-all duration-200 ease-in-out lg:shadow-none max-lg:w-[84vw] max-lg:max-w-[300px]",
+      "fixed left-0 top-0 z-[60] flex h-screen flex-col border-r border-slate-800 bg-[#10213a] text-slate-300 shadow-lg transition-all duration-200 ease-in-out lg:shadow-none max-lg:w-[84vw] max-lg:max-w-[300px]",
       collapsed
         ? "-translate-x-full lg:translate-x-0 lg:w-20"
         : "translate-x-0 w-60 shadow-slate-900/30"
@@ -204,9 +176,6 @@ export const Sidebar = ({
 
               return cn(
                 "group flex items-center gap-2.5 rounded px-2.5 py-2 text-[13px] transition-colors duration-150 max-lg:py-2.5",
-                role === 'teacher' && teacherMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
-                role === 'student' && studentMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
-                role === 'governing_body' && governingMobilePrimaryPaths.has(item.path) && 'max-lg:hidden',
                 active
                   ? "bg-[#4653a6] text-white"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
