@@ -139,7 +139,8 @@ const MarksEntry = () => {
     }
 
     const markValue = parseInt(trimmedValue, 10);
-    if (isNaN(markValue) || markValue < 0 || markValue > 100) {
+    const maxMarks = subject.maxMarks || 100;
+    if (isNaN(markValue) || markValue < 0 || markValue > maxMarks) {
       return Number.NaN;
     }
 
@@ -163,7 +164,7 @@ const MarksEntry = () => {
   }, [draftMarks]);
 
   const pendingSaveCount = useMemo(
-    () => rows.reduce((count, student) => count + student.subjects.filter((subject) => hasDraftChange(student, subject)).length, 0),
+    () => rows.reduce((count, student) => count + student.subjects.filter((subject) => subject.canEdit && hasDraftChange(student, subject)).length, 0),
     [hasDraftChange, rows]
   );
 
@@ -173,7 +174,7 @@ const MarksEntry = () => {
       subject,
       cellKey: getCellKey(student.studentId, subject.subject),
       draftValue: getInputValue(student.studentId, subject),
-    }))).filter(({ student, subject }) => hasDraftChange(student, subject));
+    }))).filter(({ student, subject }) => subject.canEdit && hasDraftChange(student, subject));
 
     if (!changes.length) {
       showNotification('No new marks to save.');
@@ -182,7 +183,7 @@ const MarksEntry = () => {
 
     const invalidChange = changes.find(({ student, subject, draftValue }) => Number.isNaN(getDraftMarkValue(student, subject, draftValue)));
     if (invalidChange) {
-      showNotification('Enter marks between 0 and 100 before saving.');
+      showNotification(`Enter marks between 0 and ${invalidChange.subject.maxMarks || 100} for ${invalidChange.subject.subject}.`);
       return;
     }
 

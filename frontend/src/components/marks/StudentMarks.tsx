@@ -27,6 +27,8 @@ const scorePercent = (marks?: number | null, maxMarks = 100) => {
 
 const formatScore = (score: number | null) => (score === null ? 'N/A' : `${score}%`);
 
+const STUDENT_MARKS_CHART_INITIAL_DIMENSION = { width: 320, height: 240 };
+
 const tamilNaduGrade = (score: number | null) => {
   if (score === null) return 'N/A';
   if (score >= 91) return 'A1';
@@ -43,6 +45,9 @@ const StudentMarks = () => {
   const { user } = useAuthStore();
   const [selectedExam, setSelectedExam] = useState<ExamType>('Quarterly');
   const [overview, setOverview] = useState<StudentMarksOverview | null>(null);
+  const [useDesktopCharts, setUseDesktopCharts] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches
+  );
 
   useEffect(() => {
     if (!user?.id) {
@@ -53,6 +58,18 @@ const StudentMarks = () => {
       .then(setOverview)
       .catch(console.error);
   }, [user?.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const query = window.matchMedia('(min-width: 768px)');
+    const update = () => setUseDesktopCharts(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
 
   const selectedExamRows = useMemo(() => {
     return (overview?.subjects || []).map((subject) => {
@@ -159,36 +176,65 @@ const StudentMarks = () => {
             <TrendingUp className="text-indigo-600" size={20} />
             {selectedExam} Subject Performance
           </h3>
-          <div className="h-[240px] w-full md:h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={selectedExamRows} margin={{ left: -20, right: 16, top: 8, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#64748b' }} />
-                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
-                <Tooltip
-                  cursor={{ fill: '#f8fafc' }}
-                  formatter={(_value, _name, item) => {
-                    const payload = item.payload as { actualMarks?: number; marks: number };
-                    return [typeof payload.actualMarks === 'number' ? `${payload.marks}%` : 'Pending', 'Marks'];
-                  }}
-                  contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(15 23 42 / 0.08)' }}
-                />
-                <Bar dataKey="marks" radius={[8, 8, 0, 0]} barSize={38}>
-                  {selectedExamRows.map((entry) => (
-                    <Cell
-                      key={entry.subject}
-                      fill={typeof entry.actualMarks !== 'number'
-                        ? '#cbd5e1'
-                        : entry.marks >= 75
-                          ? '#10b981'
-                          : entry.marks >= 40
-                            ? '#6366f1'
-                            : '#f43f5e'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="min-h-[240px] w-full overflow-hidden md:h-[320px]">
+            {useDesktopCharts ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={STUDENT_MARKS_CHART_INITIAL_DIMENSION}>
+                <BarChart data={selectedExamRows} margin={{ left: -20, right: 16, top: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#64748b' }} />
+                  <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
+                  <Tooltip
+                    cursor={{ fill: '#f8fafc' }}
+                    formatter={(_value, _name, item) => {
+                      const payload = item.payload as { actualMarks?: number; marks: number };
+                      return [typeof payload.actualMarks === 'number' ? `${payload.marks}%` : 'Pending', 'Marks'];
+                    }}
+                    contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(15 23 42 / 0.08)' }}
+                  />
+                  <Bar dataKey="marks" radius={[8, 8, 0, 0]} barSize={38}>
+                    {selectedExamRows.map((entry) => (
+                      <Cell
+                        key={entry.subject}
+                        fill={typeof entry.actualMarks !== 'number'
+                          ? '#cbd5e1'
+                          : entry.marks >= 75
+                            ? '#10b981'
+                            : entry.marks >= 40
+                              ? '#6366f1'
+                              : '#f43f5e'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="space-y-3">
+                {selectedExamRows.map((entry) => (
+                  <div key={entry.subject} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="break-words text-sm font-black text-slate-900">{entry.subject}</span>
+                      <span className={`shrink-0 text-sm font-black ${scoreColor(entry.actualMarks)}`}>
+                        {typeof entry.actualMarks === 'number' ? `${entry.marks}%` : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="mt-3 h-3 overflow-hidden rounded-full bg-white">
+                      <div
+                        className={`h-full rounded-full ${
+                          typeof entry.actualMarks !== 'number'
+                            ? 'bg-slate-300'
+                            : entry.marks >= 75
+                              ? 'bg-emerald-500'
+                              : entry.marks >= 40
+                                ? 'bg-indigo-500'
+                                : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${entry.marks}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

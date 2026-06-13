@@ -24,6 +24,7 @@ import autoTable from 'jspdf-autotable';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useClassStore } from '../../store/useClassStore';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { getTodayInputDate } from '../../utils/dateLimits';
 import { supabase } from '../../lib/supabase';
 import {
   fetchFeeRecords,
@@ -273,6 +274,7 @@ const getDueLabel = (value?: string, completed = false) => {
 
 const FinanceDashboard = () => {
   const { user } = useAuthStore();
+  const todayInputDate = getTodayInputDate();
   const initializeSchoolData = useClassStore((state) => state.initialize);
   const sections = useClassStore((state) => state.sections);
   const [notification, setNotification] = useState<string | null>(null);
@@ -664,6 +666,11 @@ const FinanceDashboard = () => {
       return;
     }
 
+    if (termFeeForm.dueDate < todayInputDate) {
+      showToast('Due date cannot be before today.');
+      return;
+    }
+
     try {
       setIsAssigningTermFee(true);
       const studentCount = await setStandardTermFee({
@@ -874,6 +881,11 @@ const FinanceDashboard = () => {
     }
 
     if (!dueDate || category === 'All Categories') {
+      return;
+    }
+
+    if (dueDate < todayInputDate) {
+      showToast('Due date cannot be before today.');
       return;
     }
 
@@ -1125,7 +1137,14 @@ const FinanceDashboard = () => {
                 <input
                   type="date"
                   value={termFeeForm.dueDate}
-                  onChange={(event) => setTermFeeForm((current) => ({ ...current, dueDate: event.target.value }))}
+                  min={todayInputDate}
+                  onChange={(event) => {
+                    if (event.target.value && event.target.value < todayInputDate) {
+                      showToast('Due date cannot be before today.');
+                      return;
+                    }
+                    setTermFeeForm((current) => ({ ...current, dueDate: event.target.value }));
+                  }}
                   required
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 />
@@ -1367,7 +1386,12 @@ const FinanceDashboard = () => {
                     <input
                       type="date"
                       value={categoryDueDates[selectedCategory] || ''}
+                      min={todayInputDate}
                       onChange={(event) => {
+                        if (event.target.value && event.target.value < todayInputDate) {
+                          showToast('Due date cannot be before today.');
+                          return;
+                        }
                         setCategoryDueDates((current) => ({ ...current, [selectedCategory]: event.target.value }));
                         pushRecentAction(`${selectedCategory} due date updated.`);
                       }}

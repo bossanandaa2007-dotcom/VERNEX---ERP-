@@ -12,6 +12,7 @@ const EventDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const canCreateEvents = user?.role === 'Admin';
 
   useEffect(() => {
     let isMounted = true;
@@ -71,6 +72,11 @@ const EventDashboard = () => {
 
   const handleCreateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!canCreateEvents) {
+      showToast('Only admin can create events.');
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
 
     try {
@@ -98,7 +104,7 @@ const EventDashboard = () => {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Activities & Events</h1>
           <p className="text-slate-500 mt-1">Institutional event portal and registration management.</p>
         </div>
-        {user?.role !== 'Student' && (
+        {canCreateEvents && (
           <button
             onClick={() => setIsCreateOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm text-sm active:scale-95"
@@ -219,7 +225,7 @@ const EventDashboard = () => {
         </form>
       </Modal>
 
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create Event">
+      <Modal isOpen={canCreateEvents && isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create Event">
         <form onSubmit={handleCreateEvent} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Event Name</label>

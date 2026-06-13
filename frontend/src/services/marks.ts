@@ -321,9 +321,7 @@ export const fetchTeacherMarkScopes = async (teacherProfileId: string): Promise<
   const teacherRow = teacherRes.data as TeacherHomeRow | null;
   const homeSection = firstRelation(teacherRow?.home_section);
   const ownSubjects = uniqueStrings([
-    teacherRow?.home_section_subject,
-    teacherRow?.subject,
-    ...(teacherRow?.subjects || []),
+    teacherRow?.home_section_subject || teacherRow?.subject,
   ]);
   const ownClassScopes = homeSection?.name && teacherRow?.home_section_id
     ? ownSubjects.map((subject: string) => ({
@@ -642,20 +640,11 @@ export const fetchTeacherStudentPerformance = async (
 
   const markMap = new Map<string, StudentMarkCellRow>();
   const highestBySectionSubject = new Map<string, number>();
-  const scopesBySection = new Map<string, string[]>();
-  scopes.forEach((scope) => {
-    const current = scopesBySection.get(scope.sectionId) || [];
-    current.push(scope.subject);
-    scopesBySection.set(scope.sectionId, current);
-  });
-
-  const scopedSubjects = uniqueStrings(scopes.map((scope) => scope.subject));
-  if (scopedSubjects.length) {
+  if (sectionIds.length) {
     const { data: scopeMarks, error: scopeMarksError } = await client
       .from('student_marks')
       .select('id, student_id, section_id, subject_name, marks, max_marks, exam_type')
-      .in('section_id', Array.from(scopesBySection.keys()))
-      .in('subject_name', scopedSubjects)
+      .in('section_id', sectionIds)
       .eq('exam_type', examType);
 
     if (scopeMarksError) {
@@ -663,12 +652,7 @@ export const fetchTeacherStudentPerformance = async (
     }
 
     ((scopeMarks || []) as StudentMarkCellRow[]).forEach((mark) => {
-      if (!mark.section_id) {
-        return;
-      }
-
-      const sectionSubjects = scopesBySection.get(mark.section_id) || [];
-      if (!sectionSubjects.some((subject) => subject.toLowerCase() === String(mark.subject_name).toLowerCase())) {
+      if (!mark.section_id || !subjectsBySection.get(mark.section_id)?.some((subject) => subject.toLowerCase() === String(mark.subject_name).toLowerCase())) {
         return;
       }
 
