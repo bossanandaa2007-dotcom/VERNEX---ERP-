@@ -88,6 +88,7 @@ const TimetablePage = () => {
     });
     return map;
   }, [entries]);
+  const assignedPeriodsCount = entries.length;
 
   useEffect(() => {
     if (!user?.id) {
@@ -295,25 +296,31 @@ const TimetablePage = () => {
           <h1 className="erp-title">
             {isAdmin ? 'Class Timetable Builder' : isTeacher ? 'My Teaching Timetable' : 'My Class Timetable'}
           </h1>
-          <p className="erp-subtitle max-w-2xl">
-            {isAdmin
-              ? 'Each period accepts only subjects configured for the selected section. The matching teacher is resolved from the section staffing map.'
-              : 'This view is scoped by your login and reflects the timetable published by admin.'}
-          </p>
+          {!isAdmin && (
+            <p className="erp-subtitle max-w-2xl">
+              This view is scoped by your login and reflects the timetable published by admin.
+            </p>
+          )}
         </div>
 
         {isAdmin && (
-          <div className="w-full max-w-xs">
-            <label className="erp-section-label mb-2 block">Select Section</label>
-            <select
-              value={selectedSectionId}
-              onChange={(event) => setSelectedSectionId(event.target.value)}
-              className="w-full rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-400"
-            >
-              {sortedSections.map((section) => (
-                <option key={section.id} value={section.id}>{section.name}</option>
-              ))}
-            </select>
+          <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] lg:max-w-xl">
+            <div>
+              <label className="erp-section-label mb-2 block">Select Section</label>
+              <select
+                value={selectedSectionId}
+                onChange={(event) => setSelectedSectionId(event.target.value)}
+                className="w-full rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-400"
+              >
+                {sortedSections.map((section) => (
+                  <option key={section.id} value={section.id}>{section.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="rounded border border-emerald-100 bg-emerald-50 px-4 py-3 sm:min-w-44">
+              <p className="erp-section-label text-emerald-700">Total Periods</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-800">{assignedPeriodsCount}</p>
+            </div>
           </div>
         )}
       </div>
