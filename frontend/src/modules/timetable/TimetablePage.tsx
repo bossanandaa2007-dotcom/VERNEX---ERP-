@@ -15,6 +15,11 @@ import type { ISection } from '../../types/school';
 
 const entryKey = (dayOfWeek: number, periodNumber: number) => `${dayOfWeek}:${periodNumber}`;
 
+const getInitialTimetableDay = () => {
+  const day = new Date().getDay();
+  return TIMETABLE_DAYS.some((item) => item.value === day) ? day : TIMETABLE_DAYS[0].value;
+};
+
 const byNaturalName = <T extends { name: string }>(left: T, right: T) =>
   left.name.localeCompare(right.name, undefined, { numeric: true });
 
@@ -32,7 +37,7 @@ const TimetablePage = () => {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
+  const [selectedDay, setSelectedDay] = useState<number>(getInitialTimetableDay);
   const today = new Date().getDay();
 
   const isAdmin = user?.role === 'Admin';
@@ -72,6 +77,20 @@ const TimetablePage = () => {
     return null;
   }, [isAdmin, isStudent, selectedSectionId, sortedSections, user?.class]);
 
+  useEffect(() => {
+    if (!isStudent || !user?.id) {
+      return;
+    }
+
+    console.info('[Timetable Debug] student timetable page context', {
+      profileId: user.id,
+      userClassName: user.class,
+      userSectionLabel: user.section,
+      resolvedSectionId: activeSection?.id,
+      resolvedSectionName: activeSection?.name,
+    });
+  }, [activeSection?.id, activeSection?.name, isStudent, user?.class, user?.id, user?.section]);
+
   const subjectOptions = useMemo(() => {
     if (!activeSection) {
       return [];
@@ -88,7 +107,16 @@ const TimetablePage = () => {
     });
     return map;
   }, [entries]);
-  const assignedPeriodsCount = entries.length;
+  const subjectPeriodCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    entries.forEach((entry) => {
+      counts.set(entry.subject, (counts.get(entry.subject) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .map(([subject, count]) => ({ subject, count }))
+      .sort((left, right) => left.subject.localeCompare(right.subject));
+  }, [entries]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -164,6 +192,16 @@ const TimetablePage = () => {
         return;
       }
 
+      console.info('[Timetable Debug] admin timetable save request', {
+        sectionId: activeSection.id,
+        sectionName: activeSection.name,
+        teacherId: teacher.id,
+        teacherName: teacher.name,
+        subject,
+        dayOfWeek,
+        periodNumber,
+      });
+
       await saveTimetableEntry({
         sectionId: activeSection.id,
         teacherId: teacher.id,
@@ -179,8 +217,8 @@ const TimetablePage = () => {
   };
 
   const renderReadOnlyGrid = () => (
-    <div className="erp-table-wrap hidden overflow-x-auto md:block">
-      <table className="w-full min-w-[920px] text-left text-sm">
+    <div className="erp-table-wrap hidden md:block">
+      <table className="w-full min-w-[1360px] text-left text-sm">
         <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
           <tr>
             <th className="w-28 px-5 py-4">Day</th>
@@ -304,7 +342,7 @@ const TimetablePage = () => {
         </div>
 
         {isAdmin && (
-          <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] lg:max-w-xl">
+          <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,auto)] lg:max-w-3xl">
             <div>
               <label className="erp-section-label mb-2 block">Select Section</label>
               <select
@@ -317,9 +355,22 @@ const TimetablePage = () => {
                 ))}
               </select>
             </div>
-            <div className="rounded border border-emerald-100 bg-emerald-50 px-4 py-3 sm:min-w-44">
-              <p className="erp-section-label text-emerald-700">Total Periods</p>
-              <p className="mt-1 text-2xl font-bold text-emerald-800">{assignedPeriodsCount}</p>
+            <div className="rounded border border-emerald-100 bg-emerald-50 px-4 py-3 sm:min-w-56">
+              <p className="erp-section-label text-emerald-700">Subject Periods</p>
+              {subjectPeriodCounts.length ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {subjectPeriodCounts.map((item) => (
+                    <span
+                      key={item.subject}
+                      className="rounded border border-emerald-200 bg-white px-2.5 py-1 text-xs font-bold text-emerald-800"
+                    >
+                      {item.subject}: {item.count}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1 text-sm font-bold text-emerald-800">No periods scheduled</p>
+              )}
             </div>
           </div>
         )}
@@ -355,7 +406,7 @@ const TimetablePage = () => {
           </div>
 
           <div className="overflow-x-auto border border-slate-200">
-            <table className="w-full min-w-[980px] text-left text-sm">
+            <table className="w-full min-w-[1360px] text-left text-sm">
               <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="w-28 px-5 py-4">Day</th>

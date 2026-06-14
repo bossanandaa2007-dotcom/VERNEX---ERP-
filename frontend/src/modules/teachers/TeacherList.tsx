@@ -4,7 +4,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   type SortingState,
   useReactTable,
@@ -41,6 +40,9 @@ const getPasswordValidationError = (password: string, confirmPassword: string) =
 
   return null;
 };
+
+const getTeacherSubjects = (teacher: ITeacher) =>
+  (teacher.subjects?.length ? teacher.subjects : [teacher.subject]).map((subject) => subject.trim()).filter(Boolean);
 
 const getColumns = (onManage: (teacher: ITeacher) => void, onDelete: (teacher: ITeacher) => void) => [
   columnHelper.accessor('name', {
@@ -146,6 +148,9 @@ const TeacherList = () => {
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [subjectFilter, setSubjectFilter] = useState('All');
+  const [staffingFilter, setStaffingFilter] = useState('All');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [manageTeacher, setManageTeacher] = useState<ITeacher | null>(null);
@@ -165,8 +170,29 @@ const TeacherList = () => {
     void initialize();
   }, [initialize]);
 
+  const subjectFilterOptions = useMemo(
+    () => Array.from(new Set(teachers.flatMap(getTeacherSubjects)))
+      .sort((left, right) => left.localeCompare(right)),
+    [teachers]
+  );
+
+  const filteredTeachers = useMemo(
+    () => teachers.filter((teacher) => {
+      const subjects = getTeacherSubjects(teacher);
+      const matchesCategory = categoryFilter === 'All' || teacher.category === categoryFilter;
+      const matchesSubject = subjectFilter === 'All' || subjects.includes(subjectFilter);
+      const matchesStaffing = staffingFilter === 'All'
+        || (staffingFilter === 'Class Teacher' && Boolean(teacher.classTeacherOf))
+        || (staffingFilter === 'Subject Teacher' && Boolean(teacher.subjectTeacherSections?.length))
+        || (staffingFilter === 'Unassigned' && !teacher.classTeacherOf && !teacher.subjectTeacherSections?.length);
+
+      return matchesCategory && matchesSubject && matchesStaffing;
+    }),
+    [categoryFilter, staffingFilter, subjectFilter, teachers]
+  );
+
   const table = useReactTable({
-    data: teachers,
+    data: filteredTeachers,
     columns: getColumns(
       (teacher) => {
       setManageTeacher(teacher);
@@ -210,7 +236,6 @@ const TeacherList = () => {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const showToast = (message: string) => {
@@ -483,8 +508,8 @@ const TeacherList = () => {
       <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         {isLoading && <div className="border-b border-slate-100 px-6 py-4 text-sm font-medium text-slate-500">Loading faculty...</div>}
 
-        <div className="flex flex-col items-center justify-between gap-4 border-b border-slate-100 p-4 sm:flex-row">
-          <div className="relative w-full sm:w-80">
+        <div className="grid gap-3 border-b border-slate-100 p-4 xl:grid-cols-[minmax(240px,1fr)_180px_180px_180px_auto]">
+          <div className="relative">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               value={globalFilter ?? ''}
@@ -493,14 +518,44 @@ const TeacherList = () => {
               placeholder="Search faculty..."
             />
           </div>
-          <div className="rounded-xl bg-slate-50 px-4 py-2 text-sm font-medium text-slate-500">
-            {teachers.length} faculty records
+          <select
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            className="rounded-xl border-transparent bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-600 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="All">All levels</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
+          <select
+            value={subjectFilter}
+            onChange={(event) => setSubjectFilter(event.target.value)}
+            className="rounded-xl border-transparent bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-600 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="All">All subjects</option>
+            {subjectFilterOptions.map((subject) => (
+              <option key={subject} value={subject}>{subject}</option>
+            ))}
+          </select>
+          <select
+            value={staffingFilter}
+            onChange={(event) => setStaffingFilter(event.target.value)}
+            className="rounded-xl border-transparent bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-600 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="All">All staffing</option>
+            <option value="Class Teacher">Class teachers</option>
+            <option value="Subject Teacher">Subject teachers</option>
+            <option value="Unassigned">Unassigned</option>
+          </select>
+          <div className="rounded-xl bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-500 xl:text-right">
+            {table.getFilteredRowModel().rows.length} teachers
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="max-h-[calc(100dvh-250px)] min-h-[360px] overflow-auto">
           <table className="w-full whitespace-nowrap text-left text-sm">
-            <thead className="bg-slate-50/80 text-xs font-semibold uppercase text-slate-500">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase text-slate-500 shadow-sm">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
