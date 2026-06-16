@@ -5,8 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useEffect, useState } from 'react';
 import { fetchStudentAttendanceSummary } from '../../services/attendance';
-import { fetchStudentByProfile } from '../../services/schoolData';
-import { useClassStore } from '../../store/useClassStore';
+import { fetchSectionTeacherRoster, fetchStudentByProfile, type SectionTeacherRoster } from '../../services/schoolData';
 import { fetchStudentMarksOverview, MARK_EXAMS, type StudentMarksOverview } from '../../services/marks';
 import type { IStudent } from '../../types/school';
 
@@ -23,15 +22,10 @@ const StudentDashboard = () => {
   const [studentData, setStudentData] = useState<StudentDashboardData | null>(null);
   const [attendance, setAttendance] = useState(0);
   const [marksOverview, setMarksOverview] = useState<StudentMarksOverview | null>(null);
+  const [teacherRoster, setTeacherRoster] = useState<SectionTeacherRoster | null>(null);
   const [useDesktopCharts, setUseDesktopCharts] = useState(() =>
     typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches
   );
-  const initialize = useClassStore((state) => state.initialize);
-  const sections = useClassStore((state) => state.sections);
-
-  useEffect(() => {
-    void initialize();
-  }, [initialize]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -51,19 +45,45 @@ const StudentDashboard = () => {
     }
 
     void (async () => {
+      console.info('[Student Dashboard Teacher Card Debug] auth user', {
+        userId: user.id,
+        userName: user.name,
+        userClass: user.class,
+        userSection: user.section,
+      });
       const student = await fetchStudentByProfile(user.id);
+      console.info('[Student Dashboard Teacher Card Debug] student record', {
+        student,
+        sectionId: student?.sectionId,
+      });
       setStudentData(student);
+      setTeacherRoster(null);
       if (student) {
-        const summary = await fetchStudentAttendanceSummary(student.id);
+        const [summary, roster] = await Promise.all([
+          fetchStudentAttendanceSummary(student.id),
+          fetchSectionTeacherRoster(student.sectionId),
+        ]);
+        console.info('[Student Dashboard Teacher Card Debug] query inputs', {
+          attendanceStudentId: student.id,
+          rosterSectionId: student.sectionId,
+        });
+        console.info('[Student Dashboard Teacher Card Debug] final roster data', roster);
         setAttendance(summary.attendanceRate);
+        setTeacherRoster(roster);
       }
       const overview = await fetchStudentMarksOverview(user.id);
       setMarksOverview(overview);
     })();
   }, [user?.id]);
 
-  const activeSection = sections.find((section) => section.id === studentData?.sectionId || section.name === user?.class);
-  const activeSubjects = activeSection?.subjectTeachers || [];
+  const classTeacher = teacherRoster?.classTeacher;
+  const subjectTeachers = teacherRoster?.subjectTeachers || [];
+  console.info('[Student Dashboard Teacher Card Debug] final rendered data', {
+    studentData,
+    classTeacher,
+    subjectTeachers,
+    willShowEmptySubjectStaffingMessage: Boolean(studentData && subjectTeachers.length === 0),
+  });
   const performanceData = MARK_EXAMS.map((examType) => {
     const scores = (marksOverview?.subjects || [])
       .map((subject) => {
@@ -153,21 +173,25 @@ const StudentDashboard = () => {
               </p>
             </div>
           </div>
-          {activeSection ? (
+          {studentData ? (
             <div className="space-y-4">
               <div className="rounded border border-emerald-100 bg-emerald-50 px-4 py-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Class Teacher</p>
-                <p className="mt-1 text-base font-bold text-slate-900">{activeSection.classTeacher}</p>
+                <p className="mt-1 text-base font-bold text-slate-900">{classTeacher?.name || 'Unassigned'}</p>
+                {classTeacher?.subject && (
+                  <p className="mt-1 text-xs font-medium text-emerald-700">Handles {classTeacher.subject}</p>
+                )}
               </div>
               <div className="space-y-3">
-                {activeSubjects.length ? activeSubjects.map((teacher) => (
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Subject Teachers</p>
+                {subjectTeachers.length ? subjectTeachers.map((teacher) => (
                   <div key={`${teacher.subject}:${teacher.id}`} className="flex items-start justify-between gap-3 border border-slate-200 px-4 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-slate-900">{teacher.subject}</p>
                       <p className="break-words text-xs text-slate-500">Handled by {teacher.name}</p>
                     </div>
                     <span className="hidden shrink-0 rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500 min-[380px]:inline-flex">
-                      {teacher.name === activeSection.classTeacher ? 'Class Teacher' : 'Subject Teacher'}
+                      Subject Teacher
                     </span>
                   </div>
                 )) : (

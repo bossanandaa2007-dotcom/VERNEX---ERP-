@@ -40,6 +40,17 @@ interface TeacherAssignmentRow {
   subject: string;
 }
 
+interface SectionTeacherAssignmentRow {
+  teacher_id: string;
+  subject: string;
+}
+
+interface SectionTeacherRosterTeacherRow {
+  id: string;
+  name: string;
+  home_section_subject?: string | null;
+}
+
 interface TeacherAssignmentWithSectionRow {
   section_id: string;
   subject?: string;
@@ -72,6 +83,15 @@ export interface TeacherManagementDetails {
   classTeacherSubjectOptionsBySection: Record<string, string[]>;
   currentSubjectAssignments: TeacherSubjectAssignmentDetail[];
   availableSubjectAssignments: FacultyAssignmentOption[];
+}
+
+export interface SectionTeacherRoster {
+  classTeacher: {
+    id: string;
+    name: string;
+    subject?: string;
+  } | null;
+  subjectTeachers: ISectionTeacher[];
 }
 
 export type TeacherCreateInput = Omit<ITeacher, 'id'> & {
@@ -124,6 +144,10 @@ const assertSupabase = () => {
   }
 
   return supabase;
+};
+
+const logStudentTeacherRosterDebug = (message: string, details?: unknown) => {
+  console.info(`[Student Teacher Roster Debug] ${message}`, details ?? '');
 };
 
 const mapCategory = (row: CategoryRow): IClassCategory => ({
@@ -1052,12 +1076,127 @@ export const fetchTeacherByProfile = async (profileId: string) => {
 
 export const fetchStudentByProfile = async (profileId: string) => {
   const client = assertSupabase();
+  logStudentTeacherRosterDebug('student record query input', { profileId });
   const { data, error } = await client
     .from('students')
     .select('id, profile_id, name, email, roll_no, category_id, section_id, gender, dob, contact, parent_name, parent_contact, address')
     .eq('profile_id', profileId)
     .maybeSingle<StudentRow>();
 
+  logStudentTeacherRosterDebug('student record raw response', { data, error });
   if (error) throw error;
-  return data ? mapStudent(data) : null;
+
+  const mappedStudent = data ? mapStudent(data) : null;
+  logStudentTeacherRosterDebug('student record mapped response', {
+    student: mappedStudent,
+    sectionId: mappedStudent?.sectionId,
+  });
+
+  return mappedStudent;
+};
+
+export const fetchSectionTeacherRoster = async (sectionId: string): Promise<SectionTeacherRoster> => {
+  const client = assertSupabase();
+  logStudentTeacherRosterDebug('teacher roster query inputs', {
+    sectionId,
+    classTeacherFilter: { home_section_id: sectionId },
+    subjectTeacherFilter: { section_id: sectionId, role: 'Subject Teacher' },
+  });
+
+  const [classTeacherRes, assignmentsRes] = await Promise.all([
+    client
+      .from('teachers')
+      .select('id, name, home_section_subject')
+      .eq('home_section_id', sectionId)
+      .maybeSingle<SectionTeacherRosterTeacherRow>(),
+    client
+      .from('section_teacher_assignments')
+      .select('teacher_id, subject')
+      .eq('section_id', sectionId)
+      .eq('role', 'Subject Teacher')
+      .order('subject', { ascending: true }),
+  ]);
+
+  logStudentTeacherRosterDebug('teacher roster raw class teacher response', {
+    data: classTeacherRes.data,
+    error: classTeacherRes.error,
+  });
+  logStudentTeacherRosterDebug('teacher roster raw assignment response', {
+    data: assignmentsRes.data,
+    error: assignmentsRes.error,
+  });
+
+  if (classTeacherRes.error) throw classTeacherRes.error;
+  if (assignmentsRes.error) throw assignmentsRes.error;
+
+  const assignments = (assignmentsRes.data || []) as SectionTeacherAssignmentRow[];
+  const assignedTeacherIds = Array.from(new Set(assignments.map((assignment) => assignment.teacher_id).filter(Boolean)));
+  logStudentTeacherRosterDebug('teacher roster assignment teacher ids', {
+    assignedTeacherIds,
+    assignmentCount: assignments.length,
+  });
+
+  const { data: teacherRows, error: teachersError } = assignedTeacherIds.length
+    ? await client
+        .from('teachers')
+        .select('id, name')
+        .in('id', assignedTeacherIds)
+    : { data: [], error: null };
+
+  logStudentTeacherRosterDebug('teacher roster raw teacher lookup response', {
+    data: teacherRows,
+    error: teachersError,
+  });
+
+  if (teachersError) throw teachersError;
+
+  const teacherNameById = new Map(
+    ((teacherRows || []) as SectionTeacherRosterTeacherRow[]).map((teacher) => [teacher.id, teacher.name])
+  );
+  const mappedAssignments = assignments.map((assignment) => {
+    const teacherName = teacherNameById.get(assignment.teacher_id);
+    const subject = assignment.subject?.trim();
+
+    if (!teacherName || !subject) {
+      return {
+        assignment,
+        teacher: null,
+        dropReason: !teacherName ? 'teacher row not visible or missing' : 'subject is blank',
+      };
+    }
+
+    return {
+      assignment,
+      teacher: {
+        id: assignment.teacher_id,
+        name: teacherName,
+        subject,
+      },
+      dropReason: null,
+    };
+  });
+  const subjectTeachers = mappedAssignments
+    .map((item) => item.teacher)
+    .filter((teacher): teacher is ISectionTeacher => teacher !== null)
+    .sort((left, right) => left.subject.localeCompare(right.subject));
+
+  logStudentTeacherRosterDebug('teacher roster filtered response', {
+    mappedAssignments,
+    subjectTeachers,
+  });
+
+  const roster = {
+    classTeacher: classTeacherRes.data
+      ? {
+          id: classTeacherRes.data.id,
+          name: classTeacherRes.data.name,
+          subject: classTeacherRes.data.home_section_subject || undefined,
+        }
+      : null,
+    subjectTeachers,
+  };
+
+  logStudentTeacherRosterDebug('teacher roster final response', roster);
+
+  return roster;
 };

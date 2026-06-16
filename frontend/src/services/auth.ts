@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { setAuthSessionPersistence, supabase } from '../lib/supabase';
 import { getRoleLabel, normalizeRole, type MainRole } from '../utils/roles';
 
 export interface AuthenticatedUser {
@@ -448,8 +448,14 @@ export const initializeSupabaseAuth = async (): Promise<AuthenticatedUser | null
   return getSessionProfile(session);
 };
 
-export const loginWithSupabase = async (email: string, password: string): Promise<AuthenticatedUser> => {
+export const loginWithSupabase = async (
+  email: string,
+  password: string,
+  rememberSession = false
+): Promise<AuthenticatedUser> => {
   const client = assertSupabase();
+
+  setAuthSessionPersistence(rememberSession);
 
   const { data, error } = await client.auth.signInWithPassword({
     email,

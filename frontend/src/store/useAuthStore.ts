@@ -7,7 +7,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   initialize: () => Promise<void>;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, rememberSession?: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -32,8 +32,8 @@ export const useAuthStore = create<AuthState>()((set) => ({
       });
     }
   },
-  login: async (email: string, password: string) => {
-    const user = await loginWithSupabase(email, password);
+  login: async (email: string, password: string, rememberSession = false) => {
+    const user = await loginWithSupabase(email, password, rememberSession);
     set({ user, isAuthenticated: true });
     return true;
   },
