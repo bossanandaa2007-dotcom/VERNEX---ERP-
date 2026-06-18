@@ -45,9 +45,9 @@ const IconBtn = ({ icon: Icon, onClick, variant = 'gray' }: IconButtonProps) => 
     return (
         <button
             onClick={onClick}
-            className={`p-2.5 rounded-xl transition-all active:scale-95 flex items-center justify-center ${cls[variant]}`}
+            className={`flex items-center justify-center rounded-md p-2 transition-all active:scale-95 ${cls[variant]}`}
         >
-            <Icon size={18} />
+            <Icon size={16} />
         </button>
     );
 };
@@ -55,10 +55,10 @@ const IconBtn = ({ icon: Icon, onClick, variant = 'gray' }: IconButtonProps) => 
 const Toast = ({ msg, onClose }: { msg: string; onClose: () => void }) => (
     <motion.div
         initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
-        className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[999]"
+        className="fixed bottom-10 left-1/2 z-[999] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-slate-900 px-5 py-3 text-white shadow-lg"
     >
         <CheckCircle2 size={20} className="text-teal-400" />
-        <span className="font-bold text-sm">{msg}</span>
+        <span className="text-sm font-semibold">{msg}</span>
         <button onClick={onClose} className="ml-4 text-slate-400 hover:text-white"><X size={16} /></button>
     </motion.div>
 );
@@ -170,6 +170,13 @@ const getPasswordValidationError = (password: string, confirmPassword: string) =
 };
 
 const categoryIcons: Record<string, LucideIcon> = { Baby, BookOpen, GraduationCap, Building2 };
+const categoryDisplayOrder = ['kindergarten', 'primary', 'secondary', 'higher secondary'];
+
+const getCategoryDisplayIndex = (categoryName: string) => {
+    const normalizedName = categoryName.trim().toLowerCase();
+    const orderIndex = categoryDisplayOrder.indexOf(normalizedName);
+    return orderIndex === -1 ? categoryDisplayOrder.length : orderIndex;
+};
 
 const findGradeCurriculumGroup = (
     groups: IClassSubjectGroup[],
@@ -353,28 +360,28 @@ export default function ClassesDashboard() {
     // ── DASHBOARD ──────────────────────────────────────────────────
     if (view === 'DASHBOARD') {
         return (
-            <div className="p-10 max-w-7xl mx-auto min-h-screen bg-slate-50/20">
-                <header className="mb-12">
-                    <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Academic Administration</h1>
+            <div className="mx-auto min-h-screen max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+                <header className="border-b border-slate-200 pb-4">
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Academic Administration</h1>
                     <p className="text-slate-500 mt-2 font-medium flex items-center gap-2">
                         <Shield size={14} className="text-teal-500" /> {store.sections.length} Active Sections · {store.teachers.length} Faculty Members
                     </p>
                 </header>
 
-                <section className="mb-10 rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm">
+                <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-2xl">
-                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-500">Class Subject Groups</p>
-                            <h2 className="mt-3 text-2xl font-black text-slate-900">Subjects are managed per grade and applied to every section in that grade.</h2>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-600">Class Subject Groups</p>
+                            <h2 className="mt-2 text-xl font-semibold text-slate-900">Subjects are managed per grade and applied to every section in that grade.</h2>
                             <p className="mt-2 text-sm font-medium text-slate-500">Choose a class, add a subject, or remove a subject relationship from all matching sections.</p>
                         </div>
                         <div className="flex w-full flex-col gap-3 sm:max-w-md sm:flex-row sm:items-end">
                             <div className="flex-1">
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Select Class</label>
+                                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Select Class</label>
                                 <select
                                     value={selectedGrade?.key || ''}
                                     onChange={(event) => setSelectedGradeKey(event.target.value)}
-                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                                 >
                                     {gradeOptions.map((grade) => (
                                         <option key={grade.key} value={grade.key}>{grade.label}</option>
@@ -389,7 +396,7 @@ export default function ClassesDashboard() {
                                     if (!selectedGrade) return;
                                     setShowModal({ type: 'SUBJECT', gradeKey: selectedGrade.key, gradeLabel: selectedGrade.label });
                                 }}
-                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-teal-100 transition-all hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                                 <Plus size={18} /> Add Subject
                             </button>
@@ -397,35 +404,35 @@ export default function ClassesDashboard() {
                     </div>
 
                     {selectedGrade && selectedGradeGroup && (
-                        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)]">
+                        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)]">
                             <div>
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <h3 className="text-xl font-black text-slate-900">{selectedGrade.label}</h3>
-                                    <span className="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-teal-600">
+                                    <h3 className="text-lg font-semibold text-slate-900">{selectedGrade.label}</h3>
+                                    <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-teal-600">
                                         {selectedGrade.sectionNames.length} Sections
                                     </span>
                                 </div>
                                 <p className="mt-2 text-sm font-medium text-slate-500">Current source: {selectedGradeGroup.name}</p>
                                 <div className="mt-5 flex flex-wrap gap-2">
                                     {selectedGrade.sectionNames.map((sectionName) => (
-                                        <span key={sectionName} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">
+                                        <span key={sectionName} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
                                             {sectionName}
                                         </span>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="rounded-3xl border border-slate-100 bg-slate-50 p-6">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Class Subjects</p>
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Class Subjects</p>
                                 <div className="mt-4 space-y-3">
                                     {selectedGradeGroup.subjects.map((subject) => (
-                                        <div key={`${selectedGradeGroup.id}:${subject.name}`} className="flex items-center justify-between gap-3 rounded-2xl border border-white bg-white px-4 py-3 shadow-sm">
+                                        <div key={`${selectedGradeGroup.id}:${subject.name}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
                                             <div>
-                                                <p className="text-sm font-black text-slate-900">{subject.name}</p>
-                                                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">{subject.code}</p>
+                                                <p className="text-sm font-semibold text-slate-900">{subject.name}</p>
+                                                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{subject.code}</p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                                                     #{subject.sortOrder + 1}
                                                 </span>
                                                 <button
@@ -434,7 +441,7 @@ export default function ClassesDashboard() {
                                                         event.stopPropagation();
                                                         setConfirmDelete({ type: 'SUBJECT', name: subject.name, gradeKey: selectedGrade.key, gradeLabel: selectedGrade.label });
                                                     }}
-                                                    className="rounded-xl bg-rose-50 p-2 text-rose-400 transition-all hover:bg-rose-100 hover:text-rose-600"
+                                                    className="rounded-md bg-rose-50 p-2 text-rose-400 transition-all hover:bg-rose-100 hover:text-rose-600"
                                                     aria-label={`Delete ${subject.name}`}
                                                 >
                                                     <Trash2 size={16} />
@@ -443,7 +450,7 @@ export default function ClassesDashboard() {
                                         </div>
                                     ))}
                                     {selectedGradeGroup.subjects.length === 0 && (
-                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-sm font-bold text-slate-400">
+                                        <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-sm font-semibold text-slate-400">
                                             No subjects assigned yet.
                                         </div>
                                     )}
@@ -452,29 +459,35 @@ export default function ClassesDashboard() {
                         </div>
                     )}
                     {selectedGrade && !selectedGradeGroup && (
-                        <div className="mt-8 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-sm font-bold text-slate-500">
+                        <div className="mt-6 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-sm font-semibold text-slate-500">
                             No subject group is mapped to {selectedGrade.label} yet. Add a subject to create the grade group.
                         </div>
                     )}
                 </section>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {store.categories.map((cat: IClassCategory) => {
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+                    {store.categories
+                        .slice()
+                        .sort((left, right) =>
+                            getCategoryDisplayIndex(left.name) - getCategoryDisplayIndex(right.name)
+                            || left.name.localeCompare(right.name)
+                        )
+                        .map((cat: IClassCategory) => {
                         const Icon = categoryIcons[cat.icon] || BookOpen;
                         return (
                             <motion.div
                                 key={cat.id}
-                                whileHover={{ y: -6, scale: 1.02 }}
+                                whileHover={{ y: -3 }}
                                 onClick={() => { setActiveCategoryID(cat.id); setView('CATEGORY'); }}
-                                className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 cursor-pointer group hover:shadow-2xl transition-all"
+                                className="group cursor-pointer rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-teal-200 hover:bg-slate-50"
                             >
-                                <div className="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-6 group-hover:bg-teal-500 group-hover:text-white transition-colors">
-                                    <Icon size={26} />
+                                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg bg-teal-50 text-teal-600 transition-colors group-hover:bg-teal-600 group-hover:text-white">
+                                    <Icon size={23} />
                                 </div>
-                                <h3 className="text-2xl font-black text-slate-800 mb-1">{cat.name}</h3>
-                                <p className="text-xs font-bold text-slate-400 mb-8">{cat.description}</p>
-                                <div className="flex items-center justify-between pt-6 border-t border-slate-50">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 flex items-center gap-1">
+                                <h3 className="mb-1 text-xl font-semibold text-slate-900">{cat.name}</h3>
+                                <p className="mb-6 text-sm font-medium text-slate-500">{cat.description}</p>
+                                <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                                    <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                                         <Users size={12} /> {store.sections.filter(s => s.categoryId === cat.id).length} Sections
                                     </span>
                                     <ChevronRight size={18} className="text-slate-200 group-hover:text-teal-500 group-hover:translate-x-1 transition-all" />
@@ -496,38 +509,38 @@ export default function ClassesDashboard() {
         const inCharges = (store.inCharges as Record<string, InCharge[]>)[activeCategoryID!] || [];
 
         return (
-            <div className="p-10 max-w-7xl mx-auto min-h-screen">
+            <div className="mx-auto min-h-screen max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
                 {/* Navbar */}
-                <div className="flex items-center justify-between mb-10 pb-6 border-b border-slate-100">
-                    <button onClick={() => setView('DASHBOARD')} className="flex items-center gap-2 text-slate-400 font-bold hover:text-slate-900 transition-colors">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                    <button onClick={() => setView('DASHBOARD')} className="flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-900">
                         <ArrowLeft size={20} /> Registry Overview
                     </button>
                     <div className="flex gap-3">
                         <button
                             onClick={() => setShowModal({ type: 'SECTION' })}
-                            className="px-5 py-2.5 bg-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-teal-100 hover:bg-teal-700 transition-all flex items-center gap-2"
+                            className="flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-700"
                         >
                             <Plus size={18} /> Add Section
                         </button>
                     </div>
                 </div>
 
-                <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-2">{activeClass?.name}</h1>
-                <p className="text-slate-500 font-medium mb-12">Class Registry — Sections & Faculty</p>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{activeClass?.name}</h1>
+                <p className="mt-1 text-sm font-medium text-slate-500">Class Registry - Sections & Faculty</p>
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
                     {/* In-Charge Panel */}
-                    <div className="lg:col-span-1 space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2 mb-6">
+                    <div className="space-y-4 lg:col-span-1">
+                        <p className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                             <Shield size={12} className="text-teal-500" /> Administration
                         </p>
                         {inCharges.map((ic: InCharge, i: number) => (
-                            <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                            <div key={i} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center font-black text-slate-300">{ic.name[0]}</div>
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 font-semibold text-slate-400">{ic.name[0]}</div>
                                     <div>
                                         <h4 className="font-bold text-slate-800 text-sm">{ic.name}</h4>
-                                        <p className="text-[9px] font-black uppercase text-teal-500">{ic.role}</p>
+                                        <p className="text-xs font-semibold uppercase text-teal-600">{ic.role}</p>
                                     </div>
                                 </div>
                                 <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Briefcase size={10} /> {ic.experience}</p>
@@ -536,26 +549,26 @@ export default function ClassesDashboard() {
                         ))}
                     </div>
 
-                    <div className="lg:col-span-3 space-y-12">
+                    <div className="space-y-8 lg:col-span-3">
                         {/* Sections */}
-                        <section className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm">
-                            <h2 className="text-2xl font-black text-slate-800 mb-8">Active Sections</h2>
+                        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                            <h2 className="mb-5 text-xl font-semibold text-slate-900">Active Sections</h2>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 {sections.map(sec => (
                                     <div
                                         key={sec.id}
                                         onClick={() => { setActiveSectionID(sec.id); setView('SECTION'); }}
-                                        className="group p-6 bg-slate-50 rounded-2xl border border-transparent hover:border-teal-200 hover:bg-white hover:shadow-xl transition-all cursor-pointer"
+                                        className="group cursor-pointer rounded-lg border border-slate-200 bg-slate-50 p-5 transition-all hover:border-teal-200 hover:bg-white"
                                     >
                                         <div className="flex justify-between items-start mb-6">
-                                            <span className="w-12 h-12 rounded-xl bg-teal-100/60 text-teal-700 flex items-center justify-center font-black text-lg">
+                                            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-teal-100/60 text-base font-semibold text-teal-700">
                                                 {sec.name.includes('-') ? sec.name.split('-')[1] : sec.name[0]}
                                             </span>
                                             <IconBtn icon={Trash2} variant="red" onClick={(e: React.MouseEvent) => { e.stopPropagation(); setConfirmDelete({ type: 'SECTION', id: sec.id, name: sec.name }); }} />
                                         </div>
-                                        <h4 className="text-lg font-black text-slate-800">Section {sec.name}</h4>
+                                        <h4 className="text-base font-semibold text-slate-900">Section {sec.name}</h4>
                                         <p className="text-xs font-bold text-slate-400 mt-1 flex items-center gap-1"><UserCheck size={11} />{sec.classTeacher}</p>
-                                        <div className="mt-5 pt-4 border-t border-slate-200 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-300">
+                                        <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                                             <span>{store.students.filter(s => s.sectionId === sec.id).length} Students</span>
                                             <span>{1 + (sec.subjectTeachers?.length || 0)} Teachers</span>
                                             <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -568,16 +581,16 @@ export default function ClassesDashboard() {
                         {/* Faculty */}
                         <section>
                             <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-2xl font-black text-slate-800">Faculty Registry</h2>
-                                <button onClick={() => setShowModal({ type: 'TEACHER' })} className="px-4 py-2 bg-slate-100 rounded-lg text-slate-600 font-bold text-xs hover:bg-slate-200 flex items-center gap-1">
+                                <h2 className="text-xl font-semibold text-slate-900">Faculty Registry</h2>
+                                <button onClick={() => setShowModal({ type: 'TEACHER' })} className="flex items-center gap-1 rounded-lg bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200">
                                     <Plus size={14} /> Add Teacher
                                 </button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {teachers.slice(0, 6).map(t => (
-                                    <div key={t.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between group hover:shadow-lg transition-all">
+                                {teachers.map(t => (
+                                    <div key={t.id} className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-teal-200">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center font-black text-slate-300 text-lg">{t.name[0]}</div>
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-50 text-base font-semibold text-slate-400">{t.name[0]}</div>
                                             <div>
                                                 <h4 className="font-bold text-slate-800">{t.name}</h4>
                                                 <p className="text-xs font-bold text-slate-400">{t.subject} · {t.experience}</p>
@@ -586,7 +599,7 @@ export default function ClassesDashboard() {
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => { setActiveProfile(t); setView('TEACHER_PROFILE'); }}
-                                                className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all"
+                                                className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-blue-600 transition-all hover:bg-blue-600 hover:text-white"
                                             >
                                                 View Profile
                                             </button>
@@ -610,21 +623,21 @@ export default function ClassesDashboard() {
         const subjectTeachers = activeSection?.subjectTeachers || [];
 
         return (
-            <div className="p-10 max-w-7xl mx-auto min-h-screen">
-                <div className="flex items-center justify-between mb-10">
-                    <button onClick={() => setView('CATEGORY')} className="flex items-center gap-2 text-slate-400 font-bold hover:text-slate-900 transition-colors">
+            <div className="mx-auto min-h-screen max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+                <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                    <button onClick={() => setView('CATEGORY')} className="flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-900">
                         <ArrowLeft size={20} /> Back to {activeClass?.name}
                     </button>
                     <div className="flex flex-wrap items-center justify-end gap-3">
                         <button
                             onClick={() => setShowModal({ type: 'BULK_STUDENTS' })}
-                            className="px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm hover:border-teal-300 hover:text-teal-700 transition-all flex items-center gap-2"
+                            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-teal-300 hover:text-teal-700"
                         >
                             <Upload size={18} /> Bulk Add
                         </button>
                         <button
                             onClick={() => setShowModal({ type: 'STUDENT' })}
-                            className="px-6 py-3 bg-teal-600 text-white rounded-xl font-bold shadow-lg shadow-teal-100 hover:bg-teal-700 transition-all flex items-center gap-2"
+                            className="flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-700"
                         >
                             <Plus size={20} /> Add Student
                         </button>
@@ -632,49 +645,49 @@ export default function ClassesDashboard() {
                 </div>
 
                 {/* Section Header */}
-                <div className="bg-slate-900 text-white p-12 rounded-[56px] mb-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-slate-900/20">
+                <div className="flex flex-col gap-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
                     <div>
-                        <span className="px-3 py-1 bg-teal-500 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] mb-4 block w-fit">Section Registry</span>
-                        <h1 className="text-6xl font-black tracking-tighter mb-4">{activeSection?.name} Enrollment</h1>
-                        <div className="flex flex-wrap gap-6 text-slate-400 font-bold">
-                            <span className="flex items-center gap-2"><UserCheck className="text-teal-400" size={18} /> Lead: {activeSection?.classTeacher}</span>
-                            <span className="flex items-center gap-2"><Users className="text-indigo-400" size={18} /> Subject Faculty: {subjectTeachers.length}/4</span>
-                            <span className="flex items-center gap-2"><Building2 className="text-blue-400" size={18} /> Room: {activeSection?.roomNumber || 'TBD'}</span>
+                        <span className="mb-2 block w-fit rounded-md bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Section Registry</span>
+                        <h1 className="mb-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{activeSection?.name} Enrollment</h1>
+                        <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-500">
+                            <span className="flex items-center gap-2"><UserCheck className="text-teal-500" size={17} /> Lead: {activeSection?.classTeacher}</span>
+                            <span className="flex items-center gap-2"><Users className="text-indigo-500" size={17} /> Subject Faculty: {subjectTeachers.length}/4</span>
+                            <span className="flex items-center gap-2"><Building2 className="text-blue-500" size={17} /> Room: {activeSection?.roomNumber || 'TBD'}</span>
                         </div>
                     </div>
-                    <div className="w-44 h-44 rounded-[40px] bg-white/5 border border-white/10 flex flex-col items-center justify-center shrink-0">
-                        <span className="text-6xl font-black tracking-tighter leading-none">{students.length}</span>
-                        <span className="text-[11px] font-black uppercase tracking-widest text-teal-400 mt-2">Enrolled</span>
+                    <div className="flex min-w-36 shrink-0 flex-col items-center justify-center rounded-lg border border-teal-100 bg-teal-50 px-6 py-5">
+                        <span className="text-4xl font-bold leading-none text-slate-900">{students.length}</span>
+                        <span className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">Enrolled</span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-12">
-                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm md:col-span-1">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-3">Class Teacher</p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+                    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:col-span-1">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Class Teacher</p>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-black">{activeSection?.classTeacher?.[0] || 'U'}</div>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 font-semibold text-teal-600">{activeSection?.classTeacher?.[0] || 'U'}</div>
                             <div>
-                                <p className="font-black text-slate-800 leading-tight">{activeSection?.classTeacher || 'Unassigned'}</p>
+                                <p className="font-semibold leading-tight text-slate-900">{activeSection?.classTeacher || 'Unassigned'}</p>
                                 <p className="text-[10px] font-bold text-teal-500">Home Section</p>
                             </div>
                         </div>
                     </div>
                     {subjectTeachers.map((teacher) => (
-                        <div key={`${teacher.id}-${teacher.subject}`} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-3">{teacher.subject}</p>
+                        <div key={`${teacher.id}-${teacher.subject}`} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{teacher.subject}</p>
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black">{teacher.name[0]}</div>
-                                <p className="font-black text-slate-800 leading-tight">{teacher.name}</p>
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 font-semibold text-indigo-600">{teacher.name[0]}</div>
+                                <p className="font-semibold leading-tight text-slate-900">{teacher.name}</p>
                             </div>
                         </div>
                     ))}
                 </div>
 
                 {/* Student Rows */}
-                <div className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
+                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[760px] text-left text-sm">
-                            <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                                 <tr>
                                     <th className="px-6 py-4">Roll</th>
                                     <th className="px-6 py-4">Student</th>
@@ -691,10 +704,10 @@ export default function ClassesDashboard() {
                                         key={s.id}
                                         className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors"
                                     >
-                                        <td className="px-6 py-4 font-black text-slate-300">{s.rollNo}</td>
+                                        <td className="px-6 py-4 font-semibold text-slate-400">{s.rollNo}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-black">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 font-semibold text-teal-600">
                                                     {s.name[0]}
                                                 </div>
                                                 <div>
@@ -704,7 +717,7 @@ export default function ClassesDashboard() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${s.gender === 'Male' ? 'bg-blue-50 text-blue-500' : s.gender === 'Female' ? 'bg-pink-50 text-pink-500' : 'bg-slate-100 text-slate-500'}`}>
+                                            <span className={`rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.1em] ${s.gender === 'Male' ? 'bg-blue-50 text-blue-500' : s.gender === 'Female' ? 'bg-pink-50 text-pink-500' : 'bg-slate-100 text-slate-500'}`}>
                                                 {s.gender}
                                             </span>
                                         </td>
@@ -714,7 +727,7 @@ export default function ClassesDashboard() {
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => { setActiveProfile(s); setView('STUDENT_PROFILE'); }}
-                                                    className="px-3 py-2 bg-slate-50 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all"
+                                                    className="rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-600 transition-all hover:bg-slate-900 hover:text-white"
                                                 >
                                                     View Profile
                                                 </button>
@@ -737,26 +750,26 @@ export default function ClassesDashboard() {
     if (view === 'TEACHER_PROFILE' && activeProfile) {
         const teacherProfile = activeProfile as ITeacher;
         return (
-            <div className="p-10 max-w-5xl mx-auto min-h-screen">
-                <button onClick={() => setView('CATEGORY')} className="mb-10 flex items-center gap-2 text-slate-400 font-bold hover:text-slate-900 transition-colors">
+            <div className="mx-auto min-h-screen max-w-5xl p-4 sm:p-6 lg:p-8">
+                <button onClick={() => setView('CATEGORY')} className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-900">
                     <ArrowLeft size={20} /> Back to Faculty Registry
                 </button>
-                <div className="bg-white rounded-[64px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col md:flex-row">
-                    <div className="w-full md:w-2/5 bg-slate-900 p-16 text-white flex flex-col justify-between gap-12">
-                        <div className="w-28 h-28 rounded-[36px] bg-teal-500 flex items-center justify-center text-5xl font-black border-4 border-white/10">
+                <div className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:flex-row">
+                    <div className="flex w-full flex-col justify-between gap-8 bg-slate-900 p-8 text-white md:w-2/5">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-teal-500 text-3xl font-bold">
                             {teacherProfile.name[0]}
                         </div>
                         <div>
-                            <h1 className="text-5xl font-black tracking-tighter leading-none mb-4">{teacherProfile.name}</h1>
+                            <h1 className="mb-4 text-2xl font-bold leading-tight">{teacherProfile.name}</h1>
                             <div className="flex flex-wrap gap-2">
-                                <span className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-black uppercase tracking-widest">{teacherProfile.subject}</span>
-                                <span className="px-4 py-1.5 bg-teal-500 rounded-full text-xs font-black uppercase tracking-widest">Faculty</span>
+                                <span className="rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.12em]">{teacherProfile.subject}</span>
+                                <span className="rounded-full bg-teal-500 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.12em]">Faculty</span>
                             </div>
                         </div>
                     </div>
-                    <div className="w-full md:w-3/5 p-16">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-12">Professional Dossier</h3>
-                        <div className="grid grid-cols-2 gap-x-10 gap-y-10">
+                    <div className="w-full p-8 md:w-3/5">
+                        <h3 className="mb-8 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Professional Dossier</h3>
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                             {[
                                 { l: 'Subject Specialty', v: teacherProfile.subject, i: BookOpen },
                                 { l: 'Qualification', v: teacherProfile.qualification, i: Award },
@@ -769,7 +782,7 @@ export default function ClassesDashboard() {
                                 <div key={i}>
                                     <div className="flex items-center gap-2 mb-2">
                                         <item.i size={12} className="text-teal-400" />
-                                        <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest">{item.l}</span>
+                                        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{item.l}</span>
                                     </div>
                                     <p className="font-bold text-slate-800 text-xl leading-tight">{item.v}</p>
                                 </div>
@@ -785,23 +798,23 @@ export default function ClassesDashboard() {
     if (view === 'STUDENT_PROFILE' && activeProfile) {
         const studentProfile = activeProfile as IStudent;
         return (
-            <div className="p-10 max-w-5xl mx-auto min-h-screen">
-                <button onClick={() => setView('SECTION')} className="mb-10 flex items-center gap-2 text-slate-400 font-bold hover:text-slate-900 transition-colors">
+            <div className="mx-auto min-h-screen max-w-5xl p-4 sm:p-6 lg:p-8">
+                <button onClick={() => setView('SECTION')} className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-900">
                     <ArrowLeft size={20} /> Back to Section
                 </button>
-                <div className="bg-white rounded-[64px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col md:flex-row">
-                    <div className="w-full md:w-2/5 bg-teal-600 p-16 text-white flex flex-col justify-between gap-12">
-                        <div className="w-28 h-28 rounded-[36px] bg-white flex items-center justify-center text-5xl font-black text-teal-600 shadow-xl">
+                <div className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:flex-row">
+                    <div className="flex w-full flex-col justify-between gap-8 bg-teal-600 p-8 text-white md:w-2/5">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-white text-3xl font-bold text-teal-600 shadow-sm">
                             {studentProfile.name[0]}
                         </div>
                         <div>
-                            <h1 className="text-5xl font-black tracking-tighter leading-none mb-4">{studentProfile.name}</h1>
-                            <span className="px-5 py-2 bg-slate-900 rounded-xl text-[10px] font-black uppercase tracking-[0.2em]">Student Enrolee</span>
+                            <h1 className="mb-4 text-2xl font-bold leading-tight">{studentProfile.name}</h1>
+                            <span className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">Student Enrolee</span>
                         </div>
                     </div>
-                    <div className="w-full md:w-3/5 p-16">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-12">Enrollment File</h3>
-                        <div className="grid grid-cols-2 gap-x-10 gap-y-10">
+                    <div className="w-full p-8 md:w-3/5">
+                        <h3 className="mb-8 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Enrollment File</h3>
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                             {[
                                 { l: 'Roll Number', v: studentProfile.rollNo, i: Hash },
                                 { l: 'Gender', v: studentProfile.gender, i: User },
@@ -814,7 +827,7 @@ export default function ClassesDashboard() {
                                 <div key={i}>
                                     <div className="flex items-center gap-2 mb-2">
                                         <item.i size={12} className="text-teal-400" />
-                                        <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest">{item.l}</span>
+                                        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{item.l}</span>
                                     </div>
                                     <p className="font-bold text-slate-800 text-xl leading-tight">{item.v}</p>
                                 </div>
@@ -843,11 +856,11 @@ function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }:
             <motion.div
                 onClick={(event) => event.stopPropagation()}
                 initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                className={`bg-white rounded-[40px] shadow-2xl w-full p-10 ${type === 'BULK_STUDENTS' ? 'max-w-3xl' : 'max-w-md'}`}
+                className={`w-full rounded-lg bg-white p-6 shadow-xl ${type === 'BULK_STUDENTS' ? 'max-w-3xl' : 'max-w-md'}`}
             >
                 <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Add <span className="text-slate-300">{type === 'BULK_STUDENTS' ? 'STUDENTS' : type}</span></h2>
-                    <button type="button" onClick={onClose} className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:bg-slate-100">
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-900">Add <span className="text-slate-400">{type === 'BULK_STUDENTS' ? 'Students' : type}</span></h2>
+                    <button type="button" onClick={onClose} className="rounded-md bg-slate-50 p-2.5 text-slate-400 hover:bg-slate-100">
                         <X size={20} />
                     </button>
                 </div>
@@ -904,8 +917,8 @@ function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }:
                     )}
                     {type === 'BULK_STUDENTS' && (
                         <div className="space-y-4">
-                            <div className="rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3">
-                                <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">CSV or spreadsheet rows</p>
+                            <div className="rounded-lg border border-teal-100 bg-teal-50 px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">CSV or spreadsheet rows</p>
                                 <p className="mt-1 text-xs font-bold text-teal-900">
                                     name, email, roll no, gender, dob, contact, parent name, parent contact, address
                                 </p>
@@ -915,14 +928,14 @@ function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }:
                                 required
                                 rows={10}
                                 placeholder={'Rahul Sharma, rahul@school.edu, 101, Male, 2012-04-18, 9876543210, Amit Sharma, 9876543210, New Delhi\nPriya Singh, priya@school.edu, 102, Female, 2012-07-09, 9876543211, Neha Singh, 9876543211, New Delhi'}
-                                className="w-full resize-y rounded-2xl border border-slate-100 bg-slate-50 p-4 font-mono text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-teal-500"
+                                className="w-full resize-y rounded-lg border border-slate-200 bg-slate-50 p-4 font-mono text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-teal-500"
                             />
                         </div>
                     )}
                     {type === 'SUBJECT' && (
                         <>
-                            <div className="rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3">
-                                <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">{gradeLabel}</p>
+                            <div className="rounded-lg border border-teal-100 bg-teal-50 px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">{gradeLabel}</p>
                                 <p className="mt-1 text-xs font-bold text-teal-900">The subject will apply to every section in this class.</p>
                             </div>
                             <input
@@ -930,11 +943,11 @@ function AddModal({ onClose, onSubmit, type, gradeLabel, isSubmitting = false }:
                                 required
                                 autoFocus
                                 placeholder="Subject name (e.g. Music)"
-                                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none"
+                                className="w-full rounded-lg border border-slate-200 bg-slate-50 p-4 font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-teal-500"
                             />
                         </>
                     )}
-                    <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-teal-600 text-white rounded-[20px] font-black text-sm shadow-xl shadow-teal-500/20 hover:bg-teal-700 transition-all uppercase tracking-widest mt-2 disabled:cursor-not-allowed disabled:bg-slate-300">
+                    <button disabled={isSubmitting} type="submit" className="mt-2 w-full rounded-lg bg-teal-600 py-3.5 text-sm font-semibold uppercase tracking-[0.12em] text-white shadow-sm transition-all hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300">
                         {isSubmitting ? 'Saving...' : type === 'BULK_STUDENTS' ? 'Import Students' : type === 'SUBJECT' ? 'Add Subject' : 'Confirm Registration'}
                     </button>
                 </form>
@@ -954,12 +967,12 @@ function DeleteConfirm({ item, onCancel, onConfirm }: { item: DeleteState; onCan
             <motion.div
                 onClick={(event) => event.stopPropagation()}
                 initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className={`bg-white shadow-2xl w-full max-w-sm text-center ${isTeacherDelete ? 'rounded-xl border border-slate-200 px-8 py-7' : 'rounded-[40px] p-12'}`}
+                className={`w-full max-w-sm bg-white text-center shadow-xl ${isTeacherDelete ? 'rounded-lg border border-slate-200 px-8 py-7' : 'rounded-lg p-8'}`}
             >
                 <div className={`${isTeacherDelete ? 'h-10 w-10 mb-4' : 'w-20 h-20 mb-8'} bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto`}>
                     <AlertTriangle size={isTeacherDelete ? 22 : 36} />
                 </div>
-                <h3 className={`${isTeacherDelete ? 'text-lg' : 'text-3xl'} font-black text-slate-900 mb-3`}>
+                <h3 className={`${isTeacherDelete ? 'text-lg' : 'text-xl'} mb-3 font-semibold text-slate-900`}>
                     {isTeacherDelete ? (isFinalTeacherStep ? 'Final confirmation' : 'Are you sure?') : isSubjectDelete ? 'Delete Subject?' : 'Delete Permanently?'}
                 </h3>
                 <p className={`${isTeacherDelete ? 'mx-auto max-w-xs text-sm leading-6' : ''} text-slate-500 font-medium mb-10`}>
@@ -977,16 +990,16 @@ function DeleteConfirm({ item, onCancel, onConfirm }: { item: DeleteState; onCan
                             <button
                                 type="button"
                                 onClick={() => (isFinalTeacherStep ? onConfirm() : setIsFinalTeacherStep(true))}
-                                className="w-full rounded-md bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-sm transition-colors hover:bg-rose-700"
+                                className="w-full rounded-md bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-rose-700"
                             >
                                 {isFinalTeacherStep ? 'Yes, delete teacher' : 'Delete teacher'}
                             </button>
-                            <button type="button" onClick={onCancel} className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
+                            <button type="button" onClick={onCancel} className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
                         </>
                     ) : (
                         <>
-                            <button type="button" onClick={onCancel} className="flex-1 py-4 bg-slate-50 text-slate-400 font-black rounded-2xl hover:bg-slate-100">Cancel</button>
-                            <button type="button" onClick={onConfirm} className="flex-1 py-4 bg-rose-500 text-white font-black rounded-2xl shadow-xl shadow-rose-200 hover:bg-rose-600">Delete</button>
+                            <button type="button" onClick={onCancel} className="flex-1 rounded-lg bg-slate-50 py-3 text-sm font-semibold text-slate-500 hover:bg-slate-100">Cancel</button>
+                            <button type="button" onClick={onConfirm} className="flex-1 rounded-lg bg-rose-500 py-3 text-sm font-semibold text-white shadow-sm hover:bg-rose-600">Delete</button>
                         </>
                     )}
                 </div>

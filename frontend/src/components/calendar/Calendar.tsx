@@ -58,7 +58,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState<EventType | 'All'>('All');
-  const canManageEvents = isAdmin || user?.role === 'Admin' || user?.role === 'Teacher';
+  const canManageEvents = isAdmin || user?.role === 'Admin';
 
   const [formData, setFormData] = useState<Omit<CalendarEvent, 'id'>>({
     title: '',
@@ -246,6 +246,9 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageEvents) {
+      return;
+    }
 
     try {
       if (editingEvent) {
@@ -262,7 +265,7 @@ const Calendar = ({ isAdmin = false }: CalendarProps) => {
   };
 
   const handleDelete = async () => {
-    if (!editingEvent) {
+    if (!canManageEvents || !editingEvent) {
       return;
     }
 

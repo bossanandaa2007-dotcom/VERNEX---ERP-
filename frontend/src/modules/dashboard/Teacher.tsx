@@ -257,7 +257,7 @@ const TeacherDashboard = () => {
             )}
             {assignedClasses[1] && (
               <button 
-                onClick={() => navigate('/teacher/assignments')}
+                onClick={() => navigate('/teacher/marks-entry')}
                 className="flex w-full items-center justify-between rounded border border-blue-200 bg-blue-50 p-4 text-left transition-colors hover:bg-blue-100"
               >
                 <div className="flex items-center gap-3">

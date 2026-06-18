@@ -4,7 +4,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   type SortingState,
   useReactTable,
@@ -178,7 +177,6 @@ const StudentList = () => {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
@@ -432,9 +430,9 @@ const StudentList = () => {
           </form>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="max-h-[calc(100dvh-290px)] min-h-[360px] overflow-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-slate-50/80 uppercase text-slate-500 text-xs font-semibold">
+            <thead className="sticky top-0 z-10 bg-slate-50 uppercase text-slate-500 text-xs font-semibold shadow-sm">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
@@ -490,22 +488,6 @@ const StudentList = () => {
           <span className="text-slate-500 font-medium">
             Showing {table.getRowModel().rows.length} records
           </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 font-medium text-slate-600 transition-colors shadow-sm"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 font-medium text-slate-600 transition-colors shadow-sm"
-            >
-              Next
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -384,69 +384,134 @@ const FinanceReportsPage = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="flex flex-col gap-4 rounded-[24px] bg-slate-950 px-5 py-6 text-white lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-violet-200">Generated Report</p>
-                <h2 className="mt-2 text-3xl font-bold">{activeClassName}</h2>
-                <p className="mt-2 text-sm text-slate-300">
-                  Generated on {formatGeneratedAt(generatedAt || new Date())}
-                </p>
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 bg-slate-50 px-4 py-4 lg:px-5">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">Generated Report</p>
+                    <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 lg:text-3xl">{activeClassName}</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Generated on {formatGeneratedAt(generatedAt || new Date())}
+                    </p>
+                  </div>
+                  <div className="inline-flex w-fit items-center gap-2 rounded border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    <FileText className="h-4 w-4 text-blue-700" />
+                    {classRecords.length > 0 ? 'Ready for export' : 'No records'}
+                  </div>
+                </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-[20px] bg-white/10 px-4 py-3">
-                  <div className="flex items-center gap-2 text-violet-100">
-                    <Users className="h-4 w-4" />
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em]">Students</span>
+
+              <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="bg-white p-4">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Users className="h-4 w-4 text-blue-700" />
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em]">Students</span>
                   </div>
-                  <p className="mt-2 text-2xl font-bold">{totals.studentCount}</p>
+                  <p className="mt-2 text-2xl font-bold text-slate-950">{totals.studentCount}</p>
                 </div>
-                <div className="rounded-[20px] bg-white/10 px-4 py-3">
-                  <div className="flex items-center gap-2 text-violet-100">
-                    <IndianRupee className="h-4 w-4" />
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em]">Total</span>
+                <div className="bg-white p-4">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <IndianRupee className="h-4 w-4 text-slate-700" />
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em]">Total</span>
                   </div>
-                  <p className="mt-2 text-xl font-bold">{formatCurrency(totals.totalAmount)}</p>
+                  <p className="mt-2 break-words text-2xl font-bold text-slate-950">{formatCurrency(totals.totalAmount)}</p>
                 </div>
-                <div className="rounded-[20px] bg-emerald-400/15 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Collected</p>
-                  <p className="mt-2 text-xl font-bold text-white">{formatCurrency(totals.paidAmount)}</p>
+                <div className="bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Collected</p>
+                  <p className="mt-2 break-words text-2xl font-bold text-emerald-700">{formatCurrency(totals.paidAmount)}</p>
                 </div>
-                <div className="rounded-[20px] bg-amber-400/15 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-100">Pending</p>
-                  <p className="mt-2 text-xl font-bold text-white">{formatCurrency(totals.pendingAmount)}</p>
+                <div className="bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pending</p>
+                  <p className="mt-2 break-words text-2xl font-bold text-amber-700">{formatCurrency(totals.pendingAmount)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Paid Students</p>
-                <p className="mt-3 text-3xl font-bold text-emerald-600">{totals.paidStudents}</p>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Paid Students</p>
+                <p className="mt-2 text-2xl font-bold text-emerald-700">{totals.paidStudents}</p>
               </div>
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Pending Students</p>
-                  <p className="mt-3 text-3xl font-bold text-amber-600">{totals.pendingStudents}</p>
-                </div>
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Partial Students</p>
-                  <p className="mt-3 text-3xl font-bold text-sky-600">{totals.partialStudents}</p>
-                </div>
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Collection Rate</p>
-                  <p className="mt-3 text-3xl font-bold text-slate-950">
-                    {totals.totalAmount > 0 ? `${Math.round((totals.paidAmount / totals.totalAmount) * 100)}%` : '0%'}
-                  </p>
-                </div>
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Report Status</p>
-                  <p className="mt-3 text-3xl font-bold text-slate-950">
-                    {classRecords.length > 0 ? 'Ready' : 'Empty'}
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pending Students</p>
+                <p className="mt-2 text-2xl font-bold text-amber-700">{totals.pendingStudents}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Partial Students</p>
+                <p className="mt-2 text-2xl font-bold text-sky-700">{totals.partialStudents}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Collection Rate</p>
+                <p className="mt-2 text-2xl font-bold text-slate-950">
+                  {totals.totalAmount > 0 ? `${Math.round((totals.paidAmount / totals.totalAmount) * 100)}%` : '0%'}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Report Status</p>
+                <p className="mt-2 text-2xl font-bold text-slate-950">
+                  {classRecords.length > 0 ? 'Ready' : 'Empty'}
                 </p>
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[24px] border border-slate-200">
-              <div className="overflow-x-auto">
+            <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 px-4 py-3">
+                <h3 className="text-sm font-semibold text-slate-950">Student Fee Records</h3>
+                <p className="mt-1 text-xs text-slate-500">Every report column is shown below; mobile uses stacked records to avoid sideways scrolling.</p>
+              </div>
+
+              <div className="space-y-3 bg-slate-50 p-3 md:hidden">
+                {classRecords.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                    No fee records found for this class.
+                  </div>
+                ) : (
+                  reportRows.map((row, index) => (
+                    <article key={`${row.rollNo}-${row.feeType}-${index}`} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-bold text-slate-950">{row.studentName}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">Roll {row.rollNo} - {row.sectionName}</p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${
+                            row.status === 'Paid'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : row.status === 'Partial'
+                                ? 'bg-sky-100 text-sky-700'
+                                : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {row.status}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                        {[
+                          ['Fee Type', row.feeType],
+                          ['Due Date', row.dueDate],
+                          ['Total', row.totalAmount],
+                          ['Paid', row.paidAmount],
+                          ['Pending', row.pendingAmount],
+                          ['Status', row.status],
+                        ].map(([label, value]) => (
+                          <div key={label} className="rounded border border-slate-100 bg-slate-50 px-3 py-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                            <p className="mt-1 break-words font-semibold text-slate-800">{value}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-2 rounded border border-slate-100 bg-slate-50 px-3 py-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Note</p>
+                        <p className="mt-1 break-words text-sm font-medium text-slate-700">{row.note}</p>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="bg-slate-50">
                     <tr className="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">

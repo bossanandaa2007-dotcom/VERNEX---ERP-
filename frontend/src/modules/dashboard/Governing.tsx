@@ -41,6 +41,7 @@ import type { IStudent } from '../../types/school';
 type Tab = 'DASHBOARD' | 'ANALYTICS' | 'STUDENTS' | 'TEACHERS' | 'ATTENDANCE' | 'MARKS';
 
 const PIE_COLORS = ['#0f766e', '#e11d48'];
+const GOVERNING_CHART_INITIAL_DIMENSION = { width: 320, height: 220 };
 const ATTENDANCE_FILTERS: Array<{ id: AttendanceOverviewRange; label: string }> = [
   { id: 'overall', label: 'Overall' },
   { id: 'today', label: 'Today' },
@@ -58,13 +59,6 @@ const emptyMarksOverview: GoverningMarksOverview = {
   totalRecords: 0,
   averagePercent: 0,
 };
-
-const STATIC_ACADEMIC_SNAPSHOT = [
-  { subject: 'LKG-2', avg: 72 },
-  { subject: '3-5', avg: 78 },
-  { subject: '6-8', avg: 82 },
-  { subject: '9-12', avg: 86 },
-];
 
 const viewToTab: Record<string, Tab> = {
   dashboard: 'DASHBOARD',
@@ -125,14 +119,14 @@ const SectionTitle = ({ label, action }: { label: string; action?: string }) => 
 );
 
 const ChartCard = ({ title, children }: { title: string; children: ReactNode }) => (
-  <section className="min-w-0 border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+  <section className="min-w-0 overflow-hidden border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
     <SectionTitle label={title} />
     {children}
   </section>
 );
 
-const ChartFrame = ({ children, className = 'h-[230px] sm:h-64' }: { children: ReactNode; className?: string }) => (
-  <div className={`${className} w-full min-w-0 overflow-visible`}>
+const ChartFrame = ({ children, className = 'h-[260px] sm:h-64' }: { children: ReactNode; className?: string }) => (
+  <div className={`${className} w-full min-w-0 overflow-hidden`}>
     {children}
   </div>
 );
@@ -140,6 +134,148 @@ const ChartFrame = ({ children, className = 'h-[230px] sm:h-64' }: { children: R
 const EmptyChart = ({ message }: { message: string }) => (
   <div className="flex h-full min-h-[180px] items-center justify-center rounded-2xl bg-slate-50 px-4 text-center text-sm font-bold text-slate-400">
     {message}
+  </div>
+);
+
+const MobileAttendanceAreaChart = ({ data }: { data: Array<{ day: string; present: number; total: number }> }) => {
+  const width = 320;
+  const height = 190;
+  const padding = { top: 16, right: 10, bottom: 34, left: 34 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const points = data.map((point, index) => {
+    const x = padding.left + (data.length <= 1 ? plotWidth / 2 : (index / (data.length - 1)) * plotWidth);
+    const y = padding.top + plotHeight - (Math.min(Math.max(point.present, 0), 100) / 100) * plotHeight;
+    return { ...point, x, y };
+  });
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const areaPath = points.length
+    ? `${linePath} L ${points[points.length - 1].x} ${padding.top + plotHeight} L ${points[0].x} ${padding.top + plotHeight} Z`
+    : '';
+  const labels = points.filter((_, index) => data.length <= 4 || index === 0 || index === data.length - 1 || index % 2 === 0);
+
+  return (
+    <div className="h-full min-h-[210px] w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full" role="img" aria-label="Attendance pulse chart">
+        {[0, 25, 50, 75, 100].map((tick) => {
+          const y = padding.top + plotHeight - (tick / 100) * plotHeight;
+          return (
+            <g key={tick}>
+              <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#e2e8f0" strokeDasharray="3 4" />
+              <text x={padding.left - 8} y={y + 4} textAnchor="end" className="fill-slate-400 text-[10px] font-semibold">
+                {tick}
+              </text>
+            </g>
+          );
+        })}
+        {areaPath && <path d={areaPath} fill="#0f766e" opacity="0.14" />}
+        {linePath && <path d={linePath} fill="none" stroke="#0f766e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+        {points.map((point) => (
+          <circle key={`${point.day}-${point.x}`} cx={point.x} cy={point.y} r="3" fill="#0f766e" stroke="#ffffff" strokeWidth="2" />
+        ))}
+        {labels.map((point) => (
+          <text key={`${point.day}-label`} x={point.x} y={height - 10} textAnchor="middle" className="fill-slate-500 text-[10px] font-semibold">
+            {point.day}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+const clampPercent = (value: number) => Math.min(Math.max(Number.isFinite(value) ? value : 0, 0), 100);
+
+const MobileAttendanceTrendChart = ({ data }: { data: Array<{ day: string; present: number; absent: number; total: number }> }) => {
+  const width = 320;
+  const height = 210;
+  const padding = { top: 16, right: 12, bottom: 48, left: 34 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const toPoints = (key: 'present' | 'absent') => data.map((point, index) => ({
+    label: point.day,
+    x: padding.left + (data.length <= 1 ? plotWidth / 2 : (index / (data.length - 1)) * plotWidth),
+    y: padding.top + plotHeight - (clampPercent(point[key]) / 100) * plotHeight,
+  }));
+  const toPath = (points: Array<{ x: number; y: number }>) => points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const presentPoints = toPoints('present');
+  const absentPoints = toPoints('absent');
+
+  return (
+    <div className="h-full min-h-[220px] w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full" role="img" aria-label="Attendance trend chart">
+        {[0, 50, 100].map((tick) => {
+          const y = padding.top + plotHeight - (tick / 100) * plotHeight;
+          return (
+            <g key={tick}>
+              <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#e2e8f0" strokeDasharray="3 4" />
+              <text x={padding.left - 8} y={y + 4} textAnchor="end" className="fill-slate-400 text-[10px] font-semibold">{tick}</text>
+            </g>
+          );
+        })}
+        <path d={toPath(presentPoints)} fill="none" stroke="#0f766e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={toPath(absentPoints)} fill="none" stroke="#e11d48" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {presentPoints.map((point, index) => <circle key={`present-${point.label}-${index}`} cx={point.x} cy={point.y} r="3" fill="#0f766e" />)}
+        {absentPoints.map((point, index) => <circle key={`absent-${point.label}-${index}`} cx={point.x} cy={point.y} r="3" fill="#e11d48" />)}
+        {presentPoints.map((point, index) => (
+          <text key={`${point.label}-label-${index}`} x={point.x} y={height - 26} textAnchor="middle" className="fill-slate-500 text-[10px] font-semibold">
+            {data.length <= 5 || index % 2 === 0 ? point.label : ''}
+          </text>
+        ))}
+        <rect x="92" y={height - 10} width="9" height="3" fill="#e11d48" /><text x="106" y={height - 6} className="fill-rose-600 text-[10px]">Absent %</text>
+        <rect x="178" y={height - 10} width="9" height="3" fill="#0f766e" /><text x="192" y={height - 6} className="fill-teal-700 text-[10px]">Present %</text>
+      </svg>
+    </div>
+  );
+};
+
+const MobileHorizontalBarChart = ({ data }: { data: Array<{ class: string; pct: number; total?: number }> }) => (
+  <div className="space-y-3 py-2">
+    {data.map((row, index) => (
+      <div key={`${row.class}-${index}`} className="grid grid-cols-[56px_1fr_44px] items-center gap-2 text-xs font-semibold">
+        <span className="truncate text-slate-600">{row.class}</span>
+        <div className="h-3 rounded-full bg-slate-100">
+          <div className="h-3 rounded-full bg-teal-700" style={{ width: `${clampPercent(row.pct)}%` }} />
+        </div>
+        <span className="text-right text-slate-700">{Math.round(row.pct)}%</span>
+      </div>
+    ))}
+  </div>
+);
+
+const MobileDonutChart = ({ data }: { data: Array<{ name: string; value: number }> }) => {
+  const total = data.reduce((sum, point) => sum + point.value, 0);
+  const present = data.find((point) => point.name === 'Present')?.value || 0;
+  const presentPct = total ? Math.round((present / total) * 100) : 0;
+  return (
+    <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-4">
+      <div className="relative h-36 w-36 rounded-full" style={{ background: `conic-gradient(#0f766e 0 ${presentPct}%, #e11d48 ${presentPct}% 100%)` }}>
+        <div className="absolute inset-8 flex items-center justify-center rounded-full bg-white text-xl font-semibold text-slate-900">{presentPct}%</div>
+      </div>
+      <div className="flex gap-4 text-xs font-semibold">
+        {data.map((point, index) => (
+          <span key={point.name} className={index === 0 ? 'text-teal-700' : 'text-rose-600'}>
+            {point.name}: {point.value}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const MobileVerticalBarChart = ({ data, labelKey, valueKey, color = '#2563eb' }: { data: Array<Record<string, string | number>>; labelKey: string; valueKey: string; color?: string }) => (
+  <div className="flex h-full min-h-[220px] items-end gap-2 overflow-x-auto px-1 pb-2 pt-4">
+    {data.map((row, index) => {
+      const label = String(row[labelKey]);
+      const value = clampPercent(Number(row[valueKey]));
+      return (
+        <div key={`${label}-${index}`} className="flex min-w-12 flex-1 flex-col items-center justify-end gap-2">
+          <div className="flex h-36 w-full items-end rounded bg-slate-50">
+            <div className="w-full rounded-t" style={{ height: `${value}%`, backgroundColor: color }} />
+          </div>
+          <span className="max-w-16 truncate text-[10px] font-semibold text-slate-500">{label}</span>
+        </div>
+      );
+    })}
   </div>
 );
 
@@ -212,12 +348,24 @@ export default function GoverningDashboard() {
   const [marksSectionId, setMarksSectionId] = useState('All');
   const [marksSubject, setMarksSubject] = useState('All');
   const [marksExamType, setMarksExamType] = useState<ExamType | 'All'>('All');
+  const [useDesktopCharts, setUseDesktopCharts] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches
+  );
 
   const tab = viewToTab[searchParams.get('view') || 'dashboard'] || 'DASHBOARD';
 
   const setTab = (nextTab: Tab) => {
     setSearchParams({ view: tabToView[nextTab] }, { replace: true });
   };
+
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const update = () => setUseDesktopCharts(query.matches);
+
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
 
   const desktopTabs: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: 'DASHBOARD', label: 'Dashboard', icon: Home },
@@ -380,6 +528,18 @@ export default function GoverningDashboard() {
       })
       .sort((a, b) => a.class.localeCompare(b.class, undefined, { numeric: true }));
   }, [attendanceGradeId, classAttendance, store.sections]);
+  const academicSnapshotData = useMemo(
+    () =>
+      marksOverview.classAverage
+        .map((row) => ({
+          subject: row.class,
+          avg: row.avg,
+          records: row.records,
+        }))
+        .sort((left, right) => right.records - left.records || right.avg - left.avg)
+        .slice(0, 8),
+    [marksOverview.classAverage]
+  );
   const hasAttendanceTrend = attendanceTrend.some((point) => point.total > 0);
   const hasClassAttendance = classAttendanceData.some((point) => point.total > 0);
 
@@ -413,7 +573,7 @@ export default function GoverningDashboard() {
   );
 
   return (
-    <div className="governing-mobile-app min-w-0 space-y-5 pb-2 lg:space-y-6">
+    <div className="governing-mobile-app min-w-0 space-y-5 pb-24 lg:space-y-6 lg:pb-2">
       <section className="border border-slate-200 bg-white px-5 py-4 shadow-sm sm:px-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -468,8 +628,10 @@ export default function GoverningDashboard() {
                     <EmptyChart message={attendanceError} />
                   ) : !hasAttendanceTrend ? (
                     <EmptyChart message="No attendance records for this period." />
+                  ) : !useDesktopCharts ? (
+                    <MobileAttendanceAreaChart data={attendanceTrend} />
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={GOVERNING_CHART_INITIAL_DIMENSION}>
                       <AreaChart data={attendanceTrend}>
                         <defs>
                           <linearGradient id="gb-teal" x1="0" y1="0" x2="0" y2="1">
@@ -522,7 +684,10 @@ export default function GoverningDashboard() {
             <AttendanceFilter value={attendanceRange} onChange={setAttendanceRange} />
             <ChartFrame>
               {hasAttendanceTrend ? (
-                <ResponsiveContainer width="100%" height="100%">
+                !useDesktopCharts ? (
+                  <MobileAttendanceTrendChart data={attendanceTrend} />
+                ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={GOVERNING_CHART_INITIAL_DIMENSION}>
                   <LineChart data={attendanceTrend}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
@@ -533,6 +698,7 @@ export default function GoverningDashboard() {
                     <Line type="monotone" dataKey="absent" stroke="#e11d48" strokeWidth={3} dot={{ r: 4 }} name="Absent %" />
                   </LineChart>
                 </ResponsiveContainer>
+                )
               ) : (
                 <EmptyChart message="No attendance records for this period." />
               )}
@@ -544,7 +710,10 @@ export default function GoverningDashboard() {
             <GradeFilter categories={store.categories} value={attendanceGradeId} onChange={setAttendanceGradeId} />
             <ChartFrame>
               {hasClassAttendance ? (
-                <ResponsiveContainer width="100%" height="100%">
+                !useDesktopCharts ? (
+                  <MobileHorizontalBarChart data={classAttendanceData} />
+                ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={GOVERNING_CHART_INITIAL_DIMENSION}>
                   <BarChart data={classAttendanceData} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef2f7" />
                     <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
@@ -553,6 +722,7 @@ export default function GoverningDashboard() {
                     <Bar dataKey="pct" fill="#0f766e" radius={[0, 10, 10, 0]} barSize={24} name="Attendance %" />
                   </BarChart>
                 </ResponsiveContainer>
+                )
               ) : (
                 <EmptyChart message="No section attendance records for this class and period." />
               )}
@@ -563,7 +733,10 @@ export default function GoverningDashboard() {
             <AttendanceFilter value={attendanceRange} onChange={setAttendanceRange} />
             <ChartFrame>
               {pieData.some((point) => point.value > 0) ? (
-                <ResponsiveContainer width="100%" height="100%">
+                !useDesktopCharts ? (
+                  <MobileDonutChart data={pieData} />
+                ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={GOVERNING_CHART_INITIAL_DIMENSION}>
                   <RechartsPie>
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={58} outerRadius={92} paddingAngle={4} dataKey="value">
                       {pieData.map((_, index) => (
@@ -574,6 +747,7 @@ export default function GoverningDashboard() {
                     <Legend />
                   </RechartsPie>
                 </ResponsiveContainer>
+                )
               ) : (
                 <EmptyChart message="No present or absent records for this period." />
               )}
@@ -582,15 +756,23 @@ export default function GoverningDashboard() {
 
           <ChartCard title="Academic Snapshot">
             <ChartFrame>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={STATIC_ACADEMIC_SNAPSHOT}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
-                  <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis axisLine={false} tickLine={false} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
-                  <Bar dataKey="avg" fill="#2563eb" radius={[10, 10, 0, 0]} barSize={30} name="Avg Marks" />
-                </BarChart>
-              </ResponsiveContainer>
+              {academicSnapshotData.length ? (
+                !useDesktopCharts ? (
+                  <MobileVerticalBarChart data={academicSnapshotData} labelKey="subject" valueKey="avg" />
+                ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={GOVERNING_CHART_INITIAL_DIMENSION}>
+                  <BarChart data={academicSnapshotData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+                    <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ borderRadius: '14px', border: 'none' }} />
+                    <Bar dataKey="avg" fill="#2563eb" radius={[10, 10, 0, 0]} barSize={30} name="Avg Marks" />
+                  </BarChart>
+                </ResponsiveContainer>
+                )
+              ) : (
+                <EmptyChart message="No academic marks records available yet." />
+              )}
             </ChartFrame>
           </ChartCard>
         </div>
@@ -792,7 +974,10 @@ export default function GoverningDashboard() {
             <ChartCard title="Subject Performance">
               <ChartFrame>
                 {marksOverview.subjectPerformance.length ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  !useDesktopCharts ? (
+                    <MobileVerticalBarChart data={marksOverview.subjectPerformance as unknown as Array<Record<string, string | number>>} labelKey="subject" valueKey="avg" />
+                  ) : (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={GOVERNING_CHART_INITIAL_DIMENSION}>
                     <BarChart data={marksOverview.subjectPerformance}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
                       <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
@@ -801,6 +986,7 @@ export default function GoverningDashboard() {
                       <Bar dataKey="avg" fill="#2563eb" radius={[10, 10, 0, 0]} barSize={32} name="Avg Marks %" />
                     </BarChart>
                   </ResponsiveContainer>
+                  )
                 ) : (
                   <EmptyChart message="No marks found for this filter." />
                 )}
@@ -809,7 +995,10 @@ export default function GoverningDashboard() {
             <ChartCard title="Class Average">
               <ChartFrame>
                 {marksOverview.classAverage.length ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  !useDesktopCharts ? (
+                    <MobileVerticalBarChart data={marksOverview.classAverage as unknown as Array<Record<string, string | number>>} labelKey="class" valueKey="avg" />
+                  ) : (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={GOVERNING_CHART_INITIAL_DIMENSION}>
                     <LineChart data={marksOverview.classAverage}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
                       <XAxis dataKey="class" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
@@ -818,6 +1007,7 @@ export default function GoverningDashboard() {
                       <Line type="monotone" dataKey="avg" stroke="#2563eb" strokeWidth={3} dot={{ r: 5, fill: '#2563eb' }} name="Class Avg %" />
                     </LineChart>
                   </ResponsiveContainer>
+                  )
                 ) : (
                   <EmptyChart message="No class average data for this filter." />
                 )}

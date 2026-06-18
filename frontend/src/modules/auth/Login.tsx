@@ -30,6 +30,7 @@ const getLoginErrorMessage = (err: unknown) => {
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -55,7 +56,7 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
     try {
       setError('');
       setIsLoading(true);
-      const success = await login(data.email, data.password);
+      const success = await login(data.email, data.password, Boolean(data.rememberMe));
 
       if (success) {
         const currentUser = useAuthStore.getState().user;
@@ -146,8 +147,8 @@ const LoginModule = ({ mode = 'staff' }: { mode?: LoginMode }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <input
+              {...register('rememberMe')}
               id="remember-me"
-              name="remember-me"
               type="checkbox"
               className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-500"
             />

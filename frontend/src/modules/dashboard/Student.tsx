@@ -5,8 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useEffect, useState } from 'react';
 import { fetchStudentAttendanceSummary } from '../../services/attendance';
-import { fetchStudentByProfile } from '../../services/schoolData';
-import { useClassStore } from '../../store/useClassStore';
+import { fetchSectionTeacherRoster, fetchStudentByProfile, type SectionTeacherRoster } from '../../services/schoolData';
 import { fetchStudentMarksOverview, MARK_EXAMS, type StudentMarksOverview } from '../../services/marks';
 import type { IStudent } from '../../types/school';
 
@@ -15,18 +14,30 @@ interface StudentDashboardData extends IStudent {
   section?: string;
 }
 
+const STUDENT_CHART_INITIAL_DIMENSION = { width: 320, height: 240 };
+
 const StudentDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [studentData, setStudentData] = useState<StudentDashboardData | null>(null);
   const [attendance, setAttendance] = useState(0);
   const [marksOverview, setMarksOverview] = useState<StudentMarksOverview | null>(null);
-  const initialize = useClassStore((state) => state.initialize);
-  const sections = useClassStore((state) => state.sections);
+  const [teacherRoster, setTeacherRoster] = useState<SectionTeacherRoster | null>(null);
+  const [useDesktopCharts, setUseDesktopCharts] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches
+  );
 
   useEffect(() => {
-    void initialize();
-  }, [initialize]);
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const query = window.matchMedia('(min-width: 768px)');
+    const update = () => setUseDesktopCharts(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     if (!user?.id) {
@@ -34,19 +45,45 @@ const StudentDashboard = () => {
     }
 
     void (async () => {
+      console.info('[Student Dashboard Teacher Card Debug] auth user', {
+        userId: user.id,
+        userName: user.name,
+        userClass: user.class,
+        userSection: user.section,
+      });
       const student = await fetchStudentByProfile(user.id);
+      console.info('[Student Dashboard Teacher Card Debug] student record', {
+        student,
+        sectionId: student?.sectionId,
+      });
       setStudentData(student);
+      setTeacherRoster(null);
       if (student) {
-        const summary = await fetchStudentAttendanceSummary(student.id);
+        const [summary, roster] = await Promise.all([
+          fetchStudentAttendanceSummary(student.id),
+          fetchSectionTeacherRoster(student.sectionId),
+        ]);
+        console.info('[Student Dashboard Teacher Card Debug] query inputs', {
+          attendanceStudentId: student.id,
+          rosterSectionId: student.sectionId,
+        });
+        console.info('[Student Dashboard Teacher Card Debug] final roster data', roster);
         setAttendance(summary.attendanceRate);
+        setTeacherRoster(roster);
       }
       const overview = await fetchStudentMarksOverview(user.id);
       setMarksOverview(overview);
     })();
   }, [user?.id]);
 
-  const activeSection = sections.find((section) => section.id === studentData?.sectionId || section.name === user?.class);
-  const activeSubjects = activeSection?.subjectTeachers || [];
+  const classTeacher = teacherRoster?.classTeacher;
+  const subjectTeachers = teacherRoster?.subjectTeachers || [];
+  console.info('[Student Dashboard Teacher Card Debug] final rendered data', {
+    studentData,
+    classTeacher,
+    subjectTeachers,
+    willShowEmptySubjectStaffingMessage: Boolean(studentData && subjectTeachers.length === 0),
+  });
   const performanceData = MARK_EXAMS.map((examType) => {
     const scores = (marksOverview?.subjects || [])
       .map((subject) => {
@@ -74,7 +111,7 @@ const StudentDashboard = () => {
         <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">{user?.name?.split(' ')[0] || 'Student'}</h1>
         <p className="mt-1 text-sm leading-6 text-slate-600">Class {studentData?.class || user?.class} - Section {studentData?.section || user?.section}</p>
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <button onClick={() => navigate('/student/performance')} className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-left text-slate-950 active:scale-[0.99]">
+          <button onClick={() => navigate('/student/attendance')} className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-left text-slate-950 active:scale-[0.99]">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Attendance</p>
             <p className="mt-1 text-lg font-semibold">{attendance}%</p>
           </button>
@@ -105,7 +142,7 @@ const StudentDashboard = () => {
         {[
           { title: 'Attendance Rate', value: `${attendance}%`, icon: Calendar, color: 'bg-orange-500', path: '/student/attendance' },
           { title: 'Pending Fees', value: formatCurrency(0), icon: CreditCard, color: 'bg-rose-500', path: '/student/fees' },
-          { title: 'Assignments Due', value: '0', icon: Clock, color: 'bg-blue-500', path: '/student/materials' },
+          { title: 'Assignments Due', value: '0', icon: Clock, color: 'bg-blue-500', path: '/student/assignments' },
           { title: 'Recent Awards', value: '0', icon: Award, color: 'bg-amber-500' },
         ].map((stat, i) => (
           <div 
@@ -136,21 +173,25 @@ const StudentDashboard = () => {
               </p>
             </div>
           </div>
-          {activeSection ? (
+          {studentData ? (
             <div className="space-y-4">
               <div className="rounded border border-emerald-100 bg-emerald-50 px-4 py-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Class Teacher</p>
-                <p className="mt-1 text-base font-bold text-slate-900">{activeSection.classTeacher}</p>
+                <p className="mt-1 text-base font-bold text-slate-900">{classTeacher?.name || 'Unassigned'}</p>
+                {classTeacher?.subject && (
+                  <p className="mt-1 text-xs font-medium text-emerald-700">Handles {classTeacher.subject}</p>
+                )}
               </div>
               <div className="space-y-3">
-                {activeSubjects.length ? activeSubjects.map((teacher) => (
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Subject Teachers</p>
+                {subjectTeachers.length ? subjectTeachers.map((teacher) => (
                   <div key={`${teacher.subject}:${teacher.id}`} className="flex items-start justify-between gap-3 border border-slate-200 px-4 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-slate-900">{teacher.subject}</p>
                       <p className="break-words text-xs text-slate-500">Handled by {teacher.name}</p>
                     </div>
                     <span className="hidden shrink-0 rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500 min-[380px]:inline-flex">
-                      {teacher.name === activeSection.classTeacher ? 'Class Teacher' : 'Subject Teacher'}
+                      Subject Teacher
                     </span>
                   </div>
                 )) : (
@@ -170,26 +211,42 @@ const StudentDashboard = () => {
         {/* Performance Chart */}
         <div className="border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900 mb-6">My Average Marks by Exam</h2>
-          <div className="h-64">
+          <div className="min-h-[240px] w-full overflow-hidden md:h-64">
             {hasPerformanceMarks ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={performanceData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} domain={[0, 100]} />
-                  <Tooltip
-                    formatter={(value) => [`${value}%`, 'Average']}
-                    contentStyle={{ borderRadius: '6px', border: '1px solid #e2e8f0', boxShadow: 'none' }}
-                  />
-                  <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
-                </AreaChart>
-              </ResponsiveContainer>
+              useDesktopCharts ? (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180} initialDimension={STUDENT_CHART_INITIAL_DIMENSION}>
+                  <AreaChart data={performanceData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} domain={[0, 100]} />
+                    <Tooltip
+                      formatter={(value) => [`${value}%`, 'Average']}
+                      contentStyle={{ borderRadius: '6px', border: '1px solid #e2e8f0', boxShadow: 'none' }}
+                    />
+                    <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="space-y-4">
+                  {performanceData.map((item) => (
+                    <div key={item.name} className="rounded border border-slate-100 bg-slate-50 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-slate-700">{item.name}</span>
+                        <span className="text-sm font-bold text-emerald-600">{item.score}%</span>
+                      </div>
+                      <div className="mt-3 h-3 overflow-hidden rounded-full bg-white">
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${item.score}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : (
               <div className="flex h-full items-center justify-center rounded bg-slate-50 text-center text-sm font-bold text-slate-400">
                 No marks recorded yet.

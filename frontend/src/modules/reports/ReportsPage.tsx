@@ -74,6 +74,82 @@ const ATTENDANCE_RANGES: Array<{ value: AttendanceOverviewRange; label: string }
 
 const PIE_COLORS = ['#0f766e', '#e11d48'];
 
+const clampPercent = (value: number) => Math.min(Math.max(Number.isFinite(value) ? value : 0, 0), 100);
+
+const MobileReportBars = ({ data, labelKey, valueKey, color = '#4f46e5' }: { data: Array<Record<string, string | number>>; labelKey: string; valueKey: string; color?: string }) => (
+  <div className="flex h-full min-h-[230px] items-end gap-2 overflow-x-auto px-1 pb-2 pt-4">
+    {data.map((row, index) => {
+      const label = String(row[labelKey]);
+      const rawValue = Number(row[valueKey]);
+      const maxValue = Math.max(...data.map((item) => Number(item[valueKey]) || 0), 1);
+      const height = Math.max(4, (rawValue / maxValue) * 100);
+      return (
+        <div key={`${label}-${index}`} className="flex min-w-12 flex-1 flex-col items-center justify-end gap-2">
+          <div className="flex h-36 w-full items-end rounded bg-slate-50">
+            <div className="w-full rounded-t" style={{ height: `${height}%`, backgroundColor: color }} />
+          </div>
+          <span className="max-w-16 truncate text-[10px] font-semibold text-slate-500">{label}</span>
+        </div>
+      );
+    })}
+  </div>
+);
+
+const MobileReportTrend = ({ data }: { data: Array<{ day: string; present: number; absent: number }> }) => {
+  const width = 320;
+  const height = 210;
+  const padding = { top: 16, right: 12, bottom: 48, left: 34 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const toPoints = (key: 'present' | 'absent') => data.map((point, index) => ({
+    label: point.day,
+    x: padding.left + (data.length <= 1 ? plotWidth / 2 : (index / (data.length - 1)) * plotWidth),
+    y: padding.top + plotHeight - (clampPercent(point[key]) / 100) * plotHeight,
+  }));
+  const toPath = (points: Array<{ x: number; y: number }>) => points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const presentPoints = toPoints('present');
+  const absentPoints = toPoints('absent');
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-full min-h-[230px] w-full" role="img" aria-label="Daily attendance rate">
+      {[0, 50, 100].map((tick) => {
+        const y = padding.top + plotHeight - (tick / 100) * plotHeight;
+        return (
+          <g key={tick}>
+            <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#e2e8f0" strokeDasharray="3 4" />
+            <text x={padding.left - 8} y={y + 4} textAnchor="end" className="fill-slate-400 text-[10px] font-semibold">{tick}</text>
+          </g>
+        );
+      })}
+      <path d={toPath(presentPoints)} fill="none" stroke="#0f766e" strokeWidth="3" strokeLinecap="round" />
+      <path d={toPath(absentPoints)} fill="none" stroke="#e11d48" strokeWidth="3" strokeLinecap="round" />
+      {presentPoints.map((point, index) => <circle key={`p-${point.label}-${index}`} cx={point.x} cy={point.y} r="3" fill="#0f766e" />)}
+      {absentPoints.map((point, index) => <circle key={`a-${point.label}-${index}`} cx={point.x} cy={point.y} r="3" fill="#e11d48" />)}
+      {presentPoints.map((point, index) => (
+        <text key={`${point.label}-label-${index}`} x={point.x} y={height - 26} textAnchor="middle" className="fill-slate-500 text-[10px] font-semibold">
+          {data.length <= 5 || index % 2 === 0 ? point.label : ''}
+        </text>
+      ))}
+    </svg>
+  );
+};
+
+const MobileReportDonut = ({ data }: { data: Array<{ name: string; value: number }> }) => {
+  const total = data.reduce((sum, point) => sum + point.value, 0);
+  const present = data.find((point) => point.name === 'Present')?.value || 0;
+  const presentPct = total ? Math.round((present / total) * 100) : 0;
+  return (
+    <div className="flex h-full min-h-[230px] flex-col items-center justify-center gap-4">
+      <div className="relative h-36 w-36 rounded-full" style={{ background: `conic-gradient(#0f766e 0 ${presentPct}%, #e11d48 ${presentPct}% 100%)` }}>
+        <div className="absolute inset-8 flex items-center justify-center rounded-full bg-white text-xl font-semibold text-slate-900">{presentPct}%</div>
+      </div>
+      <div className="flex gap-4 text-xs font-semibold">
+        {data.map((point, index) => <span key={point.name} className={index === 0 ? 'text-teal-700' : 'text-rose-600'}>{point.name}: {point.value}</span>)}
+      </div>
+    </div>
+  );
+};
+
 const formatDateTime = (date: Date) =>
   new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',
@@ -113,10 +189,21 @@ const ReportsPage = () => {
   const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
   const [isMarksLoading, setIsMarksLoading] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [useDesktopCharts, setUseDesktopCharts] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches
+  );
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const update = () => setUseDesktopCharts(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -512,12 +599,15 @@ const ReportsPage = () => {
             </div>
           </div>
 
-          <div className="mt-6 h-[320px]">
+          <div className="mt-6 h-[260px] overflow-hidden sm:h-[320px]">
             {isAttendanceLoading ? (
               <PanelState message="Loading live attendance reports..." />
             ) : attendanceError ? (
               <PanelState message={attendanceError} tone="error" />
             ) : monthlyTrend.length ? (
+              !useDesktopCharts ? (
+                <MobileReportBars data={monthlyTrend as unknown as Array<Record<string, string | number>>} labelKey="month" valueKey="records" />
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyTrend}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
@@ -530,6 +620,7 @@ const ReportsPage = () => {
                   <Bar dataKey="records" fill="#4f46e5" radius={[10, 10, 0, 0]} barSize={42} name="Attendance Records" />
                 </BarChart>
               </ResponsiveContainer>
+              )
             ) : (
               <PanelState message="No attendance records found for the monthly report." />
             )}
@@ -583,12 +674,15 @@ const ReportsPage = () => {
             <BarChart3 size={18} className="text-slate-400" />
           </div>
 
-          <div className="mt-6 h-[300px]">
+          <div className="mt-6 h-[260px] overflow-hidden sm:h-[300px]">
             {isAttendanceLoading ? (
               <PanelState message="Loading live trend..." />
             ) : attendanceError ? (
               <PanelState message={attendanceError} tone="error" />
             ) : attendanceTrendData.length ? (
+              !useDesktopCharts ? (
+                <MobileReportTrend data={attendanceTrendData} />
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={attendanceTrendData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
@@ -599,6 +693,7 @@ const ReportsPage = () => {
                   <Line type="monotone" dataKey="absent" stroke="#e11d48" strokeWidth={3} dot={{ r: 4 }} name="Absent %" />
                 </LineChart>
               </ResponsiveContainer>
+              )
             ) : (
               <PanelState message="No attendance trend found for the selected window." />
             )}
@@ -614,12 +709,15 @@ const ReportsPage = () => {
             <Activity size={18} className="text-slate-400" />
           </div>
 
-          <div className="mt-6 h-[300px]">
+          <div className="mt-6 h-[260px] overflow-hidden sm:h-[300px]">
             {isAttendanceLoading ? (
               <PanelState message="Loading attendance distribution..." />
             ) : attendanceError ? (
               <PanelState message={attendanceError} tone="error" />
             ) : pieData.some((item) => item.value > 0) ? (
+              !useDesktopCharts ? (
+                <MobileReportDonut data={pieData} />
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={65} outerRadius={105} paddingAngle={4}>
@@ -630,6 +728,7 @@ const ReportsPage = () => {
                   <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 18px 45px rgba(15,23,42,0.12)' }} />
                 </PieChart>
               </ResponsiveContainer>
+              )
             ) : (
               <PanelState message="No present or absent logs found for this range." />
             )}

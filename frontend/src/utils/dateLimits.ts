@@ -13,6 +13,41 @@ export const shiftInputDate = (value: string, days: number) => {
 
 export const getOldestEditableAttendanceDate = () => shiftInputDate(getTodayInputDate(), -2);
 
+export const MIN_FILTER_DATE = '2000-01-01';
+
+export const isStrictInputDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+export const isDateWithinInputRange = (
+  value: string,
+  options: { min?: string; max?: string } = {}
+) => {
+  if (!value) {
+    return true;
+  }
+
+  if (!isStrictInputDate(value)) {
+    return false;
+  }
+
+  if (options.min && value < options.min) {
+    return false;
+  }
+
+  if (options.max && value > options.max) {
+    return false;
+  }
+
+  return true;
+};
+
+export const getSafeFilterDateChangeHandler =
+  (setValue: (value: string) => void, options: { min?: string; max?: string } = {}) =>
+  (value: string) => {
+    if (isDateWithinInputRange(value, options)) {
+      setValue(value);
+    }
+  };
+
 export const isFutureDateInput = (value: string) => {
   if (!value) {
     return false;

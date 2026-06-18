@@ -67,6 +67,10 @@ const singleRelation = <T>(value: T | T[] | null | undefined): T | null => {
   return value || null;
 };
 
+const logTimetableDebug = (message: string, details?: unknown) => {
+  console.info(`[Timetable Debug] ${message}`, details ?? '');
+};
+
 const mapTimetableEntry = (row: TimetableEntryRow): TimetableEntry => ({
   id: row.id,
   sectionId: row.section_id,
@@ -85,9 +89,16 @@ const mapTimetableEntry = (row: TimetableEntryRow): TimetableEntry => ({
 
 export const fetchTimetableEntries = async (filters?: { sectionId?: string; teacherProfileId?: string }) => {
   const client = assertSupabase();
+  logTimetableDebug('fetchTimetableEntries query filters', {
+    table: 'timetable_entries',
+    filters,
+    sectionFilter: filters?.sectionId ? `section_id = ${filters.sectionId}` : null,
+    teacherFilter: filters?.teacherProfileId ? `teachers.profile_id = ${filters.teacherProfileId}` : null,
+  });
+
   let query = client
     .from('timetable_entries')
-    .select('id, section_id, teacher_id, subject_name, day_of_week, period_number, start_time, end_time, room_number, notes, sections!inner(name), teachers!inner(name, profile_id)')
+    .select('id, section_id, teacher_id, subject_name, day_of_week, period_number, start_time, end_time, room_number, notes, sections(name), teachers(name, profile_id)')
     .order('day_of_week', { ascending: true })
     .order('period_number', { ascending: true });
 
@@ -102,11 +113,33 @@ export const fetchTimetableEntries = async (filters?: { sectionId?: string; teac
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data || []).map((row) => mapTimetableEntry(row as TimetableEntryRow));
+  const rows = (data || []) as TimetableEntryRow[];
+  logTimetableDebug('fetchTimetableEntries records returned', {
+    count: rows.length,
+    records: rows.map((row) => ({
+      id: row.id,
+      section_id: row.section_id,
+      section_name: singleRelation(row.sections)?.name,
+      teacher_id: row.teacher_id,
+      teacher_name: singleRelation(row.teachers)?.name,
+      subject_name: row.subject_name,
+      day_of_week: row.day_of_week,
+      period_number: row.period_number,
+    })),
+  });
+
+  return rows.map((row) => mapTimetableEntry(row));
 };
 
 export const fetchStudentTimetableEntries = async (profileId: string) => {
   const student = await fetchStudentByProfile(profileId);
+  logTimetableDebug('student timetable user details', {
+    profileId,
+    studentId: student?.id,
+    categoryId: student?.categoryId,
+    sectionId: student?.sectionId,
+  });
+
   if (!student) {
     return [];
   }
@@ -116,19 +149,24 @@ export const fetchStudentTimetableEntries = async (profileId: string) => {
 
 export const saveTimetableEntry = async (entry: TimetableWrite) => {
   const client = assertSupabase();
+  const payload = {
+    section_id: entry.sectionId,
+    teacher_id: entry.teacherId,
+    subject_name: entry.subject,
+    day_of_week: entry.dayOfWeek,
+    period_number: entry.periodNumber,
+  };
+
+  logTimetableDebug('admin timetable save payload', payload);
+
   const { data, error } = await client
     .from('timetable_entries')
-    .upsert({
-      section_id: entry.sectionId,
-      teacher_id: entry.teacherId,
-      subject_name: entry.subject,
-      day_of_week: entry.dayOfWeek,
-      period_number: entry.periodNumber,
-    }, { onConflict: 'section_id,day_of_week,period_number' })
-    .select('id, section_id, teacher_id, subject_name, day_of_week, period_number, start_time, end_time, room_number, notes, sections!inner(name), teachers!inner(name, profile_id)')
+    .upsert(payload, { onConflict: 'section_id,day_of_week,period_number' })
+    .select('id, section_id, teacher_id, subject_name, day_of_week, period_number, start_time, end_time, room_number, notes, sections(name), teachers(name, profile_id)')
     .single<TimetableEntryRow>();
 
   if (error) throw error;
+  logTimetableDebug('database record after timetable save', data);
   return mapTimetableEntry(data);
 };
 

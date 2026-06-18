@@ -16,7 +16,7 @@ export interface AssignmentSubmission {
   id: string;
   assignment_id: string;
   student_id?: string | null;
-  student_email: string;
+  student_name: string;
   submitted_at: string;
   submissionUrl: string;
 }
@@ -113,9 +113,9 @@ interface AssignmentRow {
   assignment_submissions?: AssignmentSubmissionRow[];
 }
 
-interface ProfileEmailRow {
-  id: string;
-  email: string;
+interface StudentNameRow {
+  profile_id?: string | null;
+  name: string;
 }
 
 interface SectionIdRow {
@@ -252,18 +252,20 @@ export const fetchAssignments = async (classNames?: string[]) => {
       (row.assignment_submissions || []).map((submission) => submission.student_id).filter(Boolean)
     )
   ));
-  const profileEmailMap = new Map<string, string>();
+  const studentNameMap = new Map<string, string>();
 
   if (studentProfileIds.length) {
-    const { data: profiles, error: profilesError } = await client
-      .from('profiles')
-      .select('id, email')
-      .in('id', studentProfileIds);
+    const { data: students, error: studentsError } = await client
+      .from('students')
+      .select('profile_id, name')
+      .in('profile_id', studentProfileIds);
 
-    if (profilesError) throw profilesError;
+    if (studentsError) throw studentsError;
 
-    ((profiles || []) as ProfileEmailRow[]).forEach((profile) => {
-      profileEmailMap.set(profile.id, profile.email);
+    ((students || []) as StudentNameRow[]).forEach((student) => {
+      if (student.profile_id) {
+        studentNameMap.set(student.profile_id, student.name);
+      }
     });
   }
 
@@ -280,7 +282,7 @@ export const fetchAssignments = async (classNames?: string[]) => {
       id: submission.id,
       assignment_id: submission.assignment_id,
       student_id: submission.student_id,
-      student_email: submission.student_id ? profileEmailMap.get(submission.student_id) || 'Student' : 'Student',
+      student_name: submission.student_id ? studentNameMap.get(submission.student_id) || 'Student' : 'Student',
       submitted_at: submission.submitted_at,
       submissionUrl: submission.submission_url,
     })),
@@ -318,7 +320,7 @@ export const createAssignment = async (assignment: Omit<Assignment, 'id' | 'subm
   } as Assignment;
 };
 
-export const submitAssignment = async (assignmentId: string, studentId: string, studentEmail: string, submissionUrl: string) => {
+export const submitAssignment = async (assignmentId: string, studentId: string, studentName: string, submissionUrl: string) => {
   const client = assertSupabase();
   const { data, error } = await client
     .from('assignment_submissions')
@@ -336,7 +338,7 @@ export const submitAssignment = async (assignmentId: string, studentId: string, 
     id: data.id,
     assignment_id: data.assignment_id,
     student_id: data.student_id,
-    student_email: studentEmail,
+    student_name: studentName || 'Student',
     submitted_at: data.submitted_at,
     submissionUrl: data.submission_url,
   } as AssignmentSubmission;

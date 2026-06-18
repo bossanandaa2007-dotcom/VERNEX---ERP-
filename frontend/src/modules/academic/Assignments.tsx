@@ -101,14 +101,14 @@ const Assignments = () => {
 
     const tableData = asgn.submissions.map((submission, idx) => [
       idx + 1,
-      submission.student_email,
+      submission.student_name,
       submission.submitted_at,
       submission.submissionUrl,
       'Accepted',
     ]);
 
     autoTable(doc, {
-      head: [['Sr.', 'Student Email', 'Date Submitted', 'Drive Link', 'Status']],
+      head: [['Sr.', 'Student Name', 'Date Submitted', 'Drive Link', 'Status']],
       body: tableData.length ? tableData : [['-', 'No submissions yet', '-', '-', '-']],
       startY: 28,
       theme: 'grid',
@@ -148,7 +148,7 @@ const Assignments = () => {
     }
 
     try {
-      const submission = await submitAssignment(submissionTarget.id, user.id, user.email, submissionUrl);
+      const submission = await submitAssignment(submissionTarget.id, user.id, user.name || 'Student', submissionUrl);
       setAssignments((current) =>
         current.map((item) =>
           item.id === submissionTarget.id
@@ -199,7 +199,7 @@ const Assignments = () => {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {assignments.map((asgn) => {
-            const hasSubmitted = asgn.submissions.some((submission) => submission.student_email === user?.email);
+            const hasSubmitted = asgn.submissions.some((submission) => submission.student_id === user?.id);
             return (
               <div key={asgn.id} className="erp-card group relative overflow-hidden p-5 transition-shadow hover:shadow-md">
                 {hasSubmitted && (
@@ -340,7 +340,7 @@ const Assignments = () => {
               {selectedAsgn.submissions.length > 0 ? selectedAsgn.submissions.map((submission) => (
                 <div key={submission.id} className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 p-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{submission.student_email}</p>
+                    <p className="text-sm font-semibold text-slate-900">{submission.student_name}</p>
                     <p className="erp-section-label">{submission.submitted_at}</p>
                   </div>
                   <button
